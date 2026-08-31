@@ -1,12 +1,13 @@
 import { BattleArena } from "@/components/battle/battle-arena";
-import { getRandomPair } from "@/lib/db/queries";
+import { Top10Panel } from "@/components/battle/top10-panel";
+import { getRandomPair, getTop24h } from "@/lib/db/queries";
 
 // Every visitor needs a fresh random pair — this page must never be
 // statically cached at build time.
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const pair = await getRandomPair();
+  const [pair, top10] = await Promise.all([getRandomPair(), getTop24h()]);
 
   return (
     <main className="flex flex-1 flex-col items-center gap-8 px-4 py-12 sm:gap-12 sm:py-20">
@@ -20,6 +21,8 @@ export default async function HomePage() {
       </div>
 
       <BattleArena initialPair={pair} />
+
+      <Top10Panel entries={top10} />
     </main>
   );
 }
