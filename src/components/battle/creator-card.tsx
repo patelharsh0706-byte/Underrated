@@ -16,6 +16,28 @@ interface CreatorCardProps {
   onPick: () => void;
 }
 
+const SOCIAL_LABELS: Record<string, string> = {
+  twitter: "𝕏",
+  x: "𝕏",
+  instagram: "Instagram",
+  linkedin: "LinkedIn",
+  youtube: "YouTube",
+  spotify: "Spotify",
+  tiktok: "TikTok",
+  github: "GitHub",
+};
+
+function socialLabel(platform: string): string {
+  return SOCIAL_LABELS[platform.toLowerCase()] ?? platform;
+}
+
+function formatFollowers(count: number): string {
+  if (count >= 1000) {
+    return `${(count / 1000).toFixed(count % 1000 === 0 ? 0 : 1)}K`;
+  }
+  return String(count);
+}
+
 export function CreatorCard({
   creator,
   displayedAura,
@@ -24,17 +46,16 @@ export function CreatorCard({
   disabled,
   onPick,
 }: CreatorCardProps) {
+  const hasResult = delta !== null;
+  const primaryHref =
+    creator.primarySocial && creator.socials ? creator.socials[creator.primarySocial] : null;
+  const firstName = creator.name.split(" ")[0];
+
   return (
-    <button
-      type="button"
-      onClick={onPick}
-      disabled={disabled}
-      aria-label={`Pick ${creator.name} as more underrated`}
+    <div
       className={cn(
-        "group flex w-full flex-col items-center gap-4 rounded-xl border-2 border-foreground bg-card p-6 text-left transition-transform duration-150",
+        "flex w-full flex-col items-center gap-4 rounded-xl border-2 border-foreground bg-card p-6 transition-opacity duration-150",
         "sm:p-8",
-        !disabled && "hover:-translate-y-0.5 active:translate-y-0 cursor-pointer",
-        disabled && "cursor-default",
         outcome === "winner" && "border-winner",
         outcome === "loser" && "opacity-60",
       )}
@@ -67,14 +88,39 @@ export function CreatorCard({
         ) : null}
       </div>
 
-      <div className="flex items-baseline gap-2">
-        <span className="font-mono text-2xl font-bold tabular-nums text-aura sm:text-3xl">
-          {displayedAura}
-        </span>
-        <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          aura
-        </span>
-        {delta !== null ? (
+      {creator.workUrl || primaryHref ? (
+        <div className="flex flex-wrap justify-center gap-2">
+          {creator.workUrl ? (
+            <a
+              href={creator.workUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full border-2 border-foreground px-3 py-1 text-xs font-medium hover:bg-accent"
+            >
+              ↗ View work
+            </a>
+          ) : null}
+          {primaryHref ? (
+            <a
+              href={primaryHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full border-2 border-foreground px-3 py-1 text-xs font-medium hover:bg-accent"
+            >
+              {socialLabel(creator.primarySocial!)}
+            </a>
+          ) : null}
+        </div>
+      ) : null}
+
+      {hasResult ? (
+        <div className="flex items-baseline gap-2">
+          <span className="font-mono text-2xl font-bold tabular-nums text-aura sm:text-3xl">
+            {displayedAura}
+          </span>
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            aura
+          </span>
           <span
             className={cn(
               "text-sm font-bold tabular-nums",
@@ -83,8 +129,31 @@ export function CreatorCard({
           >
             {outcome === "winner" ? `+${delta}` : `-${delta}`}
           </span>
-        ) : null}
-      </div>
-    </button>
+        </div>
+      ) : (
+        <div className="flex items-baseline gap-1.5">
+          <span className="font-mono text-2xl font-bold tabular-nums sm:text-3xl">
+            {creator.followerCount !== null ? formatFollowers(creator.followerCount) : "—"}
+          </span>
+          <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            followers
+          </span>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={onPick}
+        disabled={disabled}
+        aria-label={`Pick ${creator.name} as more underrated`}
+        className={cn(
+          "w-full rounded-xl border-2 border-foreground bg-primary py-3 text-sm font-bold uppercase tracking-wide text-primary-foreground transition-transform",
+          !disabled && "hover:-translate-y-0.5 active:translate-y-0 cursor-pointer",
+          disabled && "cursor-default opacity-50",
+        )}
+      >
+        Pick {firstName} 🔥
+      </button>
+    </div>
   );
 }

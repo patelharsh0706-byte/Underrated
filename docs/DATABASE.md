@@ -62,20 +62,38 @@ Owned by Supabase Auth. Not our table.
 ### creators
 
 ```
-id            uuid pk
-user_id       uuid fk → auth.users.id  null (unclaimed creators allowed)
-username      text unique
-name          text
-avatar_url    text
-bio           text            one line
-category      text
-links         jsonb           external links
-aura          integer         default 1500
-battles_count integer         default 0
-wins_count    integer         default 0
-is_active     boolean         default true
-created_at    timestamptz
+id              uuid pk
+user_id         uuid fk → auth.users.id  null (unclaimed creators allowed)
+username        text unique
+name            text
+avatar_url      text
+bio             text            one line
+category        text
+work_url        text            the strongest single piece of evidence —
+                                 GitHub repo, portfolio, video, article, product,
+                                 Spotify page. Shown as "View work" on the battle card.
+socials         jsonb           { platform: url }, as many as the creator adds
+primary_social  text            key into `socials` — which one shows on the
+                                 battle card. Creator's choice, not ours.
+follower_count  integer         null    self-reported by the creator, shown
+                                         pre-vote instead of Aura (see below).
+                                         Never fetched from a third-party API in
+                                         V1 — that's an external signal, deferred
+                                         to ROADMAP.md V3. Purely cosmetic: it
+                                         never feeds the Elo calculation.
+aura            integer         default 1500
+battles_count   integer         default 0
+wins_count      integer         default 0
+is_active       boolean         default true
+created_at      timestamptz
 ```
+
+**Why Aura is hidden until after voting:** showing 1523 vs 1500 before a pick tells
+the voter what everyone else already decided, which defeats the point of asking
+their own opinion. `follower_count` (or a placeholder if unset) fills that space
+pre-vote; the before → after Aura change is revealed only once the pick lands.
+This is a UI rule enforced in the battle card component, not a database concern —
+noted here because it's the reason `follower_count` exists.
 
 ### battles
 

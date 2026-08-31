@@ -101,7 +101,7 @@ export function BattleArena({ initialPair }: BattleArenaProps) {
   };
 
   return (
-    <div className="grid w-full max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
+    <div className="relative grid w-full max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
       <CreatorCard
         creator={a}
         displayedAura={auraFor(a)}
@@ -118,6 +118,12 @@ export function BattleArena({ initialPair }: BattleArenaProps) {
         disabled={phase !== "idle"}
         onPick={() => void handlePick(b.id, a.id)}
       />
+
+      <div className="pointer-events-none absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-foreground bg-background text-sm font-bold sm:h-14 sm:w-14 sm:text-base">
+          VS
+        </div>
+      </div>
     </div>
   );
 }

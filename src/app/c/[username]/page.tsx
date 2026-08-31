@@ -34,7 +34,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   if (!creator) notFound();
 
   const profileUrl = `${clientEnv().NEXT_PUBLIC_APP_URL}/c/${creator.username}`;
-  const links = creator.links ? Object.entries(creator.links) : [];
+  const socials = creator.socials ? Object.entries(creator.socials) : [];
 
   return (
     <main className="mx-auto flex w-full max-w-xl flex-1 flex-col items-center gap-6 px-4 py-16">
@@ -81,19 +81,39 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           </span>
           <span className="text-xs uppercase tracking-wide text-muted-foreground">Wins</span>
         </div>
+        {creator.followerCount !== null ? (
+          <div className="flex flex-col items-center">
+            <span className="font-mono text-2xl font-bold tabular-nums">
+              {creator.followerCount.toLocaleString()}
+            </span>
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">
+              Followers
+            </span>
+          </div>
+        ) : null}
       </div>
 
-      {links.length > 0 ? (
+      {creator.workUrl || socials.length > 0 ? (
         <div className="flex flex-wrap justify-center gap-2">
-          {links.map(([label, href]) => (
+          {creator.workUrl ? (
             <a
-              key={label}
-              href={href}
+              href={creator.workUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="rounded-full border-2 border-foreground px-4 py-1.5 text-sm font-medium hover:bg-accent"
             >
-              {label}
+              ↗ View work
+            </a>
+          ) : null}
+          {socials.map(([platform, href]) => (
+            <a
+              key={platform}
+              href={href}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded-full border-2 border-foreground px-4 py-1.5 text-sm font-medium capitalize hover:bg-accent"
+            >
+              {platform}
             </a>
           ))}
         </div>

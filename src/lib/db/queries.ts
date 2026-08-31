@@ -13,6 +13,10 @@ export interface PublicCreator {
   bio: string | null;
   category: string | null;
   aura: number;
+  workUrl: string | null;
+  socials: Record<string, string> | null;
+  primarySocial: string | null;
+  followerCount: number | null;
 }
 
 function toPublicCreator(row: typeof creators.$inferSelect): PublicCreator {
@@ -24,6 +28,10 @@ function toPublicCreator(row: typeof creators.$inferSelect): PublicCreator {
     bio: row.bio,
     category: row.category,
     aura: row.aura,
+    workUrl: row.workUrl,
+    socials: row.socials as Record<string, string> | null,
+    primarySocial: row.primarySocial,
+    followerCount: row.followerCount,
   };
 }
 
@@ -67,7 +75,6 @@ export interface CreatorProfile extends PublicCreator {
   rank: number;
   battlesCount: number;
   winsCount: number;
-  links: Record<string, string> | null;
 }
 
 export async function getCreatorByUsername(username: string): Promise<CreatorProfile | null> {
@@ -88,7 +95,6 @@ export async function getCreatorByUsername(username: string): Promise<CreatorPro
     rank: count + 1,
     battlesCount: row.battlesCount,
     winsCount: row.winsCount,
-    links: row.links as Record<string, string> | null,
   };
 }
 
@@ -106,6 +112,10 @@ interface DailyHeatRow {
   bio: string | null;
   category: string | null;
   aura: number;
+  work_url: string | null;
+  socials: Record<string, string> | null;
+  primary_social: string | null;
+  follower_count: number | null;
   wins_today: number;
   losses_today: number;
   battles_today: number;
@@ -126,6 +136,10 @@ export async function getTop24h(limit = 10): Promise<DailyHeatEntry[]> {
       c.bio,
       c.category,
       c.aura,
+      c.work_url,
+      c.socials,
+      c.primary_social,
+      c.follower_count,
       count(*) filter (where b.winner_id = c.id)::int as wins_today,
       count(*) filter (where b.winner_id != c.id)::int as losses_today,
       count(*)::int as battles_today
@@ -133,7 +147,8 @@ export async function getTop24h(limit = 10): Promise<DailyHeatEntry[]> {
     join battles b on b.creator_a_id = c.id or b.creator_b_id = c.id
     where c.is_active = true
       and b.created_at >= date_trunc('day', now() at time zone 'utc')
-    group by c.id, c.username, c.name, c.avatar_url, c.bio, c.category, c.aura
+    group by c.id, c.username, c.name, c.avatar_url, c.bio, c.category, c.aura,
+      c.work_url, c.socials, c.primary_social, c.follower_count
     having count(*) >= 5
     order by
       (count(*) filter (where b.winner_id = c.id) - count(*) filter (where b.winner_id != c.id)) desc,
@@ -151,6 +166,10 @@ export async function getTop24h(limit = 10): Promise<DailyHeatEntry[]> {
     bio: row.bio,
     category: row.category,
     aura: row.aura,
+    workUrl: row.work_url,
+    socials: row.socials,
+    primarySocial: row.primary_social,
+    followerCount: row.follower_count,
     rank: index + 1,
     dailyHeat: row.wins_today - row.losses_today,
     battlesToday: row.battles_today,
