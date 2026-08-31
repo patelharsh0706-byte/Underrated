@@ -56,5 +56,5 @@ Do not build these. Not partially. Not "just the schema for it".
 - Aura updates correctly and cannot be manipulated from the client.
 - The leaderboard and Main Character are correct and update daily.
 - A creator can sign in, submit themselves, and share their profile.
-- One sponsor slot can be sold, displayed for its period, and expires on its own.
+- One homepage sponsor slot ($30 / 30 days) can be sold, displays for its period, and expires on its own.
 - typecheck, lint, tests, and production build all pass.

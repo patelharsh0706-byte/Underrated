@@ -35,14 +35,14 @@ Do not turn Underrated into LinkedIn.
 - React
 - Tailwind
 - shadcn/ui where appropriate
-- PostgreSQL
+- Supabase (PostgreSQL + Auth)
 - Drizzle ORM
 - Zod
 - Vercel
 
-Service-level decisions (Postgres provider, auth, payments, images, analytics,
-email) live in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Do not introduce a
-different provider than the one recorded there.
+Service-level decisions (payments, images, analytics, email) live in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Do not introduce a different
+provider than the one recorded there.
 
 ## Engineering Rules
 
@@ -52,6 +52,10 @@ different provider than the one recorded there.
 - Validate mutations with Zod
 - Database transactions for voting
 - Never modify Aura client-side
+- RLS enabled and deny-by-default on every table; writes use the server-only
+  service role key
+- Drizzle owns the schema and migrations, not the Supabase dashboard
+- No Supabase client queries from the browser for game data
 - Keep dependencies minimal
 - Prefer simple implementations
 - Avoid premature abstractions

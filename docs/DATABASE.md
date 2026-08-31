@@ -42,7 +42,8 @@ Sponsor
 
 ### users
 
-Owned by Better Auth. Do not hand-roll auth columns.
+Owned by Supabase Auth — this is `auth.users`, managed by the third-party service.
+Do not hand-roll auth columns and do not write to this schema.
 
 ```
 id            uuid pk
@@ -50,15 +51,19 @@ email         text unique
 created_at    timestamptz
 ```
 
+Our tables reference `auth.users.id`. If we need our own profile fields beyond
+what a creator has, add a `public.profiles` table keyed by that id — do not
+extend `auth.users`.
+
 ### sessions
 
-Owned by Better Auth.
+Owned by Supabase Auth. Not our table.
 
 ### creators
 
 ```
 id            uuid pk
-user_id       uuid fk → users.id  null (unclaimed creators allowed)
+user_id       uuid fk → auth.users.id  null (unclaimed creators allowed)
 username      text unique
 name          text
 avatar_url    text
@@ -118,6 +123,18 @@ in the server layer where not.
 - expired sponsorships don't display
 - only active creators participate in battles
 - a vote writes the battle row and both Aura updates in a single transaction
+
+## Row Level Security
+
+Every table in `public` has RLS enabled with a deny-by-default policy. Writes
+happen server-side with the service role key. See
+[ARCHITECTURE.md](ARCHITECTURE.md#row-level-security).
+
+Per table:
+
+- `creators` — public read of active creators. No client write.
+- `battles` — no client read of raw rows, no client write.
+- `sponsorships` — public read of the currently active row only. No client write.
 
 ## Indexes
 

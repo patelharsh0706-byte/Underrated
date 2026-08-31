@@ -14,9 +14,9 @@ If a decision here needs to change, change it here first and log it in
 | Language      | TypeScript (strict)     |
 | UI            | React, Tailwind, shadcn/ui where appropriate |
 | Validation    | Zod                     |
-| Database      | Neon Postgres           |
+| Database      | Supabase Postgres       |
 | ORM           | Drizzle                 |
-| Auth          | Better Auth (Postgres adapter) |
+| Auth          | Supabase Auth           |
 | Payments      | Stripe                  |
 | Image storage | Vercel Blob             |
 | Analytics     | PostHog                 |
@@ -59,11 +59,23 @@ Rules:
 
 ## Auth
 
-Better Auth against the same Postgres. Sessions in the database.
+Supabase Auth, against the same Supabase Postgres. Users live in the `auth.users`
+schema; our tables reference them by id.
 
 - Voting: no account.
 - Submitting or editing a creator: account required.
 - One account owns at most one creator.
+
+Supabase is a third-party service. Treat it as Postgres + a hosted auth provider —
+not as the application layer:
+
+- Drizzle owns the schema in the `public` schema. Migrations run through Drizzle,
+  not the Supabase dashboard.
+- Do **not** hand-write into `auth.*`. That schema belongs to Supabase.
+- No Supabase client queries from the browser for game data. Reads and writes go
+  through Server Components and Server Actions.
+- Do not adopt Supabase Realtime, Storage, or Edge Functions in V1. Images go to
+  Vercel Blob as recorded above.
 
 ## Payments
 
@@ -77,6 +89,20 @@ no cron required to hide an expired sponsor.
 - Anonymous voters get a signed cookie identifying the session.
 - No CAPTCHA, no complicated moderation. If it becomes a problem, it goes to
   [ROADMAP.md](ROADMAP.md) — not into V1 mid-build.
+
+## Row Level Security
+
+Supabase exposes Postgres over a public API, so RLS is a hard requirement, not a
+nicety.
+
+- RLS is **enabled on every table** in `public`.
+- Default policy is deny. No anonymous or authenticated role gets direct write
+  access to `creators`, `battles`, or `sponsorships`.
+- The server uses the service role key, which bypasses RLS. That key is
+  server-only and must never reach the client bundle.
+- The anon key may only ever support read policies. `aura` is never writable by
+  any client-facing role — this is the database-level backstop for
+  "never modify Aura client-side".
 
 ## Project Structure
 
@@ -99,8 +125,8 @@ it can be tested directly. See [RANKING.md](RANKING.md).
 
 ## Environments
 
-- Local: Neon branch, `.env.local`
-- Production: Vercel, Neon main branch
+- Local: Supabase project (or `supabase start` locally), `.env.local`
+- Production: Vercel, production Supabase project
 
 Secrets only via env vars declared in `.env.example`. Never commit `.env`.
 

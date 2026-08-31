@@ -24,8 +24,8 @@ See two creators. Choose who's more underrated. Aura changes. Get another battle
 
 ## Stack
 
-Next.js (App Router) · TypeScript · Tailwind · shadcn/ui · Neon Postgres ·
-Drizzle · Zod · Better Auth · Stripe · Vercel
+Next.js (App Router) · TypeScript · Tailwind · shadcn/ui · Supabase
+(Postgres + Auth) · Drizzle · Zod · Stripe · Vercel
 
 ## Getting Started
 
