@@ -43,6 +43,13 @@
       "when": 1788234347979,
       "tag": "0005_sponsorship_payment_idempotency",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1788240000000,
+      "tag": "0006_add_visitor_pings",
+      "breakpoints": true
     }
   ]
 }

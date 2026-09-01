@@ -1,9 +1,40 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useRef, useState } from "react";
 
 import type { PublicCreator } from "@/lib/db/queries";
 import { cn } from "@/lib/utils";
+
+const COUNT_UP_MS = 220;
+
+// Aura changes count up rather than snapping — DESIGN.md calls for the
+// number to animate in the Aura accent color instead of jumping instantly.
+function useCountUp(target: number) {
+  const [value, setValue] = useState(target);
+  const prevTarget = useRef(target);
+
+  useEffect(() => {
+    const start = prevTarget.current;
+    if (start === target) return;
+
+    let raf: number;
+    const startTime = performance.now();
+    const tick = (now: number) => {
+      const progress = Math.min((now - startTime) / COUNT_UP_MS, 1);
+      setValue(Math.round(start + (target - start) * progress));
+      if (progress < 1) {
+        raf = requestAnimationFrame(tick);
+      } else {
+        prevTarget.current = target;
+      }
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target]);
+
+  return value;
+}
 
 type Outcome = "winner" | "loser" | null;
 
@@ -50,13 +81,14 @@ export function CreatorCard({
   const primaryHref =
     creator.primarySocial && creator.socials ? creator.socials[creator.primarySocial] : null;
   const firstName = creator.name.split(" ")[0];
+  const shownAura = useCountUp(displayedAura);
 
   return (
     <div
       className={cn(
-        "flex w-full flex-col items-center gap-4 rounded-xl border-2 border-foreground bg-card p-6 transition-opacity duration-150",
+        "flex w-full flex-col items-center gap-4 rounded-xl border-2 border-foreground bg-card p-6 transition-[opacity,transform,box-shadow] duration-200",
         "sm:p-8",
-        outcome === "winner" && "border-winner",
+        outcome === "winner" && "scale-[1.02] border-winner shadow-[0_0_0_3px_var(--winner)]",
         outcome === "loser" && "opacity-60",
       )}
     >
@@ -116,7 +148,7 @@ export function CreatorCard({
       {hasResult ? (
         <div className="flex items-baseline gap-2">
           <span className="font-mono text-2xl font-bold tabular-nums text-aura sm:text-3xl">
-            {displayedAura}
+            {shownAura}
           </span>
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
             aura

@@ -21,6 +21,9 @@ Anything that gets cut or deferred goes to [ROADMAP.md](ROADMAP.md).
 - **One $30 sponsor slot** — clearly labeled homepage Spotlight, 30 days, zero ranking influence.
 - **Mobile responsive** — the battle must feel right on a phone first.
 - **Sharing** — shareable profile links with OG cards showing Aura and rank.
+- **Live stats bar** — homepage panel showing total battles, visitors so far,
+  submission-fee revenue, site visits, and a live "N here now" count, plus a
+  "just happened" feed of recent creator joins. See [DECISIONS.md](DECISIONS.md).
 
 ## NICE TO HAVE
 

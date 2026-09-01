@@ -140,3 +140,43 @@ single-header HMAC scheme.
 `creators.dodo_payment_id` and `sponsorships.dodo_payment_id` replace the
 `stripe_*` column names used before any Stripe key was ever wired up — no
 real Stripe data existed, so this was a rename, not a migration of live data.
+
+## 2026-09-01 — Live stats bar on the homepage
+
+Decision:
+Add a homepage panel showing total battles, all-time visitors, submission-fee
+revenue, total site visits, a live "N here now" count, and a "just happened"
+feed of recent creator joins. Promoted into MVP.md MUST HAVE (was not
+previously in scope).
+
+Why:
+Explicitly requested, inspired by bigbubble.lol's live wall stats. Gives the
+homepage social proof and a sense of a live, active game — reinforces "the
+battle is the product" instead of turning into a dashboard.
+
+Implementation:
+One new table, `visitor_pings`, keyed by the same `voter_session` cookie
+`battles` already uses — no new client-side identity. A client component
+calls a `pingVisitor` server action every 45s (paused via
+`document.hidden`/`visibilitychange`, matching bigbubble's pattern), which
+upserts the visitor's row and returns the freshly computed stats bundle in
+the same round trip; the client re-renders the tiles and "N here now" badge
+from that response. "Site visit" vs "unique visitor" is derived purely from
+timestamps already on the row (a ping more than 30 minutes after the last one
+counts as a new visit) — no client-side session flag needed.
+The "just happened" feed only surfaces creator joins (mirroring what
+bigbubble actually ships, not battle picks) and is refreshed at page load
+only, not on the 45s tick — a live-updating feed wasn't asked for and adds a
+second polling path for a "nice to have" liveliness detail.
+
+Rejected:
+Supabase Realtime for presence — banned in V1 (see 2026-09-03). Polling
+matches the existing anti-abuse posture ("deliberately light") and needs no
+new infrastructure.
+PostHog-backed live counters — PostHog is for our own analytics dashboard,
+not for a number rendered directly on the page; querying its API on every
+homepage request for a number we can compute from our own Postgres in one
+query is unnecessary coupling.
+A separate client-generated visitor id (localStorage uuid, bigbubble's
+approach) — the anonymous `voter_session` cookie already serves that exact
+purpose for battles; reusing it avoids a second identity system.

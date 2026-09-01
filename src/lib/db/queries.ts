@@ -3,7 +3,7 @@ import "server-only";
 import { and, desc, eq, gt, lte, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { creators, sponsorships } from "@/lib/db/schema";
+import { battles, creators, sponsorships, visitorPings } from "@/lib/db/schema";
 
 export interface PublicCreator {
   id: string;
@@ -249,4 +249,58 @@ export async function getNextSponsorshipStart(): Promise<Date> {
   const now = new Date();
   if (!row || row.endAt <= now) return now;
   return row.endAt;
+}
+
+export interface HomeStats {
+  visitorsSoFar: number;
+  battlesSoFar: number;
+  paidForBattlesCents: number;
+  siteVisits: number;
+  onlineNow: number;
+}
+
+/** Powers the homepage's live stats bar. See DATABASE.md#visitor_pings. */
+export async function getHomeStats(): Promise<HomeStats> {
+  const [[visitorRow], [{ battlesSoFar }], [{ paidForBattlesCents }]] = await Promise.all([
+    db
+      .select({
+        visitorsSoFar: sql<number>`count(*)::int`,
+        siteVisits: sql<number>`coalesce(sum(${visitorPings.visitCount}), 0)::int`,
+        onlineNow: sql<number>`count(*) filter (where ${visitorPings.lastSeenAt} > now() - interval '90 seconds')::int`,
+      })
+      .from(visitorPings),
+    db.select({ battlesSoFar: sql<number>`count(*)::int` }).from(battles),
+    db
+      .select({ paidForBattlesCents: sql<number>`coalesce(sum(${creators.entryFeeCents}), 0)::int` })
+      .from(creators),
+  ]);
+
+  return {
+    visitorsSoFar: visitorRow?.visitorsSoFar ?? 0,
+    siteVisits: visitorRow?.siteVisits ?? 0,
+    onlineNow: visitorRow?.onlineNow ?? 0,
+    battlesSoFar,
+    paidForBattlesCents,
+  };
+}
+
+export interface RecentJoin {
+  username: string;
+  name: string;
+  entryFeeCents: number | null;
+  createdAt: Date;
+}
+
+/** "Just happened" feed on the homepage — most recently submitted creators. */
+export async function getRecentJoins(limit = 5): Promise<RecentJoin[]> {
+  return db
+    .select({
+      username: creators.username,
+      name: creators.name,
+      entryFeeCents: creators.entryFeeCents,
+      createdAt: creators.createdAt,
+    })
+    .from(creators)
+    .orderBy(desc(creators.createdAt))
+    .limit(limit);
 }

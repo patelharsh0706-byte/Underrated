@@ -190,7 +190,7 @@ export function SubmitForm() {
       <fieldset className="flex flex-col gap-3">
         <legend className="text-sm font-bold">Social links</legend>
 
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-2 sm:flex-row">
           <input
             value={pendingUrl}
             onChange={(e) => setPendingUrl(e.target.value)}
@@ -203,24 +203,26 @@ export function SubmitForm() {
             placeholder="Paste your profile link…"
             className={inputClass(false)}
           />
-          <select
-            value={pendingPlatform}
-            onChange={(e) => setPendingPlatform(e.target.value)}
-            className="w-36 shrink-0 rounded-xl border-2 border-foreground bg-card px-2 py-2 text-sm"
-          >
-            {SOCIAL_PLATFORMS.map(({ key, label }) => (
-              <option key={key} value={key}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <button
-            type="button"
-            onClick={addSocial}
-            className="shrink-0 rounded-xl border-2 border-foreground bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
-          >
-            Add
-          </button>
+          <div className="flex gap-2">
+            <select
+              value={pendingPlatform}
+              onChange={(e) => setPendingPlatform(e.target.value)}
+              className="w-0 flex-1 rounded-xl border-2 border-foreground bg-card px-2 py-2 text-sm sm:w-36 sm:flex-none sm:shrink-0"
+            >
+              {SOCIAL_PLATFORMS.map(({ key, label }) => (
+                <option key={key} value={key}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              onClick={addSocial}
+              className="shrink-0 rounded-xl border-2 border-foreground bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
+            >
+              Add
+            </button>
+          </div>
         </div>
 
         {Object.keys(filledSocials).length > 0 ? (

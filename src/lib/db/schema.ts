@@ -84,6 +84,22 @@ export const battles = pgTable(
   ],
 );
 
+export const visitorPings = pgTable(
+  "visitor_pings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    voterSession: text("voter_session").notNull(),
+    firstSeenAt: timestamptz("first_seen_at").notNull().defaultNow(),
+    lastSeenAt: timestamptz("last_seen_at").notNull().defaultNow(),
+    visitCount: integer("visit_count").notNull().default(1),
+    createdAt: timestamptz("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("visitor_pings_voter_session_key").on(table.voterSession),
+    index("visitor_pings_last_seen_idx").on(table.lastSeenAt),
+  ],
+);
+
 export const sponsorships = pgTable(
   "sponsorships",
   {

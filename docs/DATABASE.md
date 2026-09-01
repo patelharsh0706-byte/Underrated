@@ -13,6 +13,7 @@ sessions
 creators
 battles
 sponsorships
+visitor_pings
 ```
 
 ## Relationships
@@ -132,6 +133,32 @@ dodo_payment_id text
 created_at    timestamptz
 ```
 
+### visitor_pings
+
+One row per anonymous visitor, keyed by the same `voter_session` cookie
+`battles.voter_session` already uses (see [session.ts](../src/lib/session.ts)
+and [ARCHITECTURE.md](ARCHITECTURE.md#anti-abuse-v1-deliberately-light)) — no
+new client-side identity is introduced.
+
+```
+id            uuid pk
+voter_session text unique     same identity as battles.voter_session
+first_seen_at timestamptz     set once, on first ping
+last_seen_at  timestamptz     bumped on every ping
+visit_count   integer default 1   see below
+created_at    timestamptz
+```
+
+Powers the homepage's live stats bar: "visitors so far" is `count(*)`, "site
+visits" is `sum(visit_count)`, and "N here now" is `count(*)` where
+`last_seen_at` is within the last 90 seconds. The client pings every 45s
+while the tab is visible — see [DECISIONS.md](DECISIONS.md).
+
+A "site visit" is a fresh browsing session: `visit_count` increments only
+when a ping arrives more than 30 minutes after that visitor's previous
+`last_seen_at`. This is decided entirely server-side from timestamps already
+on the row — no session flag is tracked on the client.
+
 ## Invariants
 
 These matter more than the columns. Enforce them in the database where possible,
@@ -164,6 +191,9 @@ Per table:
 - `creators` — public read of active creators. No client write.
 - `battles` — no client read of raw rows, no client write.
 - `sponsorships` — public read of the currently active row only. No client write.
+- `visitor_pings` — no client read, no client write. Only the server reads it,
+  to compute the aggregate numbers shown on the stats bar; no policy is
+  granted to the anon or authenticated roles at all.
 
 ## Indexes
 
@@ -174,6 +204,8 @@ creators(is_active)        pool selection
 battles(created_at)        Daily Heat
 battles(winner_id, created_at)
 sponsorships(start_at, end_at)
+visitor_pings(voter_session)   upsert target, one row per visitor
+visitor_pings(last_seen_at)    "N here now" / online count
 ```
 
 ## Derived, Not Stored

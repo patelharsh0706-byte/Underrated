@@ -70,12 +70,12 @@ export function Top10Panel({ entries, mode }: Top10PanelProps) {
                   ) : null}
                 </div>
                 <div className="flex flex-1 flex-col overflow-hidden">
-                  <span className="flex items-center gap-1.5 truncate text-sm font-bold">
-                    {entry.name}
+                  <span className="flex items-center gap-1.5 text-sm font-bold">
+                    <span className="min-w-0 truncate">{entry.name}</span>
                     {entry.dailyHeat !== undefined && DAILY_RANK_BADGES[entry.rank] ? (
                       <span
                         className={cn(
-                          "rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground",
+                          "shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground",
                           DAILY_RANK_BADGES[entry.rank].className,
                         )}
                       >

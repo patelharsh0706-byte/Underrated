@@ -1,10 +1,13 @@
 import { BattleArena } from "@/components/battle/battle-arena";
+import { StatsPanel } from "@/components/battle/stats-panel";
 import { Top10Panel, type Top10Entry } from "@/components/battle/top10-panel";
 import { SponsorBanner } from "@/components/sponsor-banner";
 import {
   getActiveSponsorship,
+  getHomeStats,
   getLeaderboard,
   getRandomPair,
+  getRecentJoins,
   getTop24h,
 } from "@/lib/db/queries";
 
@@ -13,10 +16,12 @@ import {
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const [pair, dailyHeat, sponsorship] = await Promise.all([
+  const [pair, dailyHeat, sponsorship, homeStats, recentJoins] = await Promise.all([
     getRandomPair(),
     getTop24h(),
     getActiveSponsorship(),
+    getHomeStats(),
+    getRecentJoins(),
   ]);
 
   // Nobody's hit the 5-battles-today floor yet — fall back to all-time Aura
@@ -53,6 +58,8 @@ export default async function HomePage() {
       <SponsorBanner sponsorship={sponsorship} />
 
       <Top10Panel entries={top10} mode={top10Mode} />
+
+      <StatsPanel initialStats={homeStats} recentJoins={recentJoins} />
     </main>
   );
 }
