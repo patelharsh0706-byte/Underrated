@@ -42,6 +42,8 @@
   --color-aura: var(--aura);
   --color-winner: var(--winner);
   --color-loser: var(--loser);
+  --color-rank-second: var(--rank-second);
+  --color-rank-third: var(--rank-third);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -74,6 +76,8 @@
   --aura: oklch(0.63 0.22 35); /* #FF5A1F */
   --winner: oklch(0.72 0.19 149); /* #22C55E */
   --loser: oklch(0.65 0 0); /* #9CA3AF-ish */
+  --rank-second: oklch(0.6 0.19 255); /* cobalt blue — Side Character */
+  --rank-third: oklch(0.6 0.2 320); /* magenta — Plot Twist */
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);

@@ -62,9 +62,11 @@ Owned by Supabase Auth. Not our table.
 ### creators
 
 ```
-id              uuid pk
-user_id         uuid fk → auth.users.id  null (unclaimed creators allowed)
-username        text unique
+id                          uuid pk
+user_id                     uuid fk → auth.users.id  null — always null for
+                                       fee-submitted creators; the column
+                                       stays for a future claim/edit flow.
+username                    text unique
 name            text
 avatar_url      text
 bio             text            one line
@@ -81,6 +83,11 @@ follower_count  integer         null    self-reported by the creator, shown
                                          V1 — that's an external signal, deferred
                                          to ROADMAP.md V3. Purely cosmetic: it
                                          never feeds the Elo calculation.
+entry_fee_cents             integer  null    what they paid to submit, in
+                                             cents. Null for seed/dev data
+                                             predating the fee. Platform
+                                             revenue — never read by ranking.
+dodo_payment_id             text     null    unique, for webhook idempotency.
 aura            integer         default 1500
 battles_count   integer         default 0
 wins_count      integer         default 0
@@ -121,7 +128,7 @@ image_url     text
 target_url    text
 start_at      timestamptz
 end_at        timestamptz
-stripe_id     text
+dodo_payment_id text
 created_at    timestamptz
 ```
 
@@ -132,8 +139,12 @@ in the server layer where not.
 
 - `creator_a != creator_b`
 - `winner` must be `creator_a` or `creator_b`
-- one account owns at most one creator
 - `username` is unique
+- a creator submission is never inserted until its Dodo Payments payment is
+  confirmed by webhook — no unpaid/pending rows
+- username availability is checked before payment, never after — don't
+  charge someone for a username that turns out to be taken
+- entry fee amount never influences Aura, pairing, or rank
 - Aura cannot be changed by the client
 - every battle retains historical rating information (`aura_*_before` / `aura_*_after`)
 - battle rows are never updated or deleted

@@ -36,6 +36,8 @@ export const creators = pgTable(
     socials: jsonb("socials"),
     primarySocial: text("primary_social"),
     followerCount: integer("follower_count"),
+    entryFeeCents: integer("entry_fee_cents"),
+    dodoPaymentId: text("dodo_payment_id"),
     aura: integer("aura").notNull().default(1500),
     battlesCount: integer("battles_count").notNull().default(0),
     winsCount: integer("wins_count").notNull().default(0),
@@ -45,6 +47,7 @@ export const creators = pgTable(
   (table) => [
     uniqueIndex("creators_username_key").on(table.username),
     uniqueIndex("creators_user_id_key").on(table.userId),
+    uniqueIndex("creators_dodo_payment_key").on(table.dodoPaymentId),
     index("creators_aura_idx").on(table.aura.desc()),
     index("creators_is_active_idx").on(table.isActive),
   ],
@@ -90,8 +93,11 @@ export const sponsorships = pgTable(
     targetUrl: text("target_url").notNull(),
     startAt: timestamptz("start_at").notNull(),
     endAt: timestamptz("end_at").notNull(),
-    stripeId: text("stripe_id"),
+    dodoPaymentId: text("dodo_payment_id"),
     createdAt: timestamptz("created_at").notNull().defaultNow(),
   },
-  (table) => [index("sponsorships_start_end_idx").on(table.startAt, table.endAt)],
+  (table) => [
+    index("sponsorships_start_end_idx").on(table.startAt, table.endAt),
+    uniqueIndex("sponsorships_dodo_payment_key").on(table.dodoPaymentId),
+  ],
 );

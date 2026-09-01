@@ -10,6 +10,9 @@ export function SiteHeader() {
         <Link href="/leaderboard" className="hover:underline">
           Leaderboard
         </Link>
+        <Link href="/submit" className="hover:underline">
+          Submit yourself
+        </Link>
       </nav>
     </header>
   );

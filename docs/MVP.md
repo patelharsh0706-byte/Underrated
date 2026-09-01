@@ -15,8 +15,9 @@ Anything that gets cut or deferred goes to [ROADMAP.md](ROADMAP.md).
 - **Main Character** — the daily #1 by Daily Heat, shown prominently.
 - **Creator profiles** — avatar, name, username, one-line bio, category, external links, Aura, rank.
 - **Discover** — browse creators outside the leaderboard.
-- **Authentication** — required only to submit or manage a creator.
-- **Submit yourself** — one creator per account.
+- **Submit yourself** — gated by a one-time entry fee (Dodo Payments Checkout, any
+  amount from $1), not an account. No login required. The fee is platform
+  revenue and never affects ranking — see [DECISIONS.md](DECISIONS.md).
 - **One $30 sponsor slot** — clearly labeled homepage Spotlight, 30 days, zero ranking influence.
 - **Mobile responsive** — the battle must feel right on a phone first.
 - **Sharing** — shareable profile links with OG cards showing Aura and rank.

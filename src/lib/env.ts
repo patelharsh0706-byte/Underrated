@@ -29,3 +29,30 @@ export function serverEnv() {
   cachedServerEnv ??= serverSchema.parse(process.env);
   return cachedServerEnv;
 }
+
+// Validated separately from serverEnv() — Dodo Payments keys aren't needed
+// for the core battle loop, so a missing key here shouldn't break the whole
+// app. Only throws when a payment flow (submission fee, sponsor slot) is
+// actually used.
+const dodoSchema = z.object({
+  DODO_PAYMENTS_API_KEY: z
+    .string()
+    .min(1, "Dodo Payments is not configured (DODO_PAYMENTS_API_KEY missing)"),
+  DODO_PAYMENTS_WEBHOOK_KEY: z
+    .string()
+    .min(1, "Dodo Payments webhook key is not configured (DODO_PAYMENTS_WEBHOOK_KEY missing)"),
+  DODO_PAYMENTS_ENVIRONMENT: z.enum(["test_mode", "live_mode"]).default("test_mode"),
+  DODO_PAYMENTS_SUBMISSION_PRODUCT_ID: z
+    .string()
+    .min(1, "No submission product configured (DODO_PAYMENTS_SUBMISSION_PRODUCT_ID missing)"),
+});
+
+let cachedDodoEnv: z.infer<typeof dodoSchema> | null = null;
+
+export function dodoEnv() {
+  if (typeof window !== "undefined") {
+    throw new Error("dodoEnv() must never be called from the client");
+  }
+  cachedDodoEnv ??= dodoSchema.parse(process.env);
+  return cachedDodoEnv;
+}

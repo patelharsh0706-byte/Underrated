@@ -17,14 +17,14 @@ If a decision here needs to change, change it here first and log it in
 | Database      | Supabase Postgres       |
 | ORM           | Drizzle                 |
 | Auth          | Supabase Auth           |
-| Payments      | Stripe                  |
+| Payments      | Dodo Payments           |
 | Image storage | Vercel Blob             |
 | Analytics     | PostHog                 |
 | Email         | Resend                  |
 | Hosting       | Vercel                  |
 
-Not every service ships on day one. PostHog, Resend, and Stripe can land after the
-core loop. But nothing else is allowed in their place.
+Not every service ships on day one. PostHog, Resend, and Dodo Payments can land
+after the core loop. But nothing else is allowed in their place.
 
 ## Rendering
 
@@ -63,8 +63,17 @@ Supabase Auth, against the same Supabase Postgres. Users live in the `auth.users
 schema; our tables reference them by id.
 
 - Voting: no account.
-- Submitting or editing a creator: account required.
-- One account owns at most one creator.
+- Submitting a creator: **no account either** — gated by a Dodo Payments entry fee
+  instead. See Payments below and [DECISIONS.md](DECISIONS.md). Submitted
+  creators are unclaimed (`user_id` null) — DATABASE.md already allowed this.
+- Google OAuth is fully built (sign-in page, `/auth/callback`, sign-out
+  action) but currently has no entry point in the UI. It's not wired to
+  submission anymore; kept because a future "manage/edit your profile"
+  feature will need some notion of identity, and rebuilding this from
+  scratch would be wasted work. Do not delete it without discussing first.
+- Sign-in, if reintroduced, is Google OAuth only — no email/password, no
+  magic link. Requires a Google OAuth client configured in Supabase Auth →
+  Providers (authorized redirect URI: `<SUPABASE_URL>/auth/v1/callback`).
 
 Supabase is a third-party service. Treat it as Postgres + a hosted auth provider —
 not as the application layer:
@@ -79,9 +88,46 @@ not as the application layer:
 
 ## Payments
 
-Stripe Checkout for the single Spotlight slot ($30 / 30 days). Webhook creates the
+Two independent Dodo Payments Checkout flows, both webhook-driven. Dodo is
+product-based, not ad-hoc-price-based like Stripe: a fee needs a pre-created
+**Product** in the Dodo dashboard with "pay what you want" pricing enabled
+(minimum $1) before any code can charge against it — that product's ID is
+`DODO_PAYMENTS_SUBMISSION_PRODUCT_ID`.
+
+**Sponsor slot** — the single Spotlight slot ($30 / 30 days). Webhook creates the
 sponsorship row with `start_at` / `end_at`. Expiry is computed from the dates —
 no cron required to hide an expired sponsor.
+
+**Creator submission fee** — replaces auth as the submission gate. Flow:
+
+1. `/submit` collects the creator's fields and a fee amount (any amount from
+   $1, preset buttons + custom). Username availability is checked **before**
+   payment — never charge for a username that's taken.
+2. A Server Action creates a Dodo checkout session against the pre-created
+   submission product, overriding its price via the line item's `amount`
+   (only takes effect because that product has pay-what-you-want enabled),
+   with the full creator payload serialized into session metadata, and
+   redirects to the returned `checkout_url`.
+3. `payment.succeeded` webhook (`/api/dodo-payments/webhook`) verifies the
+   signature via the SDK's `webhooks.unwrap()` (needs the `webhook-id`,
+   `webhook-signature`, `webhook-timestamp` headers), re-validates the
+   metadata with the same Zod schema (never trust a webhook payload beyond
+   its signature), and inserts the creator row — `user_id` null,
+   `entry_fee_cents` (from `total_amount`) and `dodo_payment_id` set for
+   audit. Insert is idempotent on `dodo_payment_id` in case the webhook
+   retries.
+4. Dodo appends `?payment_id=...&status=...` to `return_url` itself (no
+   template placeholder needed, unlike Stripe's `{CHECKOUT_SESSION_ID}`).
+   `/submit/success` polls briefly for the row to land (webhook delivery
+   isn't instant) then redirects to the new profile.
+
+The fee is platform revenue. It never touches Aura, pairing, or rank — see
+[PRODUCT.md](PRODUCT.md)'s "rankings cannot be bought" principle, which this
+was explicitly designed not to violate.
+
+Local webhook testing needs the Dodo Payments CLI, which forwards webhook
+events (with real signature headers) to a local endpoint — not something that
+can be verified without the developer's own Dodo account.
 
 ## Anti-Abuse (V1, deliberately light)
 

@@ -75,8 +75,10 @@ to new talent.
 ### Creator (submitting)
 
 1. Arrives via a shared ranking or Main Character post.
-2. Signs in.
-3. Submits themselves: name, username, avatar, one line, category, links.
+2. Fills out their profile: name, username, category, one-line bio, a work
+   link (their strongest evidence), and at least one social.
+3. Pays a one-time entry fee — any amount from $1 — instead of signing in.
+   No account. The fee is platform revenue and buys nothing about rank.
 4. Enters the pool at starting Aura.
 5. Gets battled. Checks their rank. Shares it.
 

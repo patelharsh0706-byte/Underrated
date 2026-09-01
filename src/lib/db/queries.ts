@@ -1,9 +1,9 @@
 import "server-only";
 
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, gt, lte, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { creators } from "@/lib/db/schema";
+import { creators, sponsorships } from "@/lib/db/schema";
 
 export interface PublicCreator {
   id: string;
@@ -98,6 +98,40 @@ export async function getCreatorByUsername(username: string): Promise<CreatorPro
   };
 }
 
+/** Checked before payment — never charge someone for a taken username. */
+export async function isUsernameTaken(username: string): Promise<boolean> {
+  const [row] = await db
+    .select({ id: creators.id })
+    .from(creators)
+    .where(eq(creators.username, username));
+
+  return !!row;
+}
+
+/** Used by /submit/success to find the creator a completed payment produced. */
+export async function getCreatorByPaymentId(
+  paymentId: string,
+): Promise<{ username: string } | null> {
+  const [row] = await db
+    .select({ username: creators.username })
+    .from(creators)
+    .where(eq(creators.dodoPaymentId, paymentId));
+
+  return row ?? null;
+}
+
+/** Kept for a future claim/manage-profile flow — see DECISIONS.md 2026-09-05. */
+export async function getCreatorByUserId(
+  userId: string,
+): Promise<{ username: string } | null> {
+  const [row] = await db
+    .select({ username: creators.username })
+    .from(creators)
+    .where(eq(creators.userId, userId));
+
+  return row ?? null;
+}
+
 export interface DailyHeatEntry extends PublicCreator {
   rank: number;
   dailyHeat: number;
@@ -174,4 +208,45 @@ export async function getTop24h(limit = 10): Promise<DailyHeatEntry[]> {
     dailyHeat: row.wins_today - row.losses_today,
     battlesToday: row.battles_today,
   }));
+}
+
+export interface ActiveSponsorship {
+  sponsorName: string;
+  imageUrl: string;
+  targetUrl: string;
+  endAt: Date;
+}
+
+/** The one sponsor slot, if a paid-up one is currently live. See DATABASE.md. */
+export async function getActiveSponsorship(): Promise<ActiveSponsorship | null> {
+  const now = new Date();
+  const [row] = await db
+    .select({
+      sponsorName: sponsorships.sponsorName,
+      imageUrl: sponsorships.imageUrl,
+      targetUrl: sponsorships.targetUrl,
+      endAt: sponsorships.endAt,
+    })
+    .from(sponsorships)
+    .where(and(lte(sponsorships.startAt, now), gt(sponsorships.endAt, now)));
+
+  return row ?? null;
+}
+
+/**
+ * Slot queues automatically, back to back — nobody picks dates, so
+ * overlapping sponsorships are impossible by construction. Returns when the
+ * next purchase would start: now, if the slot is free; otherwise right after
+ * the last booked sponsorship ends.
+ */
+export async function getNextSponsorshipStart(): Promise<Date> {
+  const [row] = await db
+    .select({ endAt: sponsorships.endAt })
+    .from(sponsorships)
+    .orderBy(desc(sponsorships.endAt))
+    .limit(1);
+
+  const now = new Date();
+  if (!row || row.endAt <= now) return now;
+  return row.endAt;
 }
