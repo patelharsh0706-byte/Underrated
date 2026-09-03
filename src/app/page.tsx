@@ -46,7 +46,7 @@ export default async function HomePage() {
     <main className="flex flex-1 flex-col items-center gap-8 px-4 py-12 sm:gap-12 sm:py-20">
       <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
-          Who&apos;s more underrated?
+          Who&apos;s more underhyped?
         </h1>
         <p className="max-w-md text-muted-foreground">
           Discover people before everyone else does.

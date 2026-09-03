@@ -1,10 +1,10 @@
-# Underrated
+# Underhyped
 
 A social discovery game for emerging talent.
 
 > Discover people before everyone else does.
 
-See two creators. Choose who's more underrated. Aura changes. Get another battle.
+See two creators. Choose who's more underhyped. Aura changes. Get another battle.
 
 **THE BATTLE IS THE PRODUCT.**
 
@@ -13,7 +13,7 @@ See two creators. Choose who's more underrated. Aura changes. Get another battle
 | File | What's in it |
 | ---- | ------------ |
 | [AGENTS.md](AGENTS.md) | Rules for coding agents. Read first. |
-| [docs/PRODUCT.md](docs/PRODUCT.md) | What Underrated is and why. Terminology. |
+| [docs/PRODUCT.md](docs/PRODUCT.md) | What Underhyped is and why. Terminology. |
 | [docs/MVP.md](docs/MVP.md) | The V1 scope contract. |
 | [docs/DESIGN.md](docs/DESIGN.md) | Brand, visual language, UX rules. |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | Stack and technical decisions. |

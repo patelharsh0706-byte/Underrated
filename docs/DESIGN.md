@@ -4,14 +4,14 @@ The visual language and UX rules. Decided here, not invented per session.
 
 ## Brand
 
-Name: **Underrated**
-Domain: underrated.lol
+Name: **Underhyped**
+Domain: underhyped.wtf
 
 Primary tagline:
 > Discover people before everyone else does.
 
 Secondary:
-> The internet decides who's criminally underrated.
+> The internet decides who's criminally underhyped.
 
 ## Style
 

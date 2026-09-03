@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import type { ActiveSponsorship } from "@/lib/db/queries";
+import { SponsorLogo } from "@/components/sponsor-logo";
 
 interface SponsorBannerProps {
   sponsorship: ActiveSponsorship | null;
@@ -15,10 +15,10 @@ export function SponsorBanner({ sponsorship }: SponsorBannerProps) {
         className="flex w-full max-w-3xl flex-col items-center gap-2 rounded-xl border-2 border-dashed border-foreground/30 px-6 py-8 text-center hover:border-foreground"
       >
         <span className="text-lg font-bold tracking-tight sm:text-xl">
-          Feeling your startup is underrated too?
+          Feeling your startup is underhyped too?
         </span>
         <span className="text-sm text-muted-foreground">
-          Own the only sponsor spot on Underrated.
+          Own the only sponsor spot on Underhyped.
         </span>
         <span className="mt-3 flex items-center gap-3">
           <span className="font-mono font-bold text-aura">$30 · 30 days</span>
@@ -40,17 +40,15 @@ export function SponsorBanner({ sponsorship }: SponsorBannerProps) {
       <span className="rounded-full bg-aura px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
         Sponsored
       </span>
-      <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg border-2 border-foreground bg-muted">
-        <Image
-          src={sponsorship.imageUrl}
-          alt={sponsorship.sponsorName}
-          fill
-          sizes="40px"
-          className="object-cover"
-          unoptimized
-        />
-      </div>
-      <span className="flex-1 truncate text-sm font-bold">{sponsorship.sponsorName}</span>
+      <SponsorLogo imageUrl={sponsorship.imageUrl} sponsorName={sponsorship.sponsorName} />
+      <span className="flex flex-1 flex-col overflow-hidden">
+        <span className="truncate text-sm font-bold">{sponsorship.sponsorName}</span>
+        {sponsorship.description ? (
+          <span className="truncate text-xs text-muted-foreground">
+            {sponsorship.description}
+          </span>
+        ) : null}
+      </span>
       <span className="shrink-0 text-xs text-muted-foreground">↗</span>
     </a>
   );

@@ -148,10 +148,10 @@ export function CreatorCard({
       {hasResult ? (
         <div className="flex items-baseline gap-2">
           <span className="font-mono text-2xl font-bold tabular-nums text-aura sm:text-3xl">
-            {shownAura}
+            {shownAura}🔥
           </span>
           <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            aura
+            aura🔥
           </span>
           <span
             className={cn(
@@ -177,7 +177,7 @@ export function CreatorCard({
         type="button"
         onClick={onPick}
         disabled={disabled}
-        aria-label={`Pick ${creator.name} as more underrated`}
+        aria-label={`Pick ${creator.name} as more underhyped`}
         className={cn(
           "w-full rounded-xl border-2 border-foreground bg-primary py-3 text-sm font-bold uppercase tracking-wide text-primary-foreground transition-transform",
           !disabled && "hover:-translate-y-0.5 active:translate-y-0 cursor-pointer",

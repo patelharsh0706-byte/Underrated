@@ -3,7 +3,7 @@ import { ImageResponse } from "next/og";
 import { getCreatorByUsername } from "@/lib/db/queries";
 
 export const runtime = "nodejs";
-export const alt = "Underrated creator profile";
+export const alt = "Underhyped creator profile";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -67,7 +67,7 @@ export default async function Image({ params }: OgImageProps) {
             }}
           >
             <div style={{ display: "flex", fontSize: 30, fontWeight: 700, letterSpacing: -0.5 }}>
-              underrated<span style={{ color: "#FF5A1F" }}>.lol</span>
+              underhyped<span style={{ color: "#FF5A1F" }}>.wtf</span>
             </div>
             {badge ? (
               <div

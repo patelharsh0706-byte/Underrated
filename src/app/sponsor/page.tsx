@@ -8,7 +8,7 @@ import { getActiveSponsorship, getNextSponsorshipStart } from "@/lib/db/queries"
 export const revalidate = 15;
 
 export const metadata: Metadata = {
-  title: "Sponsor Underrated",
+  title: "Sponsor Underhyped",
 };
 
 function formatDate(date: Date): string {
@@ -26,7 +26,7 @@ export default async function SponsorPage() {
   return (
     <main className="mx-auto flex w-full max-w-lg flex-1 flex-col gap-6 px-4 py-12">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold tracking-tight">Sponsor Underrated</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Sponsor Underhyped</h1>
         <p className="text-sm text-muted-foreground">
           One slot. Homepage. 30 days. Clearly labeled &quot;Sponsored&quot; — it
           never touches anyone&apos;s rank.

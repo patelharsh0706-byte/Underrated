@@ -125,7 +125,10 @@ created_at        timestamptz
 ```
 id            uuid pk
 sponsor_name  text
-image_url     text
+image_url     text     null — a sponsor may choose no logo; null renders as
+                        a monogram, never a broken image. Derived from
+                        target_url via unavatar.io, not a client-supplied URL.
+description   text     null, optional, shown as a subtitle on the banner
 target_url    text
 start_at      timestamptz
 end_at        timestamptz
@@ -177,6 +180,8 @@ in the server layer where not.
 - battle rows are never updated or deleted
 - sponsorship periods cannot overlap
 - expired sponsorships don't display
+- a sponsor may have no logo — `image_url` null renders as a monogram,
+  never a broken image
 - only active creators participate in battles
 - a vote writes the battle row and both Aura updates in a single transaction
 

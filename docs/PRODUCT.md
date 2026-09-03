@@ -1,6 +1,6 @@
 # PRODUCT.md
 
-What Underrated is, and why. Philosophy — not implementation.
+What Underhyped is, and why. Philosophy — not implementation.
 
 ## Problem
 
@@ -16,7 +16,7 @@ than they are getting" and have that opinion count for something.
 
 ## Vision
 
-Underrated is where the internet decides who's criminally underrated.
+Underhyped is where the internet decides who's criminally underhyped.
 
 A game that produces a ranking that is genuinely interesting to look at — and
 that creators want to share, because being high on it means something the follower
@@ -40,7 +40,7 @@ V1 is built for the Voter. The Creator is the supply side. The Sponsor pays the 
 
 ```
 See two creators
-→ choose who's more underrated
+→ choose who's more underhyped
 → Aura changes
 → get another battle
 → discover creators
@@ -105,7 +105,7 @@ says `competitions`.
 | Elo match         | Battle                      |
 | User being ranked | Creator                     |
 | Daily #1          | Main Character              |
-| Advertising       | Spotlight / Underrated Spot |
+| Advertising       | Spotlight / Underhyped Spot |
 | Vote              | Pick                        |
 | Rank              | Rank                        |
 
@@ -132,9 +132,9 @@ Explicitly *not* a V1 metric: signups. Voting does not require an account.
 ## Product Principles
 
 1. **THE BATTLE IS THE PRODUCT.** Everything else is supporting cast.
-2. **Do not turn Underrated into LinkedIn.** No jobs, no recruiters, no networking.
+2. **Do not turn Underhyped into LinkedIn.** No jobs, no recruiters, no networking.
 3. **No account to play.** Friction kills the loop.
-4. **Underrated ≠ unknown.** The ranking measures a gap between quality and
+4. **Underhyped ≠ unknown.** The ranking measures a gap between quality and
    attention, not obscurity.
 5. **Rankings cannot be bought.** Money buys the Spotlight slot and nothing else.
 6. **Ship the boring version.** Simple implementations beat clever ones.
@@ -142,7 +142,7 @@ Explicitly *not* a V1 metric: signups. Voting does not require an account.
 
 ## Non-Goals
 
-Underrated is not:
+Underhyped is not:
 
 - a social network — no following, no DMs, no comments
 - a job board or recruiting tool

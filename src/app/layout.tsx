@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Underrated",
+  title: "Underhyped",
   description: "Discover people before everyone else does.",
 };
 

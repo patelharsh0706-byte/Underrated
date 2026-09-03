@@ -5,13 +5,13 @@ Read this before writing any code.
 
 ## Product
 
-Underrated is a social discovery game for emerging talent.
+Underhyped is a social discovery game for emerging talent.
 
 Core loop:
 
 ```
 See two creators
-→ choose who's more underrated
+→ choose who's more underhyped
 → Aura changes
 → get another battle
 → discover creators
@@ -25,7 +25,7 @@ Tagline:
 
 THE BATTLE IS THE PRODUCT.
 
-Do not turn Underrated into LinkedIn.
+Do not turn Underhyped into LinkedIn.
 
 ## V1 Stack
 
@@ -71,7 +71,7 @@ Never mix the two vocabularies in one layer.
 | Elo match         | Battle                    |
 | User being ranked | Creator                   |
 | Daily #1          | Main Character            |
-| Advertising       | Spotlight / Underrated Spot |
+| Advertising       | Spotlight / Underhyped Spot |
 | Vote              | Pick                      |
 | Rank              | Rank                      |
 

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { SubmitForm } from "@/components/submit/submit-form";
 
 export const metadata: Metadata = {
-  title: "Submit yourself — Underrated",
+  title: "Submit yourself — Underhyped",
 };
 
 export default function SubmitPage() {

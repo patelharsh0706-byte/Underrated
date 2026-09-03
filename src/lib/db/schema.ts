@@ -105,7 +105,10 @@ export const sponsorships = pgTable(
   {
     id: uuid("id").primaryKey().defaultRandom(),
     sponsorName: text("sponsor_name").notNull(),
-    imageUrl: text("image_url").notNull(),
+    // Null means "no logo" — a deliberate sponsor choice, rendered as a
+    // monogram everywhere the logo appears. Not the same as "not fetched yet".
+    imageUrl: text("image_url"),
+    description: text("description"),
     targetUrl: text("target_url").notNull(),
     startAt: timestamptz("start_at").notNull(),
     endAt: timestamptz("end_at").notNull(),

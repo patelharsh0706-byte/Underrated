@@ -98,6 +98,47 @@ product-based, not ad-hoc-price-based like Stripe: a fee needs a pre-created
 sponsorship row with `start_at` / `end_at`. Expiry is computed from the dates —
 no cron required to hide an expired sponsor.
 
+**Sponsor logo resolution** — a sponsor pastes one link (their site or a
+social profile); we never collect a separate logo URL. `lib/unavatar.ts`
+derives the fetch URL from it via [unavatar.io](https://github.com/microlinkhq/unavatar):
+a recognized social host (`x.com`, `instagram.com`, `github.com`,
+`tiktok.com`, `youtube.com`) resolves to that platform's real profile
+picture (`unavatar.io/x/{handle}`); anything else falls back to a
+domain-based logo/favicon lookup (`unavatar.io/domain/{hostname}`).
+
+This was picked over Logo.dev (the actively-maintained Clearbit-successor,
+better long-term backing, 500K free requests/month) because Logo.dev only
+does domain lookups — no social-handle support, which we needed. unavatar is
+a smaller, less certain-to-last project by comparison; the real risk isn't
+its rate limit, it's the service disappearing outright the way Clearbit's
+free logo API did in December 2025. Revisit if that happens.
+
+The image URL is loaded directly in the browser (`<img src=unavatar.io/...>`,
+not proxied through our server), so unavatar's 25-requests/day **per-IP**
+anonymous limit is each visitor's own quota — never a shared bottleneck for
+us. A failed lookup (dead domain, service outage) falls back client-side to a
+monogram of the sponsor's initial rather than a broken image icon — see
+`components/sponsor-logo.tsx` (the banner) and the live preview in
+`components/sponsor/sponsor-form.tsx`.
+
+**Sponsor form UX** — pasting a link resolves to a confirmation card
+(`lib/unavatar.ts`'s `resolveSponsorProfile`) showing the detected logo and
+source (e.g. "X Profile · x.com/loyal"), auto-shown as "Selected" — there's
+only ever one candidate, so this confirms a deterministic result rather than
+offering a real choice among several. That same resolution auto-fills Name
+and Description, but **only for a recognized social profile** (the handle
+gives us something to suggest); a plain website link leaves both blank for
+the sponsor to fill in, since a bare domain doesn't reliably imply a display
+name. Auto-fill never overwrites a field the sponsor has already typed in —
+tracked with a touched-ref per field, not re-derived on every keystroke.
+Logo removal is a **real, persisted** choice (not a preview toggle): clicking
+"Remove" sets `logoRemoved`, which becomes `image_url = null` in the eventual
+checkout metadata — see DATABASE.md.
+
+No image storage is needed for sponsor logos specifically — the `Image
+storage | Vercel Blob` row above stays reserved for any future
+creator-uploaded asset.
+
 **Creator submission fee** — replaces auth as the submission gate. Flow:
 
 1. `/submit` collects the creator's fields and a fee amount (any amount from

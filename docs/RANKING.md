@@ -87,7 +87,7 @@ Tie-breakers, in order:
 
 1. Higher win rate today
 2. More battles today
-3. Lower current Aura (favours the more underrated creator)
+3. Lower current Aura (favours the more underhyped creator)
 
 Rules:
 

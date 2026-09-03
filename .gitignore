@@ -41,3 +41,6 @@ yarn-error.log*
 next-env.d.ts
 
 !.env.example
+
+# scraped third-party reference material, not project source
+.firecrawl/

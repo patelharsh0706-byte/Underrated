@@ -2,7 +2,7 @@ import "server-only";
 
 import { cookies } from "next/headers";
 
-const VOTER_SESSION_COOKIE = "underrated_voter";
+const VOTER_SESSION_COOKIE = "underhyped_voter";
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
 /** Anonymous voter identity used to attribute battles without an account. */

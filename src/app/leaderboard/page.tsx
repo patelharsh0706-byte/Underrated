@@ -9,8 +9,8 @@ import { getLeaderboard } from "@/lib/db/queries";
 export const revalidate = 15;
 
 export const metadata: Metadata = {
-  title: "Leaderboard — Underrated",
-  description: "Creators ranked by Aura.",
+  title: "Leaderboard — Underhyped",
+  description: "Creators ranked by Aura🔥.",
 };
 
 export default async function LeaderboardPage() {
@@ -20,7 +20,7 @@ export default async function LeaderboardPage() {
     <main className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-12">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Leaderboard</h1>
-        <p className="text-muted-foreground">Ranked by Aura.</p>
+        <p className="text-muted-foreground">Ranked by Aura🔥.</p>
       </div>
 
       <ol className="flex flex-col gap-2">
@@ -50,7 +50,7 @@ export default async function LeaderboardPage() {
                 <span className="truncate text-sm text-muted-foreground">@{entry.username}</span>
               </div>
               <span className="font-mono text-lg font-bold tabular-nums text-aura">
-                {entry.aura}
+                {entry.aura}🔥
               </span>
             </Link>
           </li>

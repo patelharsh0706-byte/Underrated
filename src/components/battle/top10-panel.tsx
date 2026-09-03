@@ -31,7 +31,7 @@ export function Top10Panel({ entries, mode }: Top10PanelProps) {
         <h2 className="text-lg font-bold tracking-tight sm:text-xl">
           Top 10{" "}
           <span className="text-muted-foreground font-normal">
-            · {mode === "daily" ? "last 24h" : "by Aura"}
+            · {mode === "daily" ? "last 24h" : "by Aura🔥"}
           </span>
         </h2>
         <Link href="/leaderboard" className="text-sm font-medium hover:underline">
@@ -99,7 +99,7 @@ export function Top10Panel({ entries, mode }: Top10PanelProps) {
                   </span>
                 ) : (
                   <span className="font-mono text-sm font-bold tabular-nums text-aura">
-                    {entry.aura}
+                    {entry.aura}🔥
                   </span>
                 )}
               </Link>

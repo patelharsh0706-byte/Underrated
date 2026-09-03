@@ -212,7 +212,10 @@ export async function getTop24h(limit = 10): Promise<DailyHeatEntry[]> {
 
 export interface ActiveSponsorship {
   sponsorName: string;
-  imageUrl: string;
+  // Null means the sponsor chose no logo — render a monogram, not a broken
+  // image. See DATABASE.md.
+  imageUrl: string | null;
+  description: string | null;
   targetUrl: string;
   endAt: Date;
 }
@@ -224,6 +227,7 @@ export async function getActiveSponsorship(): Promise<ActiveSponsorship | null> 
     .select({
       sponsorName: sponsorships.sponsorName,
       imageUrl: sponsorships.imageUrl,
+      description: sponsorships.description,
       targetUrl: sponsorships.targetUrl,
       endAt: sponsorships.endAt,
     })
