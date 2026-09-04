@@ -1,12 +1,9 @@
 "use server";
 
-import { randomUUID } from "node:crypto";
-
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { SUBMISSION_FEE_CENTS, checkoutInputSchema, type CheckoutInput } from "@/lib/creator-schema";
-import { getCreatorByPaymentId, insertCreator, isUsernameTaken } from "@/lib/db/queries";
+import { checkoutInputSchema, type CheckoutInput } from "@/lib/creator-schema";
+import { getCreatorByPaymentId, isUsernameTaken } from "@/lib/db/queries";
 
 export interface SubmitCreatorResult {
   error?: string;
@@ -14,17 +11,19 @@ export interface SubmitCreatorResult {
 }
 
 /**
- * TODO(dodo-payments): this inserts the creator row directly and skips
- * payment entirely — a deliberate, temporary bridge so the submit → success
- * loop is visible before Dodo is wired. Nothing is deployed yet, so there's
- * no real-user exposure; revisit before any real launch.
+ * TODO(dodo-payments): sends the creator to a static Dodo Payments Payment
+ * Link (https://dodo.pe/submit) instead of an API-created checkout session
+ * with metadata — a deliberate, temporary bridge until the real product/API
+ * integration is wired up. This means the payment is NOT correlated to this
+ * specific submission: nothing here creates the creator row, and the
+ * webhook (api/dodo-payments/webhook/route.ts) has no submission metadata
+ * to insert from, so a paid submission currently needs a human to create
+ * the row afterward (see insertCreator in db/queries.ts).
  *
- * Once Dodo is wired, replace the body below with a real checkout session
- * (pre-created fixed-price Product, metadata carrying the creator payload,
- * redirect to session.checkout_url) and let the webhook
- * (api/dodo-payments/webhook/route.ts) do the insert via insertCreator —
- * exactly like createSponsorshipCheckout / the sponsor flow still does
- * pending its own Dodo wiring. See ARCHITECTURE.md § Payments.
+ * Once a real Product + API checkout session replaces this static link,
+ * pass the validated creator payload through the session's metadata (as
+ * `createSubmissionCheckout` used to before this bridge) so the webhook can
+ * call insertCreator() automatically again. See ARCHITECTURE.md § Payments.
  */
 export async function createSubmissionCheckout(
   input: CheckoutInput,
@@ -47,24 +46,7 @@ export async function createSubmissionCheckout(
     return { error: "That username is taken.", fieldErrors: { username: "Already taken" } };
   }
 
-  let created: { username: string } | null;
-  try {
-    created = await insertCreator(data, {
-      entryFeeCents: SUBMISSION_FEE_CENTS,
-      dodoPaymentId: `dev_${randomUUID()}`,
-    });
-  } catch (err) {
-    console.error("Failed to insert creator (temporary no-payment bridge)", err);
-    return { error: "That username was just taken. Try another." };
-  }
-
-  if (!created) {
-    return { error: "Couldn't complete your submission. Try again in a moment." };
-  }
-
-  revalidatePath("/");
-  revalidatePath("/leaderboard");
-  redirect(`/c/${created.username}`);
+  redirect("https://dodo.pe/submit");
 }
 
 /** Polled by /submit/success while the webhook is still landing. */

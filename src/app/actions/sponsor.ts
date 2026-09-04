@@ -1,15 +1,8 @@
 "use server";
 
-import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { db } from "@/lib/db";
-import { sponsorships } from "@/lib/db/schema";
-import { getNextSponsorshipStart } from "@/lib/db/queries";
 import { sponsorFieldsSchema, type SponsorFields } from "@/lib/sponsor-schema";
-import { getUnavatarUrl } from "@/lib/unavatar";
-
-const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 export interface SponsorCheckoutResult {
   error?: string;
@@ -17,16 +10,21 @@ export interface SponsorCheckoutResult {
 }
 
 /**
- * TODO(dodo-payments): this inserts the sponsorship row directly and skips
- * payment entirely — a deliberate, temporary bridge so the submit → success
- * → live-banner loop is visible before Dodo is wired. Nothing is deployed
- * yet, so there's no real-user exposure; revisit before any real launch.
+ * TODO(dodo-payments): sends the sponsor to a static Dodo Payments Payment
+ * Link (https://dodo.pe/sponsor-underhyped) instead of an API-created
+ * checkout session with metadata — a deliberate, temporary bridge until the
+ * real product/API integration is wired up. This means the payment is NOT
+ * correlated to this specific submission: nothing here creates the
+ * sponsorship row, and there is no webhook handling for sponsor payments
+ * yet at all (unlike creators, which at least have a dormant webhook route
+ * waiting for metadata) — so a paid sponsorship currently needs a human to
+ * insert the row afterward (see the `sponsorships` table, DATABASE.md).
  *
- * Once Dodo is wired, replace the body below with a real checkout session
- * (pre-created fixed-price Product, metadata carrying the sponsor payload)
- * and move the insert into the webhook handler, exactly like
- * createSubmissionCheckout / the Dodo webhook already do for creators — see
- * actions/creator.ts and api/dodo-payments/webhook/route.ts for the pattern.
+ * Once a real Product + API checkout session replaces this static link,
+ * pass the validated sponsor payload through the session's metadata and add
+ * webhook handling that inserts the row — matching the pattern in
+ * actions/creator.ts and api/dodo-payments/webhook/route.ts. See
+ * ARCHITECTURE.md § Payments.
  */
 export async function createSponsorshipCheckout(
   input: SponsorFields,
@@ -43,20 +41,5 @@ export async function createSponsorshipCheckout(
     return { error: "Fix the highlighted fields.", fieldErrors };
   }
 
-  const data = parsed.data;
-  const imageUrl = data.logoRemoved ? null : getUnavatarUrl(data.targetUrl);
-  const startAt = await getNextSponsorshipStart();
-  const endAt = new Date(startAt.getTime() + THIRTY_DAYS_MS);
-
-  await db.insert(sponsorships).values({
-    sponsorName: data.sponsorName,
-    description: data.description || null,
-    imageUrl,
-    targetUrl: data.targetUrl,
-    startAt,
-    endAt,
-  });
-
-  revalidatePath("/");
-  redirect("/sponsor/success");
+  redirect("https://dodo.pe/sponsor-underhyped");
 }
