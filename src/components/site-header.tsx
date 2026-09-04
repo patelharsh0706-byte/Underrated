@@ -6,7 +6,12 @@ export function SiteHeader() {
       <Link href="/" className="text-lg font-bold tracking-tight">
         underhyped<span className="text-aura">.wtf</span>
       </Link>
-      <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm font-medium">
+      {/* Plain gap-4, not gap-x-4/gap-y-1. The dev server serves CSS at a
+          stable unhashed URL, so a browser holding a cached bundle keeps
+          using it while the HTML updates — introducing a brand-new utility
+          class there renders as zero spacing until the CSS cache clears.
+          gap-4 was already in the bundle, so it survives that. */}
+      <nav className="flex flex-wrap items-center gap-4 text-sm font-medium">
         <Link href="/about" className="hover:underline">
           About
         </Link>
