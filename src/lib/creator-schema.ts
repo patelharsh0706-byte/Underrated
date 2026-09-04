@@ -1,8 +1,22 @@
 import { z } from "zod";
 
+import { normalizeToUrlString } from "@/lib/unavatar";
+
 // Shared between the submit Server Action and the Dodo Payments webhook, which
 // re-validates this same shape from session metadata — never trust a
 // webhook payload beyond its signature.
+
+/**
+ * z.url() requires a scheme (new URL() throws on a bare "www.site.com"), but
+ * people naturally type domains without "https://". Prepends it when
+ * missing, reusing the same normalization the profile-link field already
+ * gets — falls back to the raw value so a genuinely invalid input still
+ * surfaces the schema's own "Enter a valid URL" message.
+ */
+function normalizeUrlInput(val: unknown): unknown {
+  if (typeof val !== "string") return val;
+  return normalizeToUrlString(val) ?? val;
+}
 
 export const ALLOWED_SOCIALS = [
   "twitter",
@@ -25,7 +39,7 @@ export const creatorFieldsSchema = z.object({
     .regex(/^[a-z0-9_.]+$/, "Lowercase letters, numbers, . and _ only"),
   bio: z.string().trim().max(140).optional(),
   category: z.string().trim().min(1, "Pick a category"),
-  workUrl: z.url("Enter a valid URL"),
+  workUrl: z.preprocess(normalizeUrlInput, z.url("Enter a valid URL")),
   socials: z
     .partialRecord(z.enum(ALLOWED_SOCIALS), z.url())
     .refine((obj) => Object.keys(obj).length > 0, "Add at least one social link"),
