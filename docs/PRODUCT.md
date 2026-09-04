@@ -6,10 +6,10 @@ What Underhyped is, and why. Philosophy — not implementation.
 
 Talent is discovered too late.
 
-The people who are genuinely good — the illustrator with 400 followers, the dev
-shipping quietly, the musician with 12 monthly listeners — are invisible until an
-algorithm decides otherwise. Existing platforms rank by what already won:
-followers, engagement, reach. They reward the already-discovered.
+The people who are genuinely good — the indie dev with 400 followers, the founder
+shipping quietly, the builder whose best project nobody has opened — are
+invisible until an algorithm decides otherwise. Existing platforms rank by what
+already won: followers, engagement, reach. They reward the already-discovered.
 
 There is no place on the internet to say "this person deserves more attention
 than they are getting" and have that opinion count for something.
@@ -28,8 +28,11 @@ count doesn't say.
 Comes for the game, stays because the creators are actually interesting. Does not
 need an account to play.
 
-**The Creator** — emerging talent. Illustrator, dev, musician, writer, designer.
-Wants visibility without begging for it. Submits themselves, shares their rank.
+**The Creator** — emerging talent in and around building things: indie
+developers, builders, and CEO/founders. Wants visibility without begging for it.
+Submits themselves, shares their rank. (V1 starts deliberately narrow — these
+three categories only. Widening the taxonomy is a later decision, not an
+oversight.)
 
 **The Sponsor (later)** — one brand at a time, on the homepage. Wants attention
 from people who care about early talent.
@@ -77,7 +80,7 @@ to new talent.
 1. Arrives via a shared ranking or Main Character post.
 2. Fills out their profile: name, username, category, one-line bio, a work
    link (their strongest evidence), and at least one social.
-3. Pays a one-time entry fee — any amount from $1 — instead of signing in.
+3. Pays a one-time $3 entry fee instead of signing in.
    No account. The fee is platform revenue and buys nothing about rank.
 4. Enters the pool at starting Aura.
 5. Gets battled. Checks their rank. Shares it.

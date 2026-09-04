@@ -1,42 +1,36 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import { createSubmissionCheckout, type SubmitCreatorResult } from "@/app/actions/creator";
+import type { ALLOWED_SOCIALS } from "@/lib/creator-schema";
+import {
+  normalizeToUrlString,
+  resolveSponsorProfile,
+  type ResolvedSponsorProfile,
+} from "@/lib/unavatar";
 import { cn } from "@/lib/utils";
 
-const CATEGORIES = [
-  "illustration",
-  "dev",
-  "music",
-  "writing",
-  "design",
-  "photography",
-  "comedy",
-  "film",
-] as const;
+const RESOLVE_DEBOUNCE_MS = 400;
 
-const SOCIAL_PLATFORMS = [
-  { key: "twitter", label: "𝕏 / Twitter" },
-  { key: "instagram", label: "Instagram" },
-  { key: "youtube", label: "YouTube" },
-  { key: "spotify", label: "Spotify" },
-  { key: "tiktok", label: "TikTok" },
-  { key: "linkedin", label: "LinkedIn" },
-  { key: "github", label: "GitHub" },
-] as const;
+const CATEGORIES = ["Indie Developers", "Builders", "CEO/Founders"] as const;
 
-const PRESET_AMOUNTS = [1, 5, 10, 25, 50, 100, 500];
+type AllowedSocial = (typeof ALLOWED_SOCIALS)[number];
 
 function inputClass(hasError: boolean) {
   return cn(
-    "w-full rounded-xl border-2 bg-card px-3 py-2 text-sm outline-none",
+    "w-full rounded-xl border-2 bg-card px-3 py-2 text-sm outline-none transition-colors",
+    "focus:border-aura focus:ring-2 focus:ring-aura/30",
     hasError ? "border-loser" : "border-foreground",
   );
 }
 
 export function SubmitForm() {
   const [isPending, startTransition] = useTransition();
+
+  const [profileUrl, setProfileUrl] = useState("");
+  const [resolved, setResolved] = useState<ResolvedSponsorProfile | null>(null);
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
@@ -45,35 +39,45 @@ export function SubmitForm() {
   const [workUrl, setWorkUrl] = useState("");
   const [socialUrls, setSocialUrls] = useState<Record<string, string>>({});
   const [primarySocial, setPrimarySocial] = useState("");
-  const [pendingPlatform, setPendingPlatform] = useState<string>(SOCIAL_PLATFORMS[0].key);
-  const [pendingUrl, setPendingUrl] = useState("");
-  const [amount, setAmount] = useState(10);
-  const [customAmount, setCustomAmount] = useState("");
 
   const [result, setResult] = useState<SubmitCreatorResult | null>(null);
+
+  const usernameTouched = useRef(false);
+  const lastResolvedKey = useRef<string | null>(null);
 
   const filledSocials = Object.fromEntries(
     Object.entries(socialUrls).filter(([, url]) => url.trim().length > 0),
   );
 
-  const effectiveAmount = customAmount ? Number(customAmount) : amount;
+  // Debounced resolution — stops the confirmation card flickering while
+  // someone is still typing. On each *new* resolution it also fills the
+  // username (only if untouched) and seeds the socials section. Name and bio
+  // are deliberately left alone: a real name isn't derivable from a handle,
+  // and "@handle on X" is a weak bio when the bio does real work on the
+  // battle card.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const next = resolveSponsorProfile(profileUrl);
+      setResolved(next);
+      setAvatarFailed(false);
 
-  const addSocial = () => {
-    const url = pendingUrl.trim();
-    if (!url) return;
-    setSocialUrls((prev) => ({ ...prev, [pendingPlatform]: url }));
-    setPrimarySocial((prev) => prev || pendingPlatform);
-    setPendingUrl("");
-  };
+      if (!next || lastResolvedKey.current === next.sourceLabel) return;
+      lastResolvedKey.current = next.sourceLabel;
 
-  const removeSocial = (key: string) => {
-    setSocialUrls((prev) => {
-      const next = { ...prev };
-      delete next[key];
-      return next;
-    });
-    setPrimarySocial((prev) => (prev === key ? "" : prev));
-  };
+      if (!usernameTouched.current && next.suggestedUsername) {
+        setUsername(next.suggestedUsername);
+      }
+
+      const absolute = normalizeToUrlString(profileUrl);
+      const socialKey = next.socialKey;
+      if (socialKey && absolute) {
+        setSocialUrls((prev) => ({ ...prev, [socialKey]: absolute }));
+        setPrimarySocial((prev) => prev || socialKey);
+      }
+    }, RESOLVE_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
+  }, [profileUrl]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,12 +90,8 @@ export function SubmitForm() {
         bio: bio || undefined,
         category,
         workUrl,
-        socials: filledSocials as Record<
-          (typeof SOCIAL_PLATFORMS)[number]["key"],
-          string
-        >,
+        socials: filledSocials as Record<AllowedSocial, string>,
         primarySocial,
-        amountCents: Math.round(effectiveAmount * 100),
       });
 
       // A successful submit redirects to Dodo Payments and never returns here.
@@ -100,6 +100,7 @@ export function SubmitForm() {
   };
 
   const errors = result?.fieldErrors ?? {};
+  const monogram = (username || name).trim().replace(/^@/, "").charAt(0).toUpperCase() || "?";
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5">
@@ -108,6 +109,45 @@ export function SubmitForm() {
           {result.error}
         </p>
       ) : null}
+
+      <div className="flex flex-col gap-1.5">
+        <label htmlFor="profileUrl" className="text-sm font-bold">
+          Your link
+        </label>
+        <input
+          id="profileUrl"
+          value={profileUrl}
+          onChange={(e) => setProfileUrl(e.target.value)}
+          className={inputClass(false)}
+          placeholder="https://x.com/yourhandle or @yourhandle"
+        />
+       
+
+        {resolved ? (
+          <div className="mt-1 flex items-center gap-3 rounded-xl border-2 border-winner bg-card px-3 py-2">
+            <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border-2 border-foreground bg-muted text-xs font-bold text-muted-foreground">
+              {avatarFailed ? (
+                monogram
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  key={resolved.imageUrl}
+                  src={resolved.imageUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                  onError={() => setAvatarFailed(true)}
+                />
+              )}
+            </div>
+            <span className="flex-1 truncate text-sm text-muted-foreground">
+              {resolved.sourceLabel}
+            </span>
+            <span className="shrink-0 text-xs font-bold uppercase tracking-wide text-winner">
+              Selected
+            </span>
+          </div>
+        ) : null}
+      </div>
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="name" className="text-sm font-bold">
@@ -130,7 +170,10 @@ export function SubmitForm() {
         <input
           id="username"
           value={username}
-          onChange={(e) => setUsername(e.target.value)}
+          onChange={(e) => {
+            usernameTouched.current = true;
+            setUsername(e.target.value);
+          }}
           className={inputClass(!!errors.username)}
           placeholder="verse_null"
         />
@@ -168,7 +211,7 @@ export function SubmitForm() {
           value={bio}
           onChange={(e) => setBio(e.target.value.slice(0, 140))}
           className={inputClass(false)}
-          placeholder="Stand-up about being extremely online and extremely tired."
+          placeholder="Building a text editor that only I will ever use."
         />
         <p className="text-right text-xs text-muted-foreground">{bio.length}/140</p>
       </div>
@@ -182,128 +225,16 @@ export function SubmitForm() {
           value={workUrl}
           onChange={(e) => setWorkUrl(e.target.value)}
           className={inputClass(!!errors.workUrl)}
-          placeholder="https://github.com/you/your-best-project"
+          placeholder="Website/ Github link/ Anthing worth showing!"
         />
         {errors.workUrl ? <p className="text-xs text-loser">{errors.workUrl}</p> : null}
       </div>
 
-      <fieldset className="flex flex-col gap-3">
-        <legend className="text-sm font-bold">Social links</legend>
-
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <input
-            value={pendingUrl}
-            onChange={(e) => setPendingUrl(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                addSocial();
-              }
-            }}
-            placeholder="Paste your profile link…"
-            className={inputClass(false)}
-          />
-          <div className="flex gap-2">
-            <select
-              value={pendingPlatform}
-              onChange={(e) => setPendingPlatform(e.target.value)}
-              className="w-0 flex-1 rounded-xl border-2 border-foreground bg-card px-2 py-2 text-sm sm:w-36 sm:flex-none sm:shrink-0"
-            >
-              {SOCIAL_PLATFORMS.map(({ key, label }) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              onClick={addSocial}
-              className="shrink-0 rounded-xl border-2 border-foreground bg-primary px-4 py-2 text-sm font-bold text-primary-foreground"
-            >
-              Add
-            </button>
-          </div>
-        </div>
-
-        {Object.keys(filledSocials).length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            {Object.entries(filledSocials).map(([key, url]) => (
-              <span
-                key={key}
-                className={cn(
-                  "flex items-center gap-1.5 rounded-full border-2 px-3 py-1 text-xs font-medium",
-                  primarySocial === key
-                    ? "border-foreground bg-primary text-primary-foreground"
-                    : "border-foreground/30",
-                )}
-              >
-                <button
-                  type="button"
-                  onClick={() => setPrimarySocial(key)}
-                  title={url}
-                  className="cursor-pointer"
-                >
-                  {SOCIAL_PLATFORMS.find((p) => p.key === key)?.label ?? key}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => removeSocial(key)}
-                  aria-label={`Remove ${key}`}
-                  className="cursor-pointer opacity-70 hover:opacity-100"
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-        ) : null}
-        {errors.socials ? <p className="text-xs text-loser">{errors.socials}</p> : null}
-        {errors.primarySocial ? (
-          <p className="text-xs text-loser">{errors.primarySocial}</p>
-        ) : null}
-      </fieldset>
-
-      <div className="flex flex-col gap-2 rounded-xl border-2 border-foreground bg-card p-4">
-        <span className="text-sm font-bold">Entry fee</span>
-
-        <div className="mt-1 flex flex-wrap gap-2">
-          {PRESET_AMOUNTS.map((preset) => (
-            <button
-              key={preset}
-              type="button"
-              onClick={() => {
-                setAmount(preset);
-                setCustomAmount("");
-              }}
-              className={cn(
-                "rounded-full border-2 px-3 py-1 text-sm font-medium",
-                !customAmount && amount === preset
-                  ? "border-foreground bg-primary text-primary-foreground"
-                  : "border-foreground/30 hover:border-foreground",
-              )}
-            >
-              ${preset}
-            </button>
-          ))}
-        </div>
-
-        <div className="mt-2 flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Custom:</span>
-          <span className="text-sm font-bold">$</span>
-          <input
-            type="number"
-            min={1}
-            max={1000}
-            value={customAmount}
-            onChange={(e) => setCustomAmount(e.target.value)}
-            placeholder={String(amount)}
-            className={cn(inputClass(!!errors.amountCents), "max-w-[100px]")}
-          />
-        </div>
-        {errors.amountCents ? (
-          <p className="text-xs text-loser">{errors.amountCents}</p>
-        ) : null}
-      </div>
+      {errors.socials || errors.primarySocial ? (
+        <p className="text-xs text-loser">
+          {errors.socials ?? errors.primarySocial}
+        </p>
+      ) : null}
 
       <button
         type="submit"
@@ -314,7 +245,7 @@ export function SubmitForm() {
           isPending && "cursor-default opacity-60",
         )}
       >
-        {isPending ? "Redirecting to checkout…" : `Pay $${effectiveAmount || 0} & submit`}
+        {isPending ? "Redirecting to checkout…" : "Pay $3 & submit"}
       </button>
     </form>
   );

@@ -12,7 +12,7 @@ export default function SubmitPage() {
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Submit yourself</h1>
         <p className="text-sm text-muted-foreground">
-          No account needed — a one-time entry fee gets you in. Your work link is
+          No account needed — a one-time $3 entry fee gets you in. Your work link is
           what lets voters make an informed pick, so make it your strongest
           evidence.
         </p>
