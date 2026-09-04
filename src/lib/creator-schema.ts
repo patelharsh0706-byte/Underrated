@@ -27,26 +27,25 @@ export const creatorFieldsSchema = z.object({
   category: z.string().trim().min(1, "Pick a category"),
   workUrl: z.url("Enter a valid URL"),
   socials: z
-    .record(z.enum(ALLOWED_SOCIALS), z.url())
+    .partialRecord(z.enum(ALLOWED_SOCIALS), z.url())
     .refine((obj) => Object.keys(obj).length > 0, "Add at least one social link"),
   primarySocial: z.string().min(1, "Pick your primary social"),
   followerCount: z.coerce.number().int().min(0).optional(),
 });
 
-export const MIN_FEE_CENTS = 100; // $1
-export const MAX_FEE_CENTS = 100_000; // $1,000 — a sane cap, not a meaningful one
+/**
+ * Fixed price. Deliberately not accepted from the client — a client-supplied
+ * amount could be tampered with to submit for less. The Server Action sets it.
+ */
+export const SUBMISSION_FEE_CENTS = 300; // $3
 
-export const checkoutInputSchema = creatorFieldsSchema
-  .extend({
-    amountCents: z
-      .number()
-      .int()
-      .min(MIN_FEE_CENTS, "Minimum is $1")
-      .max(MAX_FEE_CENTS, "That's more than we'll take — try a smaller amount"),
-  })
-  .refine((data) => Object.keys(data.socials).includes(data.primarySocial), {
+export const checkoutInputSchema = creatorFieldsSchema.refine(
+  (data) => Object.keys(data.socials).includes(data.primarySocial),
+  {
     message: "Primary social must be one you added a link for",
     path: ["primarySocial"],
-  });
+  },
+);
 
 export type CheckoutInput = z.infer<typeof checkoutInputSchema>;
+export type CreatorFields = z.infer<typeof creatorFieldsSchema>;

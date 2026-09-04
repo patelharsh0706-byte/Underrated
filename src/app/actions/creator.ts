@@ -1,11 +1,12 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
+
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { checkoutInputSchema, type CheckoutInput } from "@/lib/creator-schema";
-import { clientEnv, dodoEnv } from "@/lib/env";
-import { getCreatorByPaymentId, isUsernameTaken } from "@/lib/db/queries";
-import { getDodoClient } from "@/lib/dodo-payments";
+import { SUBMISSION_FEE_CENTS, checkoutInputSchema, type CheckoutInput } from "@/lib/creator-schema";
+import { getCreatorByPaymentId, insertCreator, isUsernameTaken } from "@/lib/db/queries";
 
 export interface SubmitCreatorResult {
   error?: string;
@@ -13,9 +14,17 @@ export interface SubmitCreatorResult {
 }
 
 /**
- * Creates a Dodo Payments checkout session for the submission fee and
- * redirects to it. The creator row itself is created by the webhook once
- * payment is confirmed — never on this call. See ARCHITECTURE.md § Payments.
+ * TODO(dodo-payments): this inserts the creator row directly and skips
+ * payment entirely — a deliberate, temporary bridge so the submit → success
+ * loop is visible before Dodo is wired. Nothing is deployed yet, so there's
+ * no real-user exposure; revisit before any real launch.
+ *
+ * Once Dodo is wired, replace the body below with a real checkout session
+ * (pre-created fixed-price Product, metadata carrying the creator payload,
+ * redirect to session.checkout_url) and let the webhook
+ * (api/dodo-payments/webhook/route.ts) do the insert via insertCreator —
+ * exactly like createSponsorshipCheckout / the sponsor flow still does
+ * pending its own Dodo wiring. See ARCHITECTURE.md § Payments.
  */
 export async function createSubmissionCheckout(
   input: CheckoutInput,
@@ -38,39 +47,24 @@ export async function createSubmissionCheckout(
     return { error: "That username is taken.", fieldErrors: { username: "Already taken" } };
   }
 
-  const { amountCents, ...creatorFields } = data;
-  const appUrl = clientEnv().NEXT_PUBLIC_APP_URL;
-
-  let checkoutUrl: string;
+  let created: { username: string } | null;
   try {
-    const session = await getDodoClient().checkoutSessions.create({
-      product_cart: [
-        {
-          product_id: dodoEnv().DODO_PAYMENTS_SUBMISSION_PRODUCT_ID,
-          quantity: 1,
-          // Overrides the product's price — the product must have "pay what
-          // you want" pricing enabled in the Dodo dashboard, or this is
-          // ignored. See ARCHITECTURE.md § Payments.
-          amount: amountCents,
-        },
-      ],
-      // Dodo appends ?payment_id=...&status=succeeded itself — no template
-      // placeholder needed (unlike Stripe's {CHECKOUT_SESSION_ID}).
-      return_url: `${appUrl}/submit/success`,
-      cancel_url: `${appUrl}/submit`,
-      metadata: {
-        creator_data: JSON.stringify(creatorFields),
-      },
+    created = await insertCreator(data, {
+      entryFeeCents: SUBMISSION_FEE_CENTS,
+      dodoPaymentId: `dev_${randomUUID()}`,
     });
-
-    if (!session.checkout_url) throw new Error("Dodo Payments did not return a checkout URL");
-    checkoutUrl = session.checkout_url;
   } catch (err) {
-    console.error("Failed to create Dodo Payments checkout session", err);
-    return { error: "Couldn't start checkout. Try again in a moment." };
+    console.error("Failed to insert creator (temporary no-payment bridge)", err);
+    return { error: "That username was just taken. Try another." };
   }
 
-  redirect(checkoutUrl);
+  if (!created) {
+    return { error: "Couldn't complete your submission. Try again in a moment." };
+  }
+
+  revalidatePath("/");
+  revalidatePath("/leaderboard");
+  redirect(`/c/${created.username}`);
 }
 
 /** Polled by /submit/success while the webhook is still landing. */

@@ -67,8 +67,16 @@ Rl' = Rl + K * (0 - El)
 
 - Both creators must be active.
 - A creator cannot battle themselves.
-- V1 pairing: random from the active pool, with a mild bias toward creators who
-  have fewer battles so new entries get rated quickly.
+- Placement priority: whenever any active creator has fewer than
+  `PLACEMENT_BATTLES_REQUIRED` battles, one pairing slot is guaranteed to go
+  to one of them (weighted random among the unranked pool, favoring fewest
+  battles). The other slot is drawn from the whole active pool with the
+  existing mild bias toward fewer battles, so a new challenger gets
+  calibrated against a mix of established Aura, not just other newcomers.
+  Once no unranked creators remain, pairing is the plain mild-bias draw
+  described below.
+- General pairing: random from the active pool, with a mild bias toward
+  creators who have fewer battles so new entries get rated quickly.
 - Nothing about pairing can be bought. Sponsors never enter the pool.
 
 ## Main Character
@@ -98,12 +106,41 @@ Rules:
 
 ## Rank
 
-Rank is position by `aura desc`. Always derived, never stored.
+Rank is position by `aura desc`, among **ranked** creators only (see
+Placement below). Always derived, never stored.
+
+## Placement
+
+A creator needs `PLACEMENT_BATTLES_REQUIRED` (10) valid battles before they
+get an official rank. "Valid battle" is the existing `battles_count` column
+on `creators`, already incremented for both winner and loser inside the
+Aura transaction — no new counting concept.
+
+```
+ranked = battles_count >= PLACEMENT_BATTLES_REQUIRED (10)
+```
+
+While unranked:
+
+- **Aura still updates live**, exactly as it does after placement. Nothing
+  about the Elo transaction changes — placement only affects what's
+  *shown*, never how Aura is computed.
+- The creator has no numeric rank and is excluded from `/leaderboard` and
+  the homepage Top 10. In the UI this reads as **"🔥 NEW CHALLENGER"** —
+  never the word "unranked." It's framed as exciting (still being
+  evaluated), not as a demotion.
+- Daily Heat / Main Character eligibility is **unaffected** — it's the
+  separate system above with its own 5-battles-*today* floor. A creator can
+  clear that floor while still lifetime-unranked; that's expected, per "two
+  separate systems, do not conflate."
+
+Once `battles_count` crosses the threshold, placement status flips
+immediately (no batch job, no delay) — the same request that pushes the
+10th battle also makes the creator rank-eligible.
 
 ## Deliberately Not in V1
 
 - Rating decay
-- Provisional / uncertainty periods (Glicko-style)
 - Category-scoped Aura
 - Voter weighting or reputation
 - Streak bonuses

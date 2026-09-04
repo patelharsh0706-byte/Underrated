@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 import type { PublicCreator } from "@/lib/db/queries";
+import { PLACEMENT_BATTLES_REQUIRED } from "@/lib/ranking/placement";
 import { cn } from "@/lib/utils";
 
 const COUNT_UP_MS = 220;
@@ -108,6 +109,11 @@ export function CreatorCard({
       <div className="flex flex-col items-center gap-1 text-center">
         <span className="text-xl font-bold sm:text-2xl">{creator.name}</span>
         <span className="text-sm text-muted-foreground">@{creator.username}</span>
+        {creator.battlesCount < PLACEMENT_BATTLES_REQUIRED ? (
+          <span className="mt-1 rounded-full border-2 border-aura bg-aura/10 px-2 py-0.5 text-xs font-bold uppercase tracking-wide text-aura">
+            🔥 New challenger
+          </span>
+        ) : null}
         {creator.category ? (
           <span className="mt-1 rounded-full border-2 border-foreground px-2 py-0.5 text-xs font-medium uppercase tracking-wide">
             {creator.category}

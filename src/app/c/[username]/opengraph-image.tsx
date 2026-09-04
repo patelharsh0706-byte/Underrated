@@ -13,6 +13,13 @@ const RANK_BADGES: Record<number, { label: string; color: string }> = {
   3: { label: "PLOT TWIST", color: "#C026D3" },
 };
 
+const NEW_CHALLENGER_BADGE = { label: "🔥 NEW CHALLENGER", color: "#FF5A1F" };
+
+function getRankBadge(rank: number | null): { label: string; color: string } | null {
+  if (rank === null) return NEW_CHALLENGER_BADGE;
+  return RANK_BADGES[rank] ?? null;
+}
+
 // Satori (next/og's renderer) can't rasterize SVG <img> sources — Dicebear
 // seed avatars are served as SVG by default, so request the PNG variant.
 function ogAvatarSrc(url: string): string {
@@ -30,9 +37,9 @@ export default async function Image({ params }: OgImageProps) {
   const name = creator?.name ?? "Unknown creator";
   const handle = creator?.username ?? username;
   const aura = creator?.aura ?? 1500;
-  const rank = creator?.rank ?? 0;
+  const rank = creator?.rank ?? null;
   const category = creator?.category ?? null;
-  const badge = RANK_BADGES[rank];
+  const badge = getRankBadge(rank);
 
   return new ImageResponse(
     (
@@ -168,7 +175,9 @@ export default async function Image({ params }: OgImageProps) {
             <div style={{ display: "flex", flexDirection: "column" }}>
               <div
                 style={{ display: "flex", fontSize: 60, fontWeight: 700, color: "#111111" }}
-              >{`#${rank}`}</div>
+              >
+                {rank !== null ? `#${rank}` : "NEW"}
+              </div>
               <div
                 style={{
                   display: "flex",
@@ -178,7 +187,7 @@ export default async function Image({ params }: OgImageProps) {
                   color: "#6B6B66",
                 }}
               >
-                Rank
+                {rank !== null ? "Rank" : "Challenger"}
               </div>
             </div>
           </div>

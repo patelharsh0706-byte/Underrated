@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import { notFound } from "next/navigation";
 
+import { PlacementProgress } from "@/components/profile/placement-progress";
 import { ShareButton } from "@/components/profile/share-button";
 import { clientEnv } from "@/lib/env";
 import { getCreatorByUsername } from "@/lib/db/queries";
@@ -18,7 +19,10 @@ export async function generateMetadata({ params }: ProfilePageProps): Promise<Me
   if (!creator) return {};
 
   const title = `${creator.name} — Underhyped`;
-  const description = `#${creator.rank} on Underhyped with ${creator.aura}🔥 Aura.`;
+  const description =
+    creator.rank !== null
+      ? `#${creator.rank} on Underhyped with ${creator.aura}🔥 Aura.`
+      : `🔥 New challenger on Underhyped with ${creator.aura}🔥 Aura — still being placed.`;
 
   return {
     title,
@@ -71,10 +75,14 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
           </span>
           <span className="text-xs uppercase tracking-wide text-muted-foreground">Aura</span>
         </div>
-        <div className="flex flex-col items-center">
-          <span className="font-mono text-2xl font-bold tabular-nums">#{creator.rank}</span>
-          <span className="text-xs uppercase tracking-wide text-muted-foreground">Rank</span>
-        </div>
+        {creator.rank !== null ? (
+          <div className="flex flex-col items-center">
+            <span className="font-mono text-2xl font-bold tabular-nums">#{creator.rank}</span>
+            <span className="text-xs uppercase tracking-wide text-muted-foreground">Rank</span>
+          </div>
+        ) : (
+          <PlacementProgress battlesCount={creator.battlesCount} />
+        )}
         <div className="flex flex-col items-center">
           <span className="font-mono text-2xl font-bold tabular-nums">
             {creator.winsCount}/{creator.battlesCount}

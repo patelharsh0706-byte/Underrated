@@ -2,8 +2,7 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 
 import { creatorFieldsSchema } from "@/lib/creator-schema";
-import { db } from "@/lib/db";
-import { creators } from "@/lib/db/schema";
+import { insertCreator } from "@/lib/db/queries";
 import { getDodoClient } from "@/lib/dodo-payments";
 
 export async function POST(request: Request) {
@@ -62,25 +61,12 @@ async function handleCompletedSubmission(payment: {
   }
 
   const data = parsed.data;
-  const avatarUrl = `https://api.dicebear.com/9.x/notionists/svg?seed=${data.username}`;
 
   try {
-    await db
-      .insert(creators)
-      .values({
-        username: data.username,
-        name: data.name,
-        avatarUrl,
-        bio: data.bio || null,
-        category: data.category,
-        workUrl: data.workUrl,
-        socials: data.socials,
-        primarySocial: data.primarySocial,
-        followerCount: data.followerCount ?? null,
-        entryFeeCents: payment.total_amount,
-        dodoPaymentId: payment.payment_id,
-      })
-      .onConflictDoNothing({ target: creators.dodoPaymentId });
+    await insertCreator(data, {
+      entryFeeCents: payment.total_amount,
+      dodoPaymentId: payment.payment_id,
+    });
   } catch (err) {
     // Most likely a username collision that slipped past the pre-payment
     // check (a race between two simultaneous submissions). The payment

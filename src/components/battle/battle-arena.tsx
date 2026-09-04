@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { nextBattle, pickWinner, type PickResult } from "@/app/actions/battle";
 import { CreatorCard } from "@/components/battle/creator-card";
 import type { PublicCreator } from "@/lib/db/queries";
+import { PLACEMENT_BATTLES_REQUIRED } from "@/lib/ranking/placement";
 
 type Pair = [PublicCreator, PublicCreator];
 
@@ -77,6 +78,8 @@ export function BattleArena({ initialPair }: BattleArenaProps) {
   );
 
   const [a, b] = current;
+  const hasNewChallenger =
+    a.battlesCount < PLACEMENT_BATTLES_REQUIRED || b.battlesCount < PLACEMENT_BATTLES_REQUIRED;
 
   const auraFor = (creator: PublicCreator) => {
     if (!result) return creator.aura;
@@ -101,27 +104,35 @@ export function BattleArena({ initialPair }: BattleArenaProps) {
   };
 
   return (
-    <div className="relative grid w-full max-w-3xl grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
-      <CreatorCard
-        creator={a}
-        displayedAura={auraFor(a)}
-        delta={deltaFor(a)}
-        outcome={outcomeFor(a)}
-        disabled={phase !== "idle"}
-        onPick={() => void handlePick(a.id, b.id)}
-      />
-      <CreatorCard
-        creator={b}
-        displayedAura={auraFor(b)}
-        delta={deltaFor(b)}
-        outcome={outcomeFor(b)}
-        disabled={phase !== "idle"}
-        onPick={() => void handlePick(b.id, a.id)}
-      />
+    <div className="flex w-full max-w-3xl flex-col items-center gap-4">
+      <p className="max-w-md text-center text-muted-foreground">
+        {hasNewChallenger
+          ? "Help place a new challenger."
+          : "Discover people before everyone else does."}
+      </p>
 
-      <div className="pointer-events-none absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-foreground bg-background text-sm font-bold sm:h-14 sm:w-14 sm:text-base">
-          VS
+      <div className="relative grid w-full grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
+        <CreatorCard
+          creator={a}
+          displayedAura={auraFor(a)}
+          delta={deltaFor(a)}
+          outcome={outcomeFor(a)}
+          disabled={phase !== "idle"}
+          onPick={() => void handlePick(a.id, b.id)}
+        />
+        <CreatorCard
+          creator={b}
+          displayedAura={auraFor(b)}
+          delta={deltaFor(b)}
+          outcome={outcomeFor(b)}
+          disabled={phase !== "idle"}
+          onPick={() => void handlePick(b.id, a.id)}
+        />
+
+        <div className="pointer-events-none absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full border-2 border-foreground bg-background text-sm font-bold sm:h-14 sm:w-14 sm:text-base">
+            VS
+          </div>
         </div>
       </div>
     </div>

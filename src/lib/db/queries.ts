@@ -1,9 +1,12 @@
 import "server-only";
 
-import { and, desc, eq, gt, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gt, lte, ne, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { battles, creators, sponsorships, visitorPings } from "@/lib/db/schema";
+import type { CreatorFields } from "@/lib/creator-schema";
+import { PLACEMENT_BATTLES_REQUIRED } from "@/lib/ranking/placement";
+import { getCreatorAvatarUrl } from "@/lib/unavatar";
 
 export interface PublicCreator {
   id: string;
@@ -13,6 +16,7 @@ export interface PublicCreator {
   bio: string | null;
   category: string | null;
   aura: number;
+  battlesCount: number;
   workUrl: string | null;
   socials: Record<string, string> | null;
   primarySocial: string | null;
@@ -28,6 +32,7 @@ function toPublicCreator(row: typeof creators.$inferSelect): PublicCreator {
     bio: row.bio,
     category: row.category,
     aura: row.aura,
+    battlesCount: row.battlesCount,
     workUrl: row.workUrl,
     socials: row.socials as Record<string, string> | null,
     primarySocial: row.primarySocial,
@@ -36,17 +41,35 @@ function toPublicCreator(row: typeof creators.$inferSelect): PublicCreator {
 }
 
 /**
- * Picks two distinct active creators for a battle, biased toward creators
- * with fewer battles so new entries get rated quickly. See RANKING.md.
+ * Picks two distinct active creators for a battle. Whenever any active
+ * creator is still in placement (fewer than PLACEMENT_BATTLES_REQUIRED
+ * battles), one slot is guaranteed to go to one of them — weighted random,
+ * favoring fewest battles — so placement reliably completes instead of
+ * stalling as the pool grows. The other slot is drawn from the full active
+ * pool with the existing mild bias toward fewer battles. See RANKING.md.
  */
 export async function getRandomPair(): Promise<[PublicCreator, PublicCreator]> {
-  const rows = await db
+  const [placementRow] = await db
     .select()
     .from(creators)
-    .where(sql`${creators.isActive} = true`)
-    .orderBy(sql`${creators.battlesCount} + random() * 50`)
-    .limit(2);
+    .where(
+      and(eq(creators.isActive, true), sql`${creators.battlesCount} < ${PLACEMENT_BATTLES_REQUIRED}`),
+    )
+    .orderBy(sql`${creators.battlesCount} + random() * 5`)
+    .limit(1);
 
+  const opponentFilter = placementRow
+    ? and(eq(creators.isActive, true), ne(creators.id, placementRow.id))
+    : eq(creators.isActive, true);
+
+  const opponentRows = await db
+    .select()
+    .from(creators)
+    .where(opponentFilter)
+    .orderBy(sql`${creators.battlesCount} + random() * 50`)
+    .limit(placementRow ? 1 : 2);
+
+  const rows = placementRow ? [placementRow, ...opponentRows] : opponentRows;
   if (rows.length < 2) {
     throw new Error("Not enough active creators for a battle");
   }
@@ -59,12 +82,18 @@ export interface LeaderboardEntry extends PublicCreator {
   rank: number;
 }
 
-/** Active creators ordered by Aura. Rank is derived, never stored — see DATABASE.md. */
+/**
+ * Ranked active creators ordered by Aura. Excludes anyone still in
+ * placement (< PLACEMENT_BATTLES_REQUIRED battles) — see RANKING.md §
+ * Placement. Rank is derived, never stored — see DATABASE.md.
+ */
 export async function getLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
   const rows = await db
     .select()
     .from(creators)
-    .where(eq(creators.isActive, true))
+    .where(
+      and(eq(creators.isActive, true), sql`${creators.battlesCount} >= ${PLACEMENT_BATTLES_REQUIRED}`),
+    )
     .orderBy(desc(creators.aura))
     .limit(limit);
 
@@ -72,7 +101,8 @@ export async function getLeaderboard(limit = 50): Promise<LeaderboardEntry[]> {
 }
 
 export interface CreatorProfile extends PublicCreator {
-  rank: number;
+  /** Null while the creator is still in placement — see RANKING.md § Placement. */
+  rank: number | null;
   battlesCount: number;
   winsCount: number;
 }
@@ -85,14 +115,24 @@ export async function getCreatorByUsername(username: string): Promise<CreatorPro
 
   if (!row) return null;
 
-  const [{ count }] = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(creators)
-    .where(and(eq(creators.isActive, true), sql`${creators.aura} > ${row.aura}`));
+  let rank: number | null = null;
+  if (row.battlesCount >= PLACEMENT_BATTLES_REQUIRED) {
+    const [{ count }] = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(creators)
+      .where(
+        and(
+          eq(creators.isActive, true),
+          sql`${creators.battlesCount} >= ${PLACEMENT_BATTLES_REQUIRED}`,
+          sql`${creators.aura} > ${row.aura}`,
+        ),
+      );
+    rank = count + 1;
+  }
 
   return {
     ...toPublicCreator(row),
-    rank: count + 1,
+    rank,
     battlesCount: row.battlesCount,
     winsCount: row.winsCount,
   };
@@ -116,6 +156,41 @@ export async function getCreatorByPaymentId(
     .select({ username: creators.username })
     .from(creators)
     .where(eq(creators.dodoPaymentId, paymentId));
+
+  return row ?? null;
+}
+
+/**
+ * Inserts a creator row from validated submission fields. Shared by the Dodo
+ * webhook (real payment) and, temporarily, `createSubmissionCheckout` itself
+ * while Dodo isn't wired up yet — see the TODO there. Avatar is always
+ * derived server-side from the primary social link, never accepted from the
+ * client — see ARCHITECTURE.md § Creator avatars.
+ */
+export async function insertCreator(
+  data: CreatorFields,
+  payment: { entryFeeCents: number | null; dodoPaymentId: string | null },
+): Promise<{ username: string } | null> {
+  const primaryLink = data.socials[data.primarySocial as keyof typeof data.socials] ?? null;
+  const avatarUrl = getCreatorAvatarUrl(primaryLink, data.username);
+
+  const [row] = await db
+    .insert(creators)
+    .values({
+      username: data.username,
+      name: data.name,
+      avatarUrl,
+      bio: data.bio || null,
+      category: data.category,
+      workUrl: data.workUrl,
+      socials: data.socials,
+      primarySocial: data.primarySocial,
+      followerCount: data.followerCount ?? null,
+      entryFeeCents: payment.entryFeeCents,
+      dodoPaymentId: payment.dodoPaymentId,
+    })
+    .onConflictDoNothing({ target: creators.dodoPaymentId })
+    .returning({ username: creators.username });
 
   return row ?? null;
 }
@@ -146,6 +221,7 @@ interface DailyHeatRow {
   bio: string | null;
   category: string | null;
   aura: number;
+  battles_count: number;
   work_url: string | null;
   socials: Record<string, string> | null;
   primary_social: string | null;
@@ -170,6 +246,7 @@ export async function getTop24h(limit = 10): Promise<DailyHeatEntry[]> {
       c.bio,
       c.category,
       c.aura,
+      c.battles_count,
       c.work_url,
       c.socials,
       c.primary_social,
@@ -182,7 +259,7 @@ export async function getTop24h(limit = 10): Promise<DailyHeatEntry[]> {
     where c.is_active = true
       and b.created_at >= date_trunc('day', now() at time zone 'utc')
     group by c.id, c.username, c.name, c.avatar_url, c.bio, c.category, c.aura,
-      c.work_url, c.socials, c.primary_social, c.follower_count
+      c.battles_count, c.work_url, c.socials, c.primary_social, c.follower_count
     having count(*) >= 5
     order by
       (count(*) filter (where b.winner_id = c.id) - count(*) filter (where b.winner_id != c.id)) desc,
@@ -200,6 +277,7 @@ export async function getTop24h(limit = 10): Promise<DailyHeatEntry[]> {
     bio: row.bio,
     category: row.category,
     aura: row.aura,
+    battlesCount: row.battles_count,
     workUrl: row.work_url,
     socials: row.socials,
     primarySocial: row.primary_social,

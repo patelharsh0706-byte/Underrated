@@ -69,7 +69,13 @@ user_id                     uuid fk → auth.users.id  null — always null for
                                        stays for a future claim/edit flow.
 username                    text unique
 name            text
-avatar_url      text
+avatar_url      text            derived server-side in the payment webhook from
+                                 the creator's primary social link via
+                                 `getCreatorAvatarUrl` — never accepted from the
+                                 client. It's an unavatar URL carrying a Dicebear
+                                 PNG as its own `fallback=` param, so the stored
+                                 URL always renders even when no real photo
+                                 exists. See ARCHITECTURE.md § Creator avatars.
 bio             text            one line
 category        text
 work_url        text            the strongest single piece of evidence —
@@ -90,7 +96,11 @@ entry_fee_cents             integer  null    what they paid to submit, in
                                              revenue — never read by ranking.
 dodo_payment_id             text     null    unique, for webhook idempotency.
 aura            integer         default 1500
-battles_count   integer         default 0
+battles_count   integer         default 0    also drives placement: a
+                                               creator is "ranked" once
+                                               battles_count >= 10 — derived
+                                               at query time, not a separate
+                                               column. See RANKING.md § Placement.
 wins_count      integer         default 0
 is_active       boolean         default true
 created_at      timestamptz
@@ -215,7 +225,9 @@ visitor_pings(last_seen_at)    "N here now" / online count
 
 ## Derived, Not Stored
 
-- **Rank** — computed from `aura desc`. Never a column.
+- **Rank** — computed from `aura desc`, among ranked creators only. Never a column.
+- **Placement / "ranked" status** — computed from `battles_count >= 10` at
+  query time. Never a column. See [RANKING.md](RANKING.md) § Placement.
 - **Daily Heat** — computed from today's battles. Never a column. See [RANKING.md](RANKING.md).
 - **Main Character** — computed daily from Daily Heat.
 

@@ -89,10 +89,15 @@ not as the application layer:
 ## Payments
 
 Two independent Dodo Payments Checkout flows, both webhook-driven. Dodo is
-product-based, not ad-hoc-price-based like Stripe: a fee needs a pre-created
-**Product** in the Dodo dashboard with "pay what you want" pricing enabled
-(minimum $1) before any code can charge against it — that product's ID is
-`DODO_PAYMENTS_SUBMISSION_PRODUCT_ID`.
+product-based, not ad-hoc-price-based like Stripe: each fee needs a pre-created
+**Product** in the Dodo dashboard before any code can charge against it. Both
+are now fixed-price, so neither needs "pay what you want" pricing enabled:
+
+- submission fee — **$3**, `DODO_PAYMENTS_SUBMISSION_PRODUCT_ID`
+- sponsor slot — **$30 / 30 days**, `DODO_PAYMENTS_SPONSOR_PRODUCT_ID`
+
+The amount is still sent explicitly on the line item so the charge is correct
+even if a product is misconfigured as pay-what-you-want.
 
 **Sponsor slot** — the single Spotlight slot ($30 / 30 days). Webhook creates the
 sponsorship row with `start_at` / `end_at`. Expiry is computed from the dates —
@@ -139,14 +144,33 @@ No image storage is needed for sponsor logos specifically — the `Image
 storage | Vercel Blob` row above stays reserved for any future
 creator-uploaded asset.
 
+**Creator avatars** — `/submit` uses the same link-first pattern, and
+`getCreatorAvatarUrl` (`lib/unavatar.ts`) derives the stored `avatar_url` from
+the creator's **primary social link**, server-side in the webhook, never from
+client input.
+
+The difference from sponsors: creators pass the generated Dicebear
+illustration to unavatar as its own `fallback=` param rather than handling
+failure client-side. unavatar then serves that fallback itself when it can't
+find a real photo, so the one stored URL **always renders** — no `onError`
+island needed on the battle card, Top 10, leaderboard, profile, or OG image.
+The fallback must be Dicebear's `/png` endpoint, not `/svg`: Satori can't
+rasterize SVG, the same trap `ogAvatarSrc()` works around.
+
+Consequence to expect: real photos and generated illustrations sit side by
+side on battle cards, because the 20 seeded creators are fictional and have no
+real photo to resolve. Deliberate — it resolves itself as real creators
+replace seed data.
+
 **Creator submission fee** — replaces auth as the submission gate. Flow:
 
-1. `/submit` collects the creator's fields and a fee amount (any amount from
-   $1, preset buttons + custom). Username availability is checked **before**
-   payment — never charge for a username that's taken.
+1. `/submit` collects the creator's fields. The price is **fixed at $3** and
+   is never sent by the client — `SUBMISSION_FEE_CENTS` in
+   `lib/creator-schema.ts` is applied server-side, so a crafted request can't
+   submit for less. Username availability is checked **before** payment —
+   never charge for a username that's taken.
 2. A Server Action creates a Dodo checkout session against the pre-created
-   submission product, overriding its price via the line item's `amount`
-   (only takes effect because that product has pay-what-you-want enabled),
+   submission product, setting the line item's `amount` from that constant,
    with the full creator payload serialized into session metadata, and
    redirects to the returned `checkout_url`.
 3. `payment.succeeded` webhook (`/api/dodo-payments/webhook`) verifies the

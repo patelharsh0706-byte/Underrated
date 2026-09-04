@@ -16,6 +16,16 @@ Nothing in this file may be built without moving it into [MVP.md](MVP.md) first.
 - 24h Spotlight
 - 7-day Spotlight
 - Sponsor analytics
+- Same-creator-same-IP daily voting cap — stops a creator from repeatedly
+  picking themselves to inflate Aura. A given request IP can vote a given
+  creator to victory at most once per UTC day. Needs a nullable `voter_ip`
+  column on `battles` (captured via `x-forwarded-for`/`x-real-ip`, only
+  trustworthy once actually deployed behind a real edge network — inert in
+  local dev) and one indexed existence check inside `pickWinner` before
+  recording a vote; negligible query cost, confirmed before deferring.
+  Known gap even once built: it's per-IP not per-person, so shared IPs
+  (office wifi, a household) share the cap, and a determined attacker can
+  still cycle IPs — raises the cost of self-boosting, doesn't eliminate it.
 
 ## V3
 

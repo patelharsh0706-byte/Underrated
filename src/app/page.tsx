@@ -48,9 +48,6 @@ export default async function HomePage() {
         <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
           Who&apos;s more underhyped?
         </h1>
-        <p className="max-w-md text-muted-foreground">
-          Discover people before everyone else does.
-        </p>
       </div>
 
       <BattleArena initialPair={pair} />
