@@ -8,8 +8,41 @@ interface ShareButtonProps {
   url: string;
 }
 
+/**
+ * The Clipboard API can reject with NotAllowedError for reasons that have
+ * nothing to do with actual user intent — no permission granted yet in this
+ * context, an insecure/embedded context, focus quirks — so it's not safe to
+ * let it throw uncaught. Falls back to the old execCommand approach, which
+ * works synchronously without the async permission prompt.
+ */
+async function copyToClipboard(text: string): Promise<boolean> {
+  if (navigator.clipboard && window.isSecureContext) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fall through to the legacy method below.
+    }
+  }
+
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const succeeded = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    return succeeded;
+  } catch {
+    return false;
+  }
+}
+
 export function ShareButton({ url }: ShareButtonProps) {
-  const [copied, setCopied] = useState(false);
+  const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle");
 
   const handleClick = async () => {
     if (typeof navigator.share === "function") {
@@ -22,9 +55,9 @@ export function ShareButton({ url }: ShareButtonProps) {
       }
     }
 
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    const succeeded = await copyToClipboard(url);
+    setStatus(succeeded ? "copied" : "failed");
+    setTimeout(() => setStatus("idle"), 1500);
   };
 
   return (
@@ -36,7 +69,7 @@ export function ShareButton({ url }: ShareButtonProps) {
         "transition-transform hover:-translate-y-0.5 active:translate-y-0",
       )}
     >
-      {copied ? "Copied!" : "Share profile"}
+      {status === "copied" ? "Copied!" : status === "failed" ? "Couldn't copy" : "Share profile"}
     </button>
   );
 }
