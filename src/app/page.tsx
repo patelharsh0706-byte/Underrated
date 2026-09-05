@@ -51,7 +51,10 @@ export default async function HomePage() {
           Pick who&apos;s more underhyped ↓
         </h1>
         <p className="text-sm text-muted-foreground sm:text-base">
-          Pick the person whose work you like the most. Your pick moves their Aura. 
+          Pick the person whose work you like the most. Your pick moves their Aura.
+        </p>
+        <p className="text-sm text-muted-foreground sm:text-base">
+          Help us find the most talented people!
         </p>
       </div>
 
