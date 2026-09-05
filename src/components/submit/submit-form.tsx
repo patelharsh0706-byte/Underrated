@@ -121,7 +121,6 @@ export function SubmitForm() {
           className={inputClass(false)}
           placeholder="https://x.com/yourhandle or @yourhandle"
         />
-       
 
         {resolved ? (
           <div className="mt-1 flex items-center gap-3 rounded-xl border-2 border-winner bg-card px-3 py-2">
@@ -225,7 +224,7 @@ export function SubmitForm() {
           value={workUrl}
           onChange={(e) => setWorkUrl(e.target.value)}
           className={inputClass(!!errors.workUrl)}
-          placeholder="Website/ Github link/ Anthing worth showing!"
+          placeholder="Website, GitHub, or anything else worth showing"
         />
         {errors.workUrl ? <p className="text-xs text-loser">{errors.workUrl}</p> : null}
       </div>

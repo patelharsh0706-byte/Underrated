@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { PlacementProgress } from "@/components/profile/placement-progress";
 import { ShareButton } from "@/components/profile/share-button";
-import { clientEnv } from "@/lib/env";
 import { getCreatorByUsername } from "@/lib/db/queries";
 
 export const revalidate = 15;
@@ -37,7 +37,14 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
   const creator = await getCreatorByUsername(username);
   if (!creator) notFound();
 
-  const profileUrl = `${clientEnv().NEXT_PUBLIC_APP_URL}/c/${creator.username}`;
+  // Derived from the request itself rather than NEXT_PUBLIC_APP_URL — that
+  // env var went stale across the underrated.lol -> underhyped.wtf domain
+  // move and, being required by clientEnv()'s schema, crashed this whole
+  // page in production the moment it was unset/wrong. The host header always
+  // matches whatever domain actually served the request.
+  const host = (await headers()).get("host");
+  const protocol = host?.startsWith("localhost") ? "http" : "https";
+  const profileUrl = `${protocol}://${host}/c/${creator.username}`;
   const socials = creator.socials ? Object.entries(creator.socials) : [];
 
   return (
