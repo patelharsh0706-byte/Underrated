@@ -21,8 +21,11 @@ export function SiteHeader() {
         <Link href="/leaderboard" className="hover:underline">
           Leaderboard
         </Link>
-        <Link href="/submit" className="hover:underline">
-          Submit yourself
+        <Link
+          href="/submit"
+          className="rounded-xl border-2 border-foreground bg-primary px-4 py-2 text-xs font-bold uppercase tracking-wide text-primary-foreground"
+        >
+          Enter the arena
         </Link>
       </nav>
     </header>

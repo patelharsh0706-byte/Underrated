@@ -111,6 +111,7 @@ says `competitions`.
 | Advertising       | Spotlight / Underhyped Spot |
 | Vote              | Pick                        |
 | Rank              | Rank                        |
+| Pool              | Arena                       |
 
 Additional terms:
 

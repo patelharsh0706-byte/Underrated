@@ -336,6 +336,8 @@ export async function getNextSponsorshipStart(): Promise<Date> {
 export interface HomeStats {
   visitorsSoFar: number;
   battlesSoFar: number;
+  battlesToday: number;
+  creatorsInArena: number;
   paidForBattlesCents: number;
   siteVisits: number;
   onlineNow: number;
@@ -343,7 +345,13 @@ export interface HomeStats {
 
 /** Powers the homepage's live stats bar. See DATABASE.md#visitor_pings. */
 export async function getHomeStats(): Promise<HomeStats> {
-  const [[visitorRow], [{ battlesSoFar }], [{ paidForBattlesCents }]] = await Promise.all([
+  const [
+    [visitorRow],
+    [{ battlesSoFar }],
+    [{ battlesToday }],
+    [{ creatorsInArena }],
+    [{ paidForBattlesCents }],
+  ] = await Promise.all([
     db
       .select({
         visitorsSoFar: sql<number>`count(*)::int`,
@@ -352,6 +360,16 @@ export async function getHomeStats(): Promise<HomeStats> {
       })
       .from(visitorPings),
     db.select({ battlesSoFar: sql<number>`count(*)::int` }).from(battles),
+    // Same UTC-day boundary getTop24h uses, so this counter resets at the
+    // exact instant Daily Heat and Main Character do.
+    db
+      .select({ battlesToday: sql<number>`count(*)::int` })
+      .from(battles)
+      .where(sql`${battles.createdAt} >= date_trunc('day', now() at time zone 'utc')`),
+    db
+      .select({ creatorsInArena: sql<number>`count(*)::int` })
+      .from(creators)
+      .where(eq(creators.isActive, true)),
     db
       .select({ paidForBattlesCents: sql<number>`coalesce(sum(${creators.entryFeeCents}), 0)::int` })
       .from(creators),
@@ -362,6 +380,8 @@ export async function getHomeStats(): Promise<HomeStats> {
     siteVisits: visitorRow?.siteVisits ?? 0,
     onlineNow: visitorRow?.onlineNow ?? 0,
     battlesSoFar,
+    battlesToday,
+    creatorsInArena,
     paidForBattlesCents,
   };
 }

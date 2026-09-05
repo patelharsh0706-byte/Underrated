@@ -1,4 +1,6 @@
+import { ArenaStatsBar } from "@/components/arena-stats-bar";
 import { BattleArena } from "@/components/battle/battle-arena";
+import { EnterArenaCta } from "@/components/enter-arena-cta";
 import { StatsPanel } from "@/components/battle/stats-panel";
 import { Top10Panel, type Top10Entry } from "@/components/battle/top10-panel";
 import { SponsorBanner } from "@/components/sponsor-banner";
@@ -46,11 +48,21 @@ export default async function HomePage() {
     <main className="flex flex-1 flex-col items-center gap-8 px-4 py-12 sm:gap-12 sm:py-20">
       <div className="flex flex-col items-center gap-2 text-center">
         <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
-          Who&apos;s more underhyped?
+          Pick who&apos;s more underhyped ↓
         </h1>
+        <p className="text-sm text-muted-foreground sm:text-base">
+          Pick the person whose work you like the most. Your pick moves their Aura. 
+        </p>
       </div>
 
       <BattleArena initialPair={pair} />
+
+      <ArenaStatsBar
+        battlesToday={homeStats.battlesToday}
+        creatorsInArena={homeStats.creatorsInArena}
+      />
+
+      <EnterArenaCta />
 
       <SponsorBanner sponsorship={sponsorship} />
 
