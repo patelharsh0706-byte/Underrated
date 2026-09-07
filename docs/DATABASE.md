@@ -130,6 +130,17 @@ aura_b_after      integer
 created_at        timestamptz
 ```
 
+Every row is a **scoring** battle. A session's repeat pick on a pair it has
+already judged is not written at all — see RANKING.md § Scoring. So a row here
+always means Aura moved, and every count derived from this table (Daily Heat,
+battles today, distinct voter sessions) excludes farmed repeats without
+filtering.
+
+`voter_session` is read, not just recorded: the scoring check and placement's
+`voter_count` both derive from it. Adding `(voter_session, creator_a_id,
+creator_b_id)` as an index is the first move if the table grows past a few
+thousand rows — deliberately not added at V1 size.
+
 ### sponsorships
 
 ```

@@ -9,6 +9,8 @@ import type { PublicCreator } from "@/lib/db/queries";
 type Pair = [PublicCreator, PublicCreator];
 
 const RESULT_DISPLAY_MS = 700;
+// A pick that didn't score needs long enough to read the reason.
+const REPEAT_DISPLAY_MS = 1400;
 
 interface BattleArenaProps {
   initialPair: Pair;
@@ -66,7 +68,10 @@ export function BattleArena({ initialPair }: BattleArenaProps) {
         const pickResult = await pickWinner({ winnerId, loserId });
         setResult(pickResult);
         setPhase("result");
-        setTimeout(() => void advance(), RESULT_DISPLAY_MS);
+        setTimeout(
+          () => void advance(),
+          pickResult.counted ? RESULT_DISPLAY_MS : REPEAT_DISPLAY_MS,
+        );
       } catch {
         // The pair is likely stale (a creator went inactive mid-battle).
         // Skip it rather than leaving the user stuck.
@@ -108,6 +113,7 @@ export function BattleArena({ initialPair }: BattleArenaProps) {
           displayedAura={auraFor(a)}
           delta={deltaFor(a)}
           outcome={outcomeFor(a)}
+          counted={result?.counted ?? true}
           disabled={phase !== "idle"}
           onPick={() => void handlePick(a.id, b.id)}
         />
@@ -116,6 +122,7 @@ export function BattleArena({ initialPair }: BattleArenaProps) {
           displayedAura={auraFor(b)}
           delta={deltaFor(b)}
           outcome={outcomeFor(b)}
+          counted={result?.counted ?? true}
           disabled={phase !== "idle"}
           onPick={() => void handlePick(b.id, a.id)}
         />
@@ -125,6 +132,16 @@ export function BattleArena({ initialPair }: BattleArenaProps) {
             VS
           </div>
         </div>
+      </div>
+
+      {/* Height is reserved so the page doesn't jump when this appears. A
+          repeat pick is honest about doing nothing — see RANKING.md § Scoring. */}
+      <div className="flex min-h-6 items-center justify-center text-center">
+        {result && !result.counted ? (
+          <span className="rounded-full border-2 border-foreground bg-card px-3 py-0.5 text-xs font-medium">
+            You&apos;ve already called this one — Aura unchanged.
+          </span>
+        ) : null}
       </div>
     </div>
   );

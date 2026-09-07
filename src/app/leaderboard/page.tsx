@@ -3,6 +3,10 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { getLeaderboard } from "@/lib/db/queries";
+import {
+  PLACEMENT_BATTLES_REQUIRED,
+  PLACEMENT_VOTERS_REQUIRED,
+} from "@/lib/ranking/placement";
 
 // Ratings change with every vote; a short revalidate window keeps this page
 // mostly cached without ever going stale for long. See ARCHITECTURE.md.
@@ -22,6 +26,22 @@ export default async function LeaderboardPage() {
         <h1 className="text-3xl font-bold tracking-tight">Leaderboard</h1>
         <p className="text-muted-foreground">Ranked by Aura🔥.</p>
       </div>
+
+      {entries.length === 0 ? (
+        <div className="flex flex-col items-center gap-3 rounded-xl border-2 border-dashed border-foreground/40 px-6 py-12 text-center">
+          <p className="font-bold">The internet is still deciding.</p>
+          <p className="max-w-sm text-sm text-muted-foreground">
+            A rank takes {PLACEMENT_BATTLES_REQUIRED} battles and at least{" "}
+            {PLACEMENT_VOTERS_REQUIRED} different people. Nobody&apos;s there yet.
+          </p>
+          <Link
+            href="/"
+            className="rounded-xl border-2 border-foreground bg-primary px-4 py-2 text-xs font-bold uppercase tracking-wide text-primary-foreground"
+          >
+            Start battling 🔥
+          </Link>
+        </div>
+      ) : null}
 
       <ol className="flex flex-col gap-2">
         {entries.map((entry) => (

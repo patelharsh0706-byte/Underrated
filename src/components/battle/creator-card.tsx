@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 import type { PublicCreator } from "@/lib/db/queries";
-import { PLACEMENT_BATTLES_REQUIRED } from "@/lib/ranking/placement";
+import { isRanked } from "@/lib/ranking/placement";
 import { cn } from "@/lib/utils";
 
 const COUNT_UP_MS = 220;
@@ -44,6 +44,8 @@ interface CreatorCardProps {
   displayedAura: number;
   delta: number | null;
   outcome: Outcome;
+  /** False when the pick didn't score — show the Aura, but never a fake delta. */
+  counted: boolean;
   disabled: boolean;
   onPick: () => void;
 }
@@ -68,6 +70,7 @@ export function CreatorCard({
   displayedAura,
   delta,
   outcome,
+  counted,
   disabled,
   onPick,
 }: CreatorCardProps) {
@@ -102,7 +105,7 @@ export function CreatorCard({
       <div className="flex flex-col items-center gap-1 text-center">
         <span className="text-sm font-bold sm:text-2xl">{creator.name}</span>
         <span className="hidden text-sm text-muted-foreground sm:block">@{creator.username}</span>
-        {creator.battlesCount < PLACEMENT_BATTLES_REQUIRED ? (
+        {!isRanked(creator.battlesCount, creator.voterCount) ? (
           <span className="mt-1 rounded-full border-2 border-aura bg-aura/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-aura sm:px-2 sm:text-xs">
             🔥 New challenger
           </span>
@@ -156,14 +159,16 @@ export function CreatorCard({
             <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               aura
             </span>
-            <span
-              className={cn(
-                "text-sm font-bold tabular-nums",
-                outcome === "winner" ? "text-winner" : "text-loser",
-              )}
-            >
-              {outcome === "winner" ? `+${delta}` : `-${delta}`}
-            </span>
+            {counted ? (
+              <span
+                className={cn(
+                  "text-sm font-bold tabular-nums",
+                  outcome === "winner" ? "text-winner" : "text-loser",
+                )}
+              >
+                {outcome === "winner" ? `+${delta}` : `-${delta}`}
+              </span>
+            ) : null}
           </>
         ) : null}
       </div>

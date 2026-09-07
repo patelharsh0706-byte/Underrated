@@ -1,16 +1,17 @@
 "use server";
 
-import { eq, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
 import { battles, creators } from "@/lib/db/schema";
 import { getRandomPair, type PublicCreator } from "@/lib/db/queries";
 import { computeEloUpdate } from "@/lib/ranking/elo";
-import { getOrCreateVoterSession } from "@/lib/session";
+import { getOrCreateVoterSession, readVoterSession } from "@/lib/session";
 
 export async function nextBattle(): Promise<[PublicCreator, PublicCreator]> {
-  return getRandomPair();
+  // Read, don't create: the cookie is minted on the first actual pick.
+  return getRandomPair(await readVoterSession());
 }
 
 const pickWinnerInput = z
@@ -28,12 +29,22 @@ export interface PickResult {
   winnerAura: number;
   loserAura: number;
   delta: number;
+  /**
+   * False when this session has already judged this pair. Aura is untouched
+   * and nothing is written — see RANKING.md § Scoring. The UI must say so
+   * rather than animate a delta that did not happen.
+   */
+  counted: boolean;
 }
 
 /**
  * Records a pick and updates Aura for both creators in one transaction.
  * Ratings are read fresh from the database and row-locked — never trusted
  * from the client — so the result reflects the true state at vote time.
+ *
+ * A session gets one scoring pick per pair. A repeat of a matchup this session
+ * has already answered is accepted and returned as `counted: false` without
+ * writing anything — the voter keeps playing, the ranking ignores it.
  */
 export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promise<PickResult> {
   const { winnerId, loserId } = pickWinnerInput.parse(input);
@@ -56,6 +67,32 @@ export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promis
     }
     if (!winner.isActive || !loser.isActive) {
       throw new Error("One of the creators in this battle is no longer active");
+    }
+
+    // One scoring pick per pair per session. The pair is unordered, so picking
+    // the other side of a matchup already judged doesn't buy a second vote.
+    // See RANKING.md § Scoring.
+    const [alreadyJudged] = await tx
+      .select({ id: battles.id })
+      .from(battles)
+      .where(
+        and(
+          eq(battles.voterSession, voterSession),
+          sql`least(${battles.creatorAId}, ${battles.creatorBId}) = least(${winner.id}::uuid, ${loser.id}::uuid)`,
+          sql`greatest(${battles.creatorAId}, ${battles.creatorBId}) = greatest(${winner.id}::uuid, ${loser.id}::uuid)`,
+        ),
+      )
+      .limit(1);
+
+    if (alreadyJudged) {
+      return {
+        winnerId: winner.id,
+        loserId: loser.id,
+        winnerAura: winner.aura,
+        loserAura: loser.aura,
+        delta: 0,
+        counted: false,
+      };
     }
 
     const { delta, winnerAfter, loserAfter } = computeEloUpdate(winner.aura, loser.aura);
@@ -94,6 +131,7 @@ export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promis
       winnerAura: winnerAfter,
       loserAura: loserAfter,
       delta,
+      counted: true,
     };
   });
 }
