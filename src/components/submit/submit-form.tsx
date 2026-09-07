@@ -13,7 +13,9 @@ import { cn } from "@/lib/utils";
 
 const RESOLVE_DEBOUNCE_MS = 400;
 
-const CATEGORIES = ["Indie Developer", "Builder", "CEO/Founder"] as const;
+// Plural, matching DECISIONS.md § categories — these are the three buckets
+// creators sort into, not a label for one person.
+const CATEGORIES = ["Indie Developers", "Builders", "CEO/Founders"] as const;
 
 type AllowedSocial = (typeof ALLOWED_SOCIALS)[number];
 
