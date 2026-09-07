@@ -88,7 +88,10 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
             <span className="text-xs uppercase tracking-wide text-muted-foreground">Rank</span>
           </div>
         ) : (
-          <PlacementProgress battlesCount={creator.battlesCount} />
+          <PlacementProgress
+            battlesCount={creator.battlesCount}
+            voterCount={creator.voterCount}
+          />
         )}
         <div className="flex flex-col items-center">
           <span className="font-mono text-2xl font-bold tabular-nums">

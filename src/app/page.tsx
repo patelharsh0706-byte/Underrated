@@ -12,14 +12,18 @@ import {
   getRecentJoins,
   getTop24h,
 } from "@/lib/db/queries";
+import { readVoterSession } from "@/lib/session";
 
 // Every visitor needs a fresh random pair — this page must never be
 // statically cached at build time.
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
+  // Drives the alternating placement slot — see RANKING.md § Pairing.
+  const voterSession = await readVoterSession();
+
   const [pair, dailyHeat, sponsorship, homeStats, recentJoins] = await Promise.all([
-    getRandomPair(),
+    getRandomPair(voterSession),
     getTop24h(),
     getActiveSponsorship(),
     getHomeStats(),
