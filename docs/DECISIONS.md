@@ -260,3 +260,35 @@ category-scoped ranking; deferred rather than adding both at once.
 A probabilistic-only pairing bias (steepen the existing formula instead of
 guaranteeing a slot) — simpler diff, but doesn't guarantee placement
 actually completes quickly as the pool grows, which was the point.
+
+## 2026-09-07 — Analytics provider: DataFast, not PostHog
+
+Decision:
+Use DataFast for web analytics. A single `<Script>` in the root layout
+(`src/app/layout.tsx`) with `strategy="afterInteractive"`, carrying the
+website id and `data-domain`. This replaces PostHog in ARCHITECTURE.md's
+service table.
+
+Why:
+PostHog was recorded on day one but never built — `NEXT_PUBLIC_POSTHOG_KEY`
+and `_HOST` exist in `.env.example` and nothing else. Nothing is being
+migrated or thrown away, so the switching cost is zero. DataFast is a
+page-analytics script: one tag, no SDK, no client wrapper, no provider
+component around the tree, which suits a site whose only client components
+are the battle loop.
+
+The credentials are public by design (a website id and a domain, both visible
+in page source), so unlike every other service here they are hardcoded rather
+than routed through `.env.example` and `lib/env.ts`. There is nothing to keep
+secret and nothing for `clientEnv()` to validate.
+
+Rejected:
+Building PostHog as recorded — it is the heavier tool (session capture,
+feature flags, funnels) and V1 needs traffic counts. Its value would come
+from product analytics on the battle loop, which is not what is being asked
+for here; reinstating it later is a fresh decision, not a reversal of this
+one.
+
+Self-hosting or a first-party proxy route to dodge ad blockers — real data
+loss, but it means owning an endpoint and a CSP surface for a number that
+only informs marketing. Not worth it at V1.

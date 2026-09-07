@@ -19,12 +19,12 @@ If a decision here needs to change, change it here first and log it in
 | Auth          | Supabase Auth           |
 | Payments      | Dodo Payments           |
 | Image storage | Vercel Blob             |
-| Analytics     | PostHog                 |
+| Analytics     | DataFast                |
 | Email         | Resend                  |
 | Hosting       | Vercel                  |
 
-Not every service ships on day one. PostHog, Resend, and Dodo Payments can land
-after the core loop. But nothing else is allowed in their place.
+Not every service ships on day one. Resend and Dodo Payments can land after the
+core loop. But nothing else is allowed in their place.
 
 ## Rendering
 
