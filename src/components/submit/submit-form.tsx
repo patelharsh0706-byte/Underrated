@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 
 const RESOLVE_DEBOUNCE_MS = 400;
 
-const CATEGORIES = ["Indie Developers", "Builders", "CEO/Founders"] as const;
+const CATEGORIES = ["Indie Developer", "Builder", "CEO/Founder"] as const;
 
 type AllowedSocial = (typeof ALLOWED_SOCIALS)[number];
 
