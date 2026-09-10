@@ -13,7 +13,10 @@ import { cn } from "@/lib/utils";
 
 const RESOLVE_DEBOUNCE_MS = 400;
 
-const CATEGORIES = ["Indie Developer", "Builder", "CEO/Founder"] as const;
+// Source of truth for real creator categories — the leaderboard's category
+// filter imports this directly rather than re-declaring it, so the two can
+// never drift apart. See leaderboard-board.tsx.
+export const CATEGORIES = ["Indie Developer", "Builder", "CEO/Founder"] as const;
 
 type AllowedSocial = (typeof ALLOWED_SOCIALS)[number];
 
