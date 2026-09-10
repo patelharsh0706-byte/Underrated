@@ -1,6 +1,7 @@
 import { ArenaStatsBar } from "@/components/arena-stats-bar";
 import { BattleArena } from "@/components/battle/battle-arena";
 import { EnterArenaCta } from "@/components/enter-arena-cta";
+import { Scribble } from "@/components/scribble";
 import { StatsPanel } from "@/components/battle/stats-panel";
 import { Top10Panel, type Top10Entry } from "@/components/battle/top10-panel";
 import { SponsorBanner } from "@/components/sponsor-banner";
@@ -49,18 +50,27 @@ export default async function HomePage() {
   }
 
   return (
-    <main className="flex flex-1 flex-col items-center gap-8 px-4 py-12 sm:gap-12 sm:py-20">
-      <div className="flex flex-col items-center gap-2 text-center">
-        <h1 className="text-3xl font-bold tracking-tight sm:text-5xl">
-          Pick who&apos;s more underhyped ↓
+    <main className="flex flex-1 flex-col items-center gap-10 px-4 py-10 sm:gap-14 sm:py-16">
+      {/* DESIGN.md rule 1: one headline line + one subhead line above the
+          battle, maximum — never a marketing hero. */}
+      <section className="relative flex w-full max-w-3xl flex-col items-center gap-3 pt-2 text-center sm:pt-4">
+        <Scribble side="left" lines={["small creators.", "big impact."]} top={96} />
+        <Scribble side="right" lines={["good people", "deserve", "more hype."]} top={52} />
+
+        <h1 className="max-w-[12ch] text-balance font-display text-[clamp(32px,8vw,60px)] leading-[0.95] font-black tracking-[-0.04em]">
+          Who&rsquo;s more{" "}
+          <span className="relative z-0 inline-block px-1.5">
+            <span
+              aria-hidden="true"
+              className="absolute inset-[12%_-10px_6%_-8px] -z-10 rotate-[-1.1deg] bg-lime [clip-path:polygon(1%_8%,99%_0%,100%_88%,98%_100%,2%_96%,0%_14%)]"
+            />
+            underhyped?
+          </span>
         </h1>
-        <p className="text-sm text-muted-foreground sm:text-base">
-          Pick the person whose work you like the most. Your pick moves their Aura.
+        <p className="text-base text-ink-soft sm:text-lg">
+          Two creators. One pick. Your pick moves their Aura.
         </p>
-        <p className="text-sm text-muted-foreground sm:text-base">
-          Help us find the most talented people!
-        </p>
-      </div>
+      </section>
 
       <BattleArena initialPair={pair} />
 
@@ -74,6 +84,8 @@ export default async function HomePage() {
       <SponsorBanner sponsorship={sponsorship} />
 
       <Top10Panel entries={top10} mode={top10Mode} />
+
+      {/* TODO(Phase 5): Live on Underhyped panel */}
 
       <StatsPanel initialStats={homeStats} recentJoins={recentJoins} />
     </main>

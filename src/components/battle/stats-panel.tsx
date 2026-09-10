@@ -72,10 +72,10 @@ export function StatsPanel({ initialStats, recentJoins }: StatsPanelProps) {
   return (
     <section className="flex w-full max-w-3xl flex-col gap-4">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-lg font-bold tracking-tight sm:text-xl">Live</h2>
-        <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <h2 className="font-display text-lg font-extrabold tracking-tight sm:text-xl">Live</h2>
+        <span className="flex items-center gap-1.5 text-sm text-ink-soft">
           <span className="h-2 w-2 rounded-full bg-winner" />
-          <strong className="font-mono text-foreground">{stats.onlineNow}</strong> hanging out
+          <strong className="font-display text-foreground">{stats.onlineNow}</strong> hanging out
         </span>
       </div>
 
@@ -83,19 +83,19 @@ export function StatsPanel({ initialStats, recentJoins }: StatsPanelProps) {
         {tilesFor(stats).map((tile) => (
           <div
             key={tile.label}
-            className="flex flex-col gap-1 rounded-xl border-2 border-foreground bg-card px-3 py-2.5"
+            className="flex flex-col gap-1 rounded-card border border-hairline bg-card px-3 py-2.5 shadow-card"
           >
-            <span className="font-mono text-xl font-bold tabular-nums sm:text-2xl">
+            <span className="font-display text-xl font-extrabold tabular-nums sm:text-2xl">
               {tile.value}
             </span>
-            <span className="text-xs text-muted-foreground">{tile.label}</span>
+            <span className="text-xs text-ink-soft">{tile.label}</span>
           </div>
         ))}
       </div>
 
       {recentJoins.length > 0 ? (
-        <div className="flex flex-col gap-2 rounded-xl border-2 border-foreground bg-card px-3 py-2.5">
-          <span className="text-xs font-bold uppercase tracking-wide text-muted-foreground">
+        <div className="flex flex-col gap-2 rounded-card border border-hairline bg-card px-3 py-2.5 shadow-card">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
             Just happened
           </span>
           <ul className="flex flex-col gap-1.5">
@@ -108,9 +108,9 @@ export function StatsPanel({ initialStats, recentJoins }: StatsPanelProps) {
                   <Link href={`/c/${join.username}`} className="font-bold hover:underline">
                     {join.name}
                   </Link>{" "}
-                  <span className="text-muted-foreground">joined the leaderboard</span>
+                  <span className="text-ink-soft">joined the leaderboard</span>
                 </span>
-                <span className="flex shrink-0 items-center gap-2 font-mono text-xs text-muted-foreground">
+                <span className="flex shrink-0 items-center gap-2 font-mono text-xs text-ink-soft">
                   {join.entryFeeCents !== null ? (
                     <span className="text-winner">{formatMoney(join.entryFeeCents)}</span>
                   ) : null}

@@ -83,13 +83,15 @@ export function CreatorCard({
   return (
     <div
       className={cn(
-        "flex w-full flex-col items-center gap-2 rounded-xl border-2 border-foreground bg-card p-3 transition-[opacity,transform,box-shadow] duration-200",
-        "sm:gap-4 sm:p-8",
-        outcome === "winner" && "scale-[1.02] border-winner shadow-[0_0_0_3px_var(--winner)]",
+        "flex w-full flex-col items-center gap-2 rounded-card border border-hairline bg-card p-3 shadow-card transition-[opacity,transform,box-shadow] duration-200",
+        "sm:gap-4 sm:p-6",
+        outcome === "winner" && "scale-[1.02] shadow-lift ring-2 ring-winner",
         outcome === "loser" && "opacity-60",
       )}
     >
-      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-xl border-2 border-foreground bg-muted sm:h-36 sm:w-36">
+      {/* Battle portraits are an identity context — DESIGN.md Avatars: square
+          with 12px radius, never circular here. */}
+      <div className="relative h-20 w-20 shrink-0 overflow-hidden rounded-lg bg-muted sm:h-36 sm:w-36">
         {creator.avatarUrl ? (
           <Image
             src={creator.avatarUrl}
@@ -103,33 +105,35 @@ export function CreatorCard({
       </div>
 
       <div className="flex flex-col items-center gap-1 text-center">
-        <span className="text-sm font-bold sm:text-2xl">{creator.name}</span>
-        <span className="hidden text-sm text-muted-foreground sm:block">@{creator.username}</span>
+        <span className="font-display text-sm font-extrabold tracking-tight sm:text-xl">
+          {creator.name}
+        </span>
+        <span className="hidden text-sm text-ink-soft sm:block">@{creator.username}</span>
         {!isRanked(creator.battlesCount, creator.voterCount) ? (
-          <span className="mt-1 rounded-full border-2 border-aura bg-aura/10 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-aura sm:px-2 sm:text-xs">
+          <span className="mt-1 rounded-full bg-aura/12 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-aura sm:px-2 sm:text-xs">
             🔥 New challenger
           </span>
         ) : null}
         {creator.category ? (
-          <span className="mt-1 rounded-full border-2 border-foreground px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide sm:px-2 sm:text-xs">
+          <span className="mt-1 rounded-full bg-foreground/6 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-soft sm:px-2 sm:text-xs">
             {creator.category}
           </span>
         ) : null}
         {creator.bio ? (
-          <p className="mt-2 line-clamp-2 max-w-[24ch] text-xs text-muted-foreground sm:text-sm">
+          <p className="mt-2 line-clamp-2 max-w-[24ch] text-xs text-ink-soft sm:text-sm">
             {creator.bio}
           </p>
         ) : null}
       </div>
 
       {creator.workUrl || primaryHref ? (
-        <div className="flex flex-wrap justify-center gap-2">
+        <div className="flex flex-wrap justify-center gap-1.5">
           {creator.workUrl ? (
             <a
               href={creator.workUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-full border-2 border-foreground px-2 py-1 text-xs font-medium hover:bg-accent sm:px-3"
+              className="rounded-full border border-hairline-2 px-2 py-1 text-xs font-medium text-ink-soft transition-colors hover:border-foreground hover:text-foreground sm:px-3"
             >
               ↗ View work
             </a>
@@ -139,7 +143,7 @@ export function CreatorCard({
               href={primaryHref}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-full border-2 border-foreground px-2 py-1 text-xs font-medium hover:bg-accent sm:px-3"
+              className="rounded-full border border-hairline-2 px-2 py-1 text-xs font-medium text-ink-soft transition-colors hover:border-foreground hover:text-foreground sm:px-3"
             >
               {socialLabel(creator.primarySocial!)}
             </a>
@@ -153,10 +157,10 @@ export function CreatorCard({
       <div className="flex min-h-7 flex-wrap items-baseline justify-center gap-1.5 sm:min-h-9 sm:gap-2">
         {hasResult ? (
           <>
-            <span className="font-mono text-base font-bold tabular-nums text-aura sm:text-3xl">
+            <span className="font-display text-base font-extrabold tabular-nums text-aura sm:text-3xl">
               {shownAura}🔥
             </span>
-            <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <span className="text-xs font-medium uppercase tracking-wide text-ink-soft">
               aura
             </span>
             {counted ? (
@@ -179,7 +183,7 @@ export function CreatorCard({
         disabled={disabled}
         aria-label={`Pick ${creator.name} as more underhyped`}
         className={cn(
-          "mt-auto w-full rounded-xl border-2 border-foreground bg-primary py-2 text-xs font-bold uppercase tracking-wide text-primary-foreground transition-transform sm:py-3 sm:text-sm",
+          "mt-auto w-full rounded-lg bg-primary py-2 font-display text-xs font-bold uppercase tracking-wide text-primary-foreground transition-transform sm:py-3 sm:text-sm",
           !disabled && "hover:-translate-y-0.5 active:translate-y-0 cursor-pointer",
           disabled && "cursor-default opacity-50",
         )}

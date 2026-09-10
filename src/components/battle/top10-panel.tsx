@@ -28,19 +28,19 @@ export function Top10Panel({ entries, mode }: Top10PanelProps) {
   return (
     <section className="flex w-full max-w-3xl flex-col gap-4">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-lg font-bold tracking-tight sm:text-xl">
+        <h2 className="font-display text-lg font-extrabold tracking-tight sm:text-xl">
           Top 10{" "}
-          <span className="text-muted-foreground font-normal">
+          <span className="font-normal text-ink-soft">
             · {mode === "daily" ? "last 24h" : "by Aura🔥"}
           </span>
         </h2>
-        <Link href="/leaderboard" className="text-sm font-medium hover:underline">
+        <Link href="/leaderboard" className="text-sm font-medium text-ink-soft hover:underline">
           Full leaderboard →
         </Link>
       </div>
 
       {entries.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-foreground/30 px-6 py-8 text-center text-sm text-muted-foreground">
+        <div className="rounded-card border border-dashed border-hairline-2 px-6 py-8 text-center text-sm text-ink-soft">
           Nobody&apos;s racked up enough picks today. Go make someone the Main Character.
         </div>
       ) : (
@@ -50,14 +50,14 @@ export function Top10Panel({ entries, mode }: Top10PanelProps) {
               <Link
                 href={`/c/${entry.username}`}
                 className={cn(
-                  "flex items-center gap-3 rounded-xl border-2 border-foreground bg-card px-3 py-2 transition-transform hover:-translate-y-0.5",
-                  entry.dailyHeat !== undefined && entry.rank === 1 && "border-aura",
+                  "flex items-center gap-3 rounded-card border border-hairline bg-card px-3 py-2 shadow-card transition-transform hover:-translate-y-0.5 hover:shadow-lift",
+                  entry.dailyHeat !== undefined && entry.rank === 1 && "border-aura/40",
                 )}
               >
-                <span className="w-6 shrink-0 text-right font-mono text-sm font-bold tabular-nums text-muted-foreground">
+                <span className="w-6 shrink-0 text-right font-display text-sm font-extrabold tabular-nums text-ink-soft">
                   {entry.rank}
                 </span>
-                <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg border-2 border-foreground bg-muted">
+                <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-full bg-muted">
                   {entry.avatarUrl ? (
                     <Image
                       src={entry.avatarUrl}
@@ -83,7 +83,7 @@ export function Top10Panel({ entries, mode }: Top10PanelProps) {
                       </span>
                     ) : null}
                   </span>
-                  <span className="truncate text-xs text-muted-foreground">
+                  <span className="truncate text-xs text-ink-soft">
                     @{entry.username}
                     {entry.dailyHeat !== undefined ? ` · ${entry.battlesToday} battles today` : null}
                   </span>
@@ -91,14 +91,14 @@ export function Top10Panel({ entries, mode }: Top10PanelProps) {
                 {entry.dailyHeat !== undefined ? (
                   <span
                     className={cn(
-                      "font-mono text-sm font-bold tabular-nums",
-                      entry.dailyHeat >= 0 ? "text-winner" : "text-loser",
+                      "font-display text-sm font-extrabold tabular-nums",
+                      entry.dailyHeat >= 0 ? "text-winner" : "text-down",
                     )}
                   >
                     {entry.dailyHeat > 0 ? `+${entry.dailyHeat}` : entry.dailyHeat}
                   </span>
                 ) : (
-                  <span className="font-mono text-sm font-bold tabular-nums text-aura">
+                  <span className="font-display text-sm font-extrabold tabular-nums text-aura">
                     {entry.aura}🔥
                   </span>
                 )}

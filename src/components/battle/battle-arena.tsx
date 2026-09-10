@@ -128,8 +128,27 @@ export function BattleArena({ initialPair }: BattleArenaProps) {
         />
 
         <div className="pointer-events-none absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
-          <div className="flex h-9 w-9 items-center justify-center rounded-full border-2 border-foreground bg-background text-[10px] font-bold sm:h-14 sm:w-14 sm:text-base">
-            VS
+          <div className="relative flex h-9 w-9 items-center justify-center rounded-full border border-hairline-2 bg-card shadow-card sm:h-14 sm:w-14">
+            <svg
+              viewBox="0 0 74 74"
+              fill="none"
+              aria-hidden="true"
+              className="absolute inset-0 h-full w-full text-lime-deep"
+            >
+              <g stroke="currentColor" strokeWidth="3.2" strokeLinecap="round">
+                <path d="M37 4v9" />
+                <path d="M37 61v9" />
+                <path d="M9 37h9" />
+                <path d="M56 37h9" />
+                <path d="M15 15l6 6" />
+                <path d="M53 53l6 6" />
+                <path d="M59 15l-6 6" />
+                <path d="M21 53l-6 6" />
+              </g>
+            </svg>
+            <span className="relative font-display text-[10px] font-black tracking-tight italic sm:text-base">
+              VS
+            </span>
           </div>
         </div>
       </div>
@@ -138,7 +157,7 @@ export function BattleArena({ initialPair }: BattleArenaProps) {
           repeat pick is honest about doing nothing — see RANKING.md § Scoring. */}
       <div className="flex min-h-6 items-center justify-center text-center">
         {result && !result.counted ? (
-          <span className="rounded-full border-2 border-foreground bg-card px-3 py-0.5 text-xs font-medium">
+          <span className="rounded-full border border-hairline-2 bg-card px-3 py-0.5 text-xs font-medium text-ink-soft shadow-card">
             You&apos;ve already called this one — Aura unchanged.
           </span>
         ) : null}
