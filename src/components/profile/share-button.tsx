@@ -65,7 +65,7 @@ export function ShareButton({ url }: ShareButtonProps) {
       type="button"
       onClick={() => void handleClick()}
       className={cn(
-        "rounded-full border-2 border-foreground bg-primary px-6 py-2 text-sm font-bold text-primary-foreground",
+        "rounded-lg bg-primary px-5 py-2.5 font-display text-sm font-bold text-primary-foreground",
         "transition-transform hover:-translate-y-0.5 active:translate-y-0",
       )}
     >
