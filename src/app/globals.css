@@ -10,6 +10,29 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-geist-sans);
+  /* V2 type system — see DESIGN.md § Type. font-sans (Geist) is unchanged
+     and stays the body default; these add headline and marginalia faces
+     without touching anything that already uses font-sans. */
+  --font-display: var(--font-archivo);
+  --font-hand: var(--font-caveat);
+  /* V2 palette additions — see DESIGN.md § Tokens. Additive: nothing here
+     redefines an existing shadcn token, so no currently-shipped V1 screen
+     changes appearance. Pages adopt these deliberately as they're ported. */
+  --color-lime: var(--lime);
+  --color-lime-deep: var(--lime-deep);
+  --color-down: var(--down);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-hairline: var(--hairline);
+  --color-hairline-2: var(--hairline-2);
+  --shadow-card: var(--shadow-card-raw);
+  --shadow-lift: var(--shadow-lift-raw);
+  /* V2's card/panel radius (18px). Deliberately not folded into the
+     existing --radius scale below: that scale derives every step from
+     --radius (12px) by multiplication, and 18px isn't on that curve. V2
+     keeps buttons and inputs at 12px (rounded-lg, already 1:1 with
+     --radius) and gives cards and panels their own step instead. */
+  --radius-card: 1.125rem;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -78,6 +101,25 @@
   --loser: oklch(0.65 0 0); /* #9CA3AF-ish */
   --rank-second: oklch(0.6 0.19 255); /* cobalt blue — Side Character */
   --rank-third: oklch(0.6 0.2 320); /* magenta — Plot Twist */
+
+  /* V2 tokens — see DESIGN.md § Tokens. Lime is the celebration/action
+     accent (primary CTA, marker swipe, #1 podium, check badges) and is
+     never used to render a number. Aura orange above stays a *value*
+     colour and never fills a button — the two accents don't swap jobs. */
+  --lime: #d8ff3e;
+  --lime-deep: #c4ee1f; /* hover only */
+  --down: #dc3b40; /* negative rank movement — distinct from --loser,
+                       which means "lost a battle", not "rank fell" */
+  --ink-soft: #6b6b66; /* body meta, labels — same value as --muted-foreground,
+                           named separately because V2 components reference it
+                           by this name directly, matching DESIGN.md's table */
+  --ink-faint: #a5a59d; /* timestamps, disabled, third tier — no V1 equivalent */
+  --hairline: rgb(17 17 17 / 10%); /* default divider / card edge */
+  --hairline-2: rgb(17 17 17 / 16%); /* table header rule, input border */
+  --shadow-card-raw:
+    0 1px 2px rgb(17 17 17 / 4%), 0 12px 28px -10px rgb(17 17 17 / 16%);
+  --shadow-lift-raw:
+    0 2px 4px rgb(17 17 17 / 5%), 0 22px 42px -14px rgb(17 17 17 / 22%);
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
   --chart-3: oklch(0.439 0 0);
@@ -137,5 +179,102 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Scribble — the handwritten marginalia primitive. See DESIGN.md §
+   Components and src/components/scribble.tsx, which sets --scribble-top*
+   per instance via inline style. Rules kept in one place, deliberately
+   last in this file: page-specific overrides carry no more specificity
+   than these, so anything declared after them would win by source order.
+   --------------------------------------------------------------------- */
+
+@layer components {
+  .scribble {
+    position: absolute;
+    width: 150px;
+    font-family: var(--font-hand);
+    font-weight: 700;
+    font-size: 18px;
+    line-height: 1.12;
+    color: var(--ink-soft);
+    letter-spacing: 0.03em;
+    pointer-events: none;
+    text-transform: uppercase;
+  }
+  .scribble-left {
+    left: 0;
+    top: var(--scribble-top, 96px);
+    transform: rotate(-8deg);
+    text-align: left;
+  }
+  .scribble-right {
+    right: 0;
+    top: var(--scribble-top, 52px);
+    transform: rotate(6deg);
+    text-align: right;
+  }
+  .scribble svg {
+    display: block;
+    margin-top: 4px;
+    color: var(--ink-faint);
+  }
+  .scribble-right svg {
+    margin-left: auto;
+  }
+
+  @media (max-width: 1040px) {
+    .scribble {
+      width: 116px;
+      font-size: 13.5px;
+      line-height: 1.16;
+    }
+    .scribble svg {
+      width: 52px;
+      height: auto;
+    }
+    .scribble-left {
+      top: var(--scribble-top-1040, 84px);
+    }
+    .scribble-right {
+      top: var(--scribble-top-1040, 44px);
+    }
+  }
+
+  @media (max-width: 760px) {
+    /* The arrow costs more width than it earns at this size; the
+       underline survives because it still points at nothing in
+       particular, unlike an arrow with no room to aim. */
+    .scribble {
+      width: 84px;
+      font-size: 11px;
+      letter-spacing: 0.01em;
+    }
+    .scribble svg {
+      display: none;
+    }
+    .scribble-left {
+      left: -8px;
+      top: var(--scribble-top-760, 62px);
+    }
+    .scribble-right {
+      right: -8px;
+      top: var(--scribble-top-760, 34px);
+    }
+  }
+
+  @media (max-width: 560px) {
+    .scribble {
+      width: 66px;
+      font-size: 9.5px;
+      line-height: 1.12;
+    }
+    .scribble-left {
+      top: var(--scribble-top-560, 54px);
+    }
+    .scribble-right {
+      top: var(--scribble-top-560, 30px);
+    }
   }
 }
