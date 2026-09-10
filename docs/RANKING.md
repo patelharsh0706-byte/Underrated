@@ -184,6 +184,24 @@ Rules:
 Rank is position by `aura desc`, among **ranked** creators only (see
 Placement below). Always derived, never stored.
 
+### Rank movement
+
+Movement — "climbed to #4", "↑ 3", "took the #1 spot" — is **not** derivable
+from the schema as it stands, and no amount of querying `battles` recovers it.
+Rank depends on where every *other* creator sits, so a creator's past rank
+cannot be reconstructed from their own past Aura: everyone moves when anyone
+moves. The only way to know yesterday's rank is to have written it down
+yesterday.
+
+That is the `rank_snapshots` table in [DATABASE.md](DATABASE.md) — designed,
+deliberately unbuilt. Until it exists, no surface may show a rank delta.
+A trend column that needs a number today should show **24h Aura change**
+instead, which *is* derivable from the `aura_*_after` columns on every battle
+row, and which is a different claim honestly made.
+
+This is a display concern, not ranking math: nothing here changes how Aura or
+rank is computed.
+
 ## Placement
 
 A creator needs enough battles **and** enough different people before they get

@@ -108,16 +108,29 @@ says `competitions`.
 | Elo match         | Battle                      |
 | User being ranked | Creator                     |
 | Daily #1          | Main Character              |
+| Leaderboard #2    | Side Character              |
+| Leaderboard #3    | Plot Twist                  |
 | Advertising       | Spotlight / Underhyped Spot |
 | Vote              | Pick                        |
 | Rank              | Rank                        |
 | Pool              | Arena                       |
+| Distinct voters   | People deciding             |
 
 Additional terms:
 
 - **Pool** — the set of active creators eligible for battles.
 - **Daily Heat** — today's performance signal that decides Main Character. See [RANKING.md](RANKING.md).
 - **Discover** — the browse surface for creators outside the leaderboard.
+- **Placement** — a new creator's first 10 battles, before they get a rank. Shown
+  as "New challenger". See [RANKING.md](RANKING.md) § Placement.
+- **Rank titles** — Main Character / Side Character / Plot Twist label the top
+  three on the leaderboard. Main Character is the daily #1 by Daily Heat and is
+  the only one of the three with ranking logic behind it; the other two are
+  labels for positions 2 and 3.
+- **People deciding** — how many different people have judged battles, as
+  distinct voter sessions. Not the same number as battles fought, and never
+  described as "votes" — one battle row *is* one pick, so the two would be
+  identical. See [DECISIONS.md](DECISIONS.md) § 2026-09-10.
 
 ## Success Metrics
 

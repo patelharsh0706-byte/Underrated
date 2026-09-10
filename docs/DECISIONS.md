@@ -292,3 +292,130 @@ one.
 Self-hosting or a first-party proxy route to dodge ad blockers — real data
 loss, but it means owning an endpoint and a CSP surface for a number that
 only informs marketing. Not worth it at V1.
+
+## 2026-09-10 — V2 visual direction
+
+Decision:
+Adopt the V2 design language captured in the design mockup, and record it as
+version 2 of [DESIGN.md](DESIGN.md). Six changes to V1's visual rules:
+
+1. **Lime `#D8FF3E` joins the palette** as the celebration/action accent. The
+   primary CTA, the #1 podium card, the headline marker swipe and the
+   post-payment check badge are lime. Aura orange stays a *value* colour — the
+   Aura number and the "new challenger" state — and is never a button fill.
+2. **Hairlines and soft shadows replace the universal 2px black border.** Card
+   radius moves 12px -> 18px; buttons and inputs stay at 12px. A black border
+   now means "selected", not "this is a card".
+3. **Three type families instead of one** — Archivo for display, Geist for
+   body, Caveat for marginalia.
+4. **Handwritten marginalia becomes a brand element** — two rotated pen notes
+   per page in the outer margins, with hand-drawn SVG arrows, going inline and
+   centred below 1040px.
+5. **Avatars are circular in list contexts, square in identity contexts** —
+   circles for leaderboard rows, facepiles and podium cards; squares for the
+   profile page, the post-payment card and battle portraits.
+6. **The battle pair stays side by side at every width.** The cards shed
+   detail on a phone instead of stacking.
+
+Two UX rules in DESIGN.md are amended as a consequence: rule 1 (which forbade
+any hero above the battle) now permits a single headline and subhead, and
+rule 4 (which required the pair to stack on mobile) is reversed. Both are
+marked in place rather than deleted.
+
+Why:
+Every one of these came out of review on the mockup, several by explicit
+instruction, and the mockup is now the agreed direction for the whole site.
+Leaving DESIGN.md describing V1 would put the codebase permanently at odds
+with its own documentation: AGENTS.md makes DESIGN.md authoritative, so the
+next session reading it would "correct" the shipped V2 UI back toward V1 and
+think it was fixing drift. Recording the change is what makes it a decision
+rather than an accident.
+
+Rules 1 and 4 are the two that most deserve the marked-in-place treatment,
+because both were written for good reasons and were overridden on evidence —
+rule 4 in particular after the stacked mobile layout was seen to break the
+side-by-side comparison the pick depends on.
+
+Rejected:
+Deleting the superseded V1 lines outright — cheaper to read, but it loses the
+fact that a deliberate call was made, which is the entire purpose of this log.
+
+Keeping V1's 2px-black-border card treatment and applying lime on top — the
+two do not sit together; the border language is loud enough that lime reads as
+a third competing element rather than the accent.
+
+Introducing lime *instead of* Aura orange to avoid a two-accent palette —
+rejected because Aura is the product's core number and its colour is load-
+bearing across the leaderboard, the battle cards and the profile. The split
+(lime = action, orange = value) is a rule, not a compromise.
+
+## 2026-09-10 — "Live on Underhyped" replaces the stats bar
+
+Decision:
+Rebuild the homepage live stats bar as a full section below Hottest 10: four
+large counters, a live online indicator, and a "Just happened" activity
+ticker. It supersedes the existing `ArenaStatsBar` component, which is
+deleted rather than kept alongside — it already showed battles and creators.
+
+The four counters are **battles fought**, **creators in the Arena**, **people
+deciding**, and **nominations**. Three of the four are real today:
+`getHomeStats()` already returns `battlesSoFar`, `creatorsInArena` and
+`onlineNow`; "people deciding" is one new `count(distinct voter_session)`.
+
+Why:
+The section's job is social proof, not analytics: someone should read it and
+conclude that people are actually competing here. Lifetime totals are the
+right choice at this stage because they are the larger numbers; once daily
+activity is consistently strong, these should quietly switch to "today" or
+"this week", because "726 votes today" is more alive than "8,943 votes since
+launch". That switch is a content change, not a rebuild.
+
+**"Votes cast" is deliberately not one of the four.** In this schema one
+`battles` row *is* one pick — it carries `voter_session` and `winner_id`
+together — so a votes counter and a battles counter would render the identical
+number in two adjacent cards. "People deciding" (distinct voter sessions) is
+a genuinely different number and makes the stronger claim: real humans, not
+just events. If a large "votes cast" figure is wanted later, the fix is
+upstream — log every pairing *shown* as an impression, separate from the pick,
+at which point impressions and picks diverge honestly.
+
+The **nominations** counter and the "was nominated" ticker row depend on a
+feature that does not exist; see the entry below. They stay in the mockup and
+out of production until it does.
+
+Two ticker rows — "climbed to #4" and "took the #1 spot" — need the
+`rank_snapshots` table described in [DATABASE.md](DATABASE.md). Everything
+else in the feed is derivable today: joins from `getRecentJoins()`, wins from
+a battles join, and Aura milestones from the `aura_*_after` columns already on
+every battle row.
+
+Rejected:
+Keeping `ArenaStatsBar` above the battle as well — two places on one page
+reporting the same two numbers, one of them worse.
+
+Showing "votes cast" anyway, as a synonym for battles — reads as padding the
+moment anyone compares the two cards.
+
+## 2026-09-10 — Nominations are not V1
+
+Decision:
+Nominations — one person putting another creator into the Arena — are not in
+V1. No table, no route, no UI. The idea moves to [ROADMAP.md](ROADMAP.md), and
+[MVP.md](MVP.md) records it under NOT V1 so the question is settled in the
+scope contract rather than reopened each time it appears in a mockup.
+
+Why:
+It has surfaced three times in design review — a "Nominate" nav item, a
+"nominate a friend" strip on the welcome screen, and a nominations counter in
+the live section — and each time there was nothing behind it. Writing it down
+as out of scope is cheaper than re-deciding it every session.
+
+It is also a genuinely different product surface, not a small addition: a
+nominated creator has no payment, no consent, and no profile they control,
+which touches the entry-fee invariant, moderation, and the "creators cannot be
+added without paying" rule at once.
+
+Rejected:
+Building a minimal version now — the interesting questions (does a nomination
+skip the fee, can someone refuse one, what stops a mass-nomination farm) are
+exactly the ones a minimal version would have to answer anyway.

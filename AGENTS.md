@@ -71,11 +71,18 @@ Never mix the two vocabularies in one layer.
 | Elo match         | Battle                    |
 | User being ranked | Creator                   |
 | Daily #1          | Main Character            |
+| Leaderboard #2/#3 | Side Character / Plot Twist |
 | Advertising       | Spotlight / Underhyped Spot |
 | Vote              | Pick                      |
 | Rank              | Rank                      |
+| Pool              | Arena                     |
+| Distinct voters   | People deciding           |
 
 Full definitions: [docs/PRODUCT.md](docs/PRODUCT.md).
+
+Never write "votes cast" as a number. One battle row is one pick, so it would
+render the same figure as "battles fought" — use "people deciding" (distinct
+voter sessions) instead.
 
 ## Scope
 
@@ -116,6 +123,9 @@ Paid sponsorship must never influence creator ranking.
 - Schema changes go in [docs/DATABASE.md](docs/DATABASE.md) first, then the code.
 - Ranking math changes go in [docs/RANKING.md](docs/RANKING.md) first, then the code.
 - Visual decisions come from [docs/DESIGN.md](docs/DESIGN.md). Do not invent brand.
+  DESIGN.md is at **version 2**; where it marks a rule as "Changed in V2", the
+  V2 rule is current and the V1 line is kept only so the change reads as
+  deliberate. Do not "restore" it.
 - Architectural choices get logged in [docs/DECISIONS.md](docs/DECISIONS.md).
 - No secrets in code. Every secret goes through `.env.example`.
 
