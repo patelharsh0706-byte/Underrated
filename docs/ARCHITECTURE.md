@@ -265,6 +265,13 @@ it can be tested directly. See [RANKING.md](RANKING.md).
 - Local: Supabase project (or `supabase start` locally), `.env.local`
 - Production: Vercel, production Supabase project
 
+**Functions run in Tokyo (`hnd1`), pinned in `vercel.json`.** The Supabase
+project is in `ap-northeast-1`, and Vercel's default region is Washington
+(`iad1`). Left on the default, every query crossed the Pacific and the
+homepage's parallel stat queries stalled until Postgres cancelled them. If
+the database ever moves region, move this with it. See DECISIONS.md
+§ 2026-09-11 "Vercel functions pinned to the database's region".
+
 Secrets only via env vars declared in `.env.example`. Never commit `.env`.
 
 ## Quality Gates

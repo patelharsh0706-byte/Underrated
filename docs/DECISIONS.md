@@ -747,3 +747,34 @@ Rejected:
 - Adding the active-route highlight to the desktop nav at the same time —
   it would make `SiteHeader` a Client Component on every page for a state
   the mobile island already renders. Still deferred.
+
+## 2026-09-11 — Vercel functions pinned to the database's region
+
+Decision:
+`vercel.json` sets `regions: ["hnd1"]` (Tokyo), the Vercel region closest
+to the Supabase project in `ap-northeast-1`. Recorded in ARCHITECTURE.md
+§ Environments.
+
+Why:
+Production `/` returned 500 after the V2 merge. Runtime logs showed
+`canceling statement due to statement timeout` on
+`select count(distinct voter_session) from battles` — a table of 271 rows.
+`pg_stat_activity` showed a backend `active` on `ClientRead` for over five
+minutes on an equally trivial `count(*)`: Postgres had received the start
+of a query and was waiting for the rest to arrive from the client. The
+client was a Vercel function in `iad1` (Washington) talking to a database
+in Tokyo; with six parallel queries per homepage request, each needing its
+own TLS and auth round trips across the Pacific, connections stalled and
+the statement timer — which starts on the first packet — ran out. The
+other routes survived only because they issue fewer queries.
+
+The same mismatch was behind the ~15 s homepage loads seen during
+development, which were previously written off as "Supabase latency".
+
+Rejected:
+- Raising `statement_timeout` — hides the stall instead of removing it,
+  and Vercel's own 300 s function limit still applies.
+- Moving the Supabase project to us-east — a database migration to fix a
+  one-line hosting setting.
+- Collapsing the six homepage stat queries into one — worth doing, but as
+  an optimisation after the region is right, not as the fix.
