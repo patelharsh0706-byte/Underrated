@@ -277,4 +277,21 @@
       top: var(--scribble-top-560, 30px);
     }
   }
+
+  /* Mobile nav panel entrance — DESIGN.md § Components "Mobile nav". */
+  @media (prefers-reduced-motion: no-preference) {
+    .nav-drop {
+      animation: nav-drop 180ms ease-out;
+    }
+  }
+  @keyframes nav-drop {
+    from {
+      opacity: 0;
+      transform: translateY(-6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
 }

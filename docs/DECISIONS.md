@@ -419,3 +419,34 @@ Rejected:
 Building a minimal version now — the interesting questions (does a nomination
 skip the fee, can someone refuse one, what stops a mass-nomination farm) are
 exactly the ones a minimal version would have to answer anyway.
+
+## 2026-09-11 — Mobile nav collapses into a dropdown
+
+Decision:
+Below `sm` the header's four nav links move behind a hamburger button. The
+open state is a panel that drops in flow under the masthead row (wordmark ·
+Enter-the-arena pill · hamburger), pushing the page down rather than
+covering it. The pill stays in the header; only the nav links live in the
+menu. The current route renders in Aura orange inside the panel. Full rule
+in DESIGN.md § Components "Mobile nav".
+
+Why:
+The V2 shell's mobile header wrapped the nav onto a second full-width row
+under the wordmark and CTA. That row cost ~40px of the first phone viewport
+on every page — directly against UX rule 1 (the battle must be visible
+without scrolling) and rule 4 (mobile first). A hamburger costs nothing
+until it is tapped, and the panel is one tap away on every page.
+
+Rejected:
+- A full-screen sheet or overlay menu — covers the battle, needs a backdrop,
+  scroll lock, and a focus trap. Heavier than a four-link nav deserves.
+- Moving "Enter the arena" into the menu — buries the one money link
+  behind a tap. It fits on the masthead row next to the hamburger.
+- Radix `DropdownMenu` (already a dependency via `radix-ui`) — a floating,
+  positioned action menu with roving-focus semantics, the wrong shape for
+  in-flow site navigation. A `useState` client island is ~40 lines.
+- Native `<details>/<summary>` — zero JS, but it cannot close on route
+  change and cannot animate the panel in cleanly.
+- Adding the active-route highlight to the desktop nav at the same time —
+  it would make `SiteHeader` a Client Component on every page for a state
+  the mobile island already renders. Still deferred.

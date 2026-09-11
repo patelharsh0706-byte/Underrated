@@ -164,6 +164,23 @@ word the page is actually about.
 **Icon rings** — 54–60px circle, ground fill, hairline border, 22–25px icon at
 2.2 stroke. Used for step and feature rows.
 
+**Mobile nav** — below `sm` the header's four links (Arena / Leaderboard /
+About / Rules) collapse behind a 40px hamburger button at the right of the
+masthead row: wordmark lockup · Enter-the-arena pill · hamburger. The pill
+never leaves the header; the menu holds only the nav links. Tapping the
+hamburger drops a panel *in flow* under the masthead — ground fill, hairline
+rule above and below, links stacked on the 4px scale — and pushes the page
+down rather than covering it. There is no backdrop, no scroll lock, no
+full-screen sheet: the battle stays visible behind an open menu. Links are
+Display 800, 28px, `-0.03em` tracking, sentence case (never uppercase — the
+size carries it; uppercase tracking is for Micro labels). The current route
+renders in Aura orange, the rest in ink: a state, not a button, so it keeps
+the two-accents rule. The hamburger becomes an × while open; the panel closes
+on navigation, Escape, or the ×. Entrance is a 180ms fade + 6px slide,
+gated by `prefers-reduced-motion`. The desktop nav is untouched and still
+has no active-route highlight — that would put the whole header client-side
+for a state the mobile island already carries.
+
 **Spacing** — 4px base scale (4 / 8 / 12 / 16 / 24 / 32 / 48 / 64). Generous
 whitespace around the battle. Dense is fine on the leaderboard.
 
