@@ -129,6 +129,10 @@ gradients, no blur.
 **Buttons**
 
 - Primary action — lime fill, ink text, 14px radius, chunky. Full-width on mobile.
+  The homepage "Enter the Arena" instance carries a soft lime drop glow and
+  sits cardless on the open ground between the pulse row and the stats bar —
+  no heading, no subhead, no box. It is the only weight in that band, and a
+  card around it would put a second box directly under the two battle cards.
 - Secondary — surface fill, hairline border, ink text.
 - Ink — solid `#111111` with white text, for in-card actions like the pick button.
 - Ghost — underlined text, no chrome, for escape hatches ("Start over").
@@ -138,13 +142,57 @@ gradients, no blur.
 
 **Avatars** — circular in list and podium contexts (leaderboard rows, facepiles,
 podium cards); square with 12px radius in identity contexts (profile page, the
-post-payment card, battle portraits). The rule is: a circle when the face is one
-of many in a row, a square when the face *is* the subject.
+post-payment card). The rule is: a circle when the face is one of many in a
+row, a square when the face *is* the subject.
 
-> **Changed in V2.** V1 said square with rounded corners, never circles.
+**Battle portraits are the one exception to the square rule** — a rectangular
+5:4 photo-forward banner crop, full-bleed at the top of the card,
+`object-position: top` so a tight crop never cuts off a head. The battle
+card's whole point is putting two people's work in front of you side by side;
+a bigger, wider photo carries that better than a small square headshot does.
+
+> **Changed in V2.** V1 said square with rounded corners, never circles. V2
+> made every identity context square — then made battle portraits rectangular
+> again on review, once seen next to the mockup. See DECISIONS.md § 2026-09-10
+> "Battle portraits go rectangular".
 
 **Chips** — pill, surface fill, hairline border. Selected state inverts to ink
 fill with white text. Used for leaderboard filters and category labels.
+
+**Ranked tables** — the homepage Top 10 is a table, not a stack of cards:
+hairline row rules, no card chrome, uppercase letter-spaced column headers
+(`# / Creator / Category / Aura / Trend`), row tint on hover. The rank number
+takes the rank-title colour for the top three (Aura orange, blue, purple) so
+the podium reads without the badge. Aura is `🔥 1555`; Trend is an arrow plus
+Aura moved today, green up / red down, em dash when there is no number for
+that creator today. Below `sm` the table drops Category and Trend rather than
+scrolling sideways — Aura is the number people came for and must never sit
+off-screen. Trend never shows rank movement; see DECISIONS.md § 2026-09-10
+"The Trend column shows Aura moved today, not rank movement".
+
+**Work links** — the project's real favicon/logo in a rounded square, then
+the bare host, then a chevron. When no logo resolves it becomes a solid
+colour mark with the host's initial — the colour is derived from the host, so
+it is stable per creator without being stored. Both states are the same size,
+so a missing logo never shifts the row.
+
+**Facepiles** — circular avatars, 32px, overlapping by ~10px, 2px ground-
+coloured ring to separate them, each one a link to that creator's profile.
+Used beside the pick counter under the battle. They show creators, never
+voters — voting is anonymous and has no face to show.
+
+**Live panel** — one card, three stacked bands separated by hairlines: an
+uppercase letter-spaced title with a green dot and the online count on the
+right; a four-up grid of stat tiles (ground fill, hairline border, 12px
+radius, big black number with its emoji inline on the baseline, quiet label
+under it); and the `JUST HAPPENED` feed. Feed rows are a fixed-width emoji
+column, a sentence where only the names are bold and the connecting words are
+ink-soft, and a right-aligned relative timestamp — hairline between rows, no
+highlight on the newest one, no inner scroll. Rows are capped at six; the
+panel shows what just happened, not a log. Every event in it is something that
+actually happened to a creator — no rank movement, no counters for features
+that do not exist. See DECISIONS.md § 2026-09-10 "The Live panel's fourth tile
+is picks today, not nominations".
 
 **Badges** — `New challenger` is Aura orange on a 12%-alpha Aura tint.
 `Main Character` / `Side Character` / `Plot Twist` are solid-fill rank titles on
@@ -234,11 +282,11 @@ page-by-page reinvention.
 
 | Surface | Route | V2 state |
 | ------- | ----- | -------- |
-| Arena | `/` | headline, battle pair, pulse row, CTA, three-up, sponsor, Hottest 10, Live on Underhyped |
+| Arena | `/` | headline, battle pair, pulse row, CTA, stats bar, three-up, sponsor, Hottest 10, Live on Underhyped |
 | Leaderboard | `/leaderboard` | scope + category filters, top-3 podium, ranked table, load more |
 | Profile | `/c/[username]` | identity card, Aura / placement / wins stat row, links |
 | Enter the Arena | `/submit` | two-link form, preview, category pick, edit |
-| Welcome | `/submit/success` | post-payment card, "what happens next", Explore the Arena |
+| Welcome | `/submit/success` | check badge, post-payment card, placement progress, "what happens next", Explore the Arena, share panel |
 | About | `/about` | manifesto, "three things money doesn't buy" |
 | Rules | `/rules` | numbered rules list, finale panel |
 

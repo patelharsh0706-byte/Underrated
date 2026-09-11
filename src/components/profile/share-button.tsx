@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 
 interface ShareButtonProps {
   url: string;
+  /** The welcome screen asks for the link by name; the profile page doesn't. */
+  label?: string;
 }
 
 /**
@@ -41,7 +43,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-export function ShareButton({ url }: ShareButtonProps) {
+export function ShareButton({ url, label = "Share profile" }: ShareButtonProps) {
   const [status, setStatus] = useState<"idle" | "copied" | "failed">("idle");
 
   const handleClick = async () => {
@@ -65,11 +67,11 @@ export function ShareButton({ url }: ShareButtonProps) {
       type="button"
       onClick={() => void handleClick()}
       className={cn(
-        "rounded-lg bg-primary px-5 py-2.5 font-display text-sm font-bold text-primary-foreground",
+        "rounded-[10px] bg-primary px-[18px] py-2.5 font-display text-sm font-bold whitespace-nowrap text-primary-foreground",
         "transition-transform hover:-translate-y-0.5 active:translate-y-0",
       )}
     >
-      {status === "copied" ? "Copied!" : status === "failed" ? "Couldn't copy" : "Share profile"}
+      {status === "copied" ? "Copied ✓" : status === "failed" ? "Couldn’t copy" : label}
     </button>
   );
 }

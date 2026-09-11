@@ -1,10 +1,13 @@
 "use client";
 
+import Image from "next/image";
+import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { nextBattle, pickWinner, type PickResult } from "@/app/actions/battle";
 import { CreatorCard } from "@/components/battle/creator-card";
 import type { PublicCreator } from "@/lib/db/queries";
+import { cn } from "@/lib/utils";
 
 type Pair = [PublicCreator, PublicCreator];
 
@@ -12,11 +15,26 @@ const RESULT_DISPLAY_MS = 700;
 // A pick that didn't score needs long enough to read the reason.
 const REPEAT_DISPLAY_MS = 1400;
 
-interface BattleArenaProps {
-  initialPair: Pair;
+/**
+ * A face in the pulse row. These are creators who were picked in today's
+ * battles — never voters. Voting is anonymous by design (no account required
+ * to play), so voter faces do not exist and never will; each avatar links to
+ * the creator's profile so what it represents is self-evident.
+ */
+export interface PulseFace {
+  username: string;
+  name: string;
+  avatarUrl: string | null;
 }
 
-export function BattleArena({ initialPair }: BattleArenaProps) {
+interface BattleArenaProps {
+  initialPair: Pair;
+  /** Real count from getHomeStats(). */
+  battlesToday: number;
+  faces: PulseFace[];
+}
+
+export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaProps) {
   const [current, setCurrent] = useState<Pair>(initialPair);
   const [result, setResult] = useState<PickResult | null>(null);
   const [phase, setPhase] = useState<"idle" | "picking" | "result">("idle");
@@ -161,6 +179,48 @@ export function BattleArena({ initialPair }: BattleArenaProps) {
             You&apos;ve already called this one — Aura unchanged.
           </span>
         ) : null}
+      </div>
+
+      <div className="flex w-full flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm text-ink-soft">
+        {faces.length > 0 ? (
+          <span className="flex items-center">
+            {faces.map((face, i) => (
+              <Link
+                key={face.username}
+                href={`/c/${face.username}`}
+                title={`${face.name} — picked today`}
+                className={cn(
+                  "relative block h-8 w-8 overflow-hidden rounded-full border-2 border-background bg-muted transition-transform hover:z-10 hover:-translate-y-0.5",
+                  i > 0 && "-ml-2.5",
+                )}
+              >
+                {face.avatarUrl ? (
+                  <Image
+                    src={face.avatarUrl}
+                    alt={face.name}
+                    fill
+                    sizes="32px"
+                    className="object-cover"
+                    unoptimized
+                  />
+                ) : null}
+              </Link>
+            ))}
+          </span>
+        ) : null}
+
+        <span className="font-display font-extrabold tracking-tight text-foreground">
+          {battlesToday.toLocaleString()} picks today
+        </span>
+
+        <button
+          type="button"
+          onClick={() => void advance()}
+          disabled={phase !== "idle"}
+          className="text-ink-soft transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+        >
+          Skip this battle →
+        </button>
       </div>
     </div>
   );

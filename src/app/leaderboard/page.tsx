@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 
 import { LeaderboardBoard } from "@/components/leaderboard/leaderboard-board";
-import { MarkerSwipe } from "@/components/leaderboard/marker-swipe";
+import { MarkerSwipe } from "@/components/marker-swipe";
 import type { BoardEntry } from "@/components/leaderboard/types";
 import { Scribble } from "@/components/scribble";
 import { getLeaderboard, getTop24h } from "@/lib/db/queries";
+import { isMockMode, mockLeaderboard, mockTop24h } from "@/lib/db/mock-data";
 
 // Aura changes with every pick; a short revalidate window keeps this page
 // mostly cached without ever going stale for long. See ARCHITECTURE.md.
@@ -24,7 +25,11 @@ export default async function LeaderboardPage() {
   // definition (RANKING.md § Main Character); the id is threaded down so
   // that fact only gets applied to whoever it's actually true of, even once
   // scope/category filtering moves people to different positions client-side.
-  const [leaderboard, dailyHeat] = await Promise.all([getLeaderboard(100), getTop24h(100)]);
+  // PREVIEW_MOCK=1 — see src/lib/db/mock-data.ts. Temporary, for viewing
+  // the frontend without a live database.
+  const [leaderboard, dailyHeat] = isMockMode()
+    ? [mockLeaderboard(100), mockTop24h()]
+    : await Promise.all([getLeaderboard(100), getTop24h(100)]);
 
   const mainCharacterId = dailyHeat[0]?.id ?? null;
 

@@ -1,11 +1,18 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { PlacementProgress } from "@/components/profile/placement-progress";
 import { ShareButton } from "@/components/profile/share-button";
+import { getAppOrigin } from "@/lib/app-url";
 import { getCreatorByUsername } from "@/lib/db/queries";
+import { isMockMode, mockCreatorProfile } from "@/lib/db/mock-data";
+
+// PREVIEW_MOCK=1 — see src/lib/db/mock-data.ts. Temporary, for viewing the
+// frontend without a live database.
+async function fetchCreator(username: string) {
+  return isMockMode() ? mockCreatorProfile(username) : getCreatorByUsername(username);
+}
 
 export const revalidate = 15;
 
@@ -15,7 +22,7 @@ interface ProfilePageProps {
 
 export async function generateMetadata({ params }: ProfilePageProps): Promise<Metadata> {
   const { username } = await params;
-  const creator = await getCreatorByUsername(username);
+  const creator = await fetchCreator(username);
   if (!creator) return {};
 
   const title = `${creator.name} — Underhyped`;
@@ -34,17 +41,12 @@ export async function generateMetadata({ params }: ProfilePageProps): Promise<Me
 
 export default async function ProfilePage({ params }: ProfilePageProps) {
   const { username } = await params;
-  const creator = await getCreatorByUsername(username);
+  const creator = await fetchCreator(username);
   if (!creator) notFound();
 
-  // Derived from the request itself rather than NEXT_PUBLIC_APP_URL — that
-  // env var went stale across the underrated.lol -> underhyped.wtf domain
-  // move and, being required by clientEnv()'s schema, crashed this whole
-  // page in production the moment it was unset/wrong. The host header always
-  // matches whatever domain actually served the request.
-  const host = (await headers()).get("host");
-  const protocol = host?.startsWith("localhost") ? "http" : "https";
-  const profileUrl = `${protocol}://${host}/c/${creator.username}`;
+  // See getAppOrigin — deliberately not NEXT_PUBLIC_APP_URL, which took this
+  // page down in production once already.
+  const profileUrl = `${await getAppOrigin()}/c/${creator.username}`;
   const socials = creator.socials ? Object.entries(creator.socials) : [];
 
   return (

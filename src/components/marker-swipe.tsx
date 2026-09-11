@@ -2,10 +2,9 @@ import type { ReactNode } from "react";
 
 /**
  * A lime highlighter stroke behind one word of the headline — see DESIGN.md
- * § Components › Marker swipe. One word per page; this page's word is
- * "creators." Scoped locally rather than promoted to a shared primitive
- * since it wasn't part of the Phase 1 primitive set (fonts/tokens/Scribble)
- * this rebuild is layered on — promote it if a second page needs it.
+ * § Components › Marker swipe. One word per page: "creators." on the
+ * leaderboard, "radar." / "card." / "in." across the Enter the Arena steps.
+ * Promoted out of components/leaderboard once that second page needed it.
  */
 export function MarkerSwipe({ children }: { children: ReactNode }) {
   return (

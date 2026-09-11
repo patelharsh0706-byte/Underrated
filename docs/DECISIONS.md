@@ -420,6 +420,303 @@ Building a minimal version now — the interesting questions (does a nomination
 skip the fee, can someone refuse one, what stops a mass-nomination farm) are
 exactly the ones a minimal version would have to answer anyway.
 
+## 2026-09-10 — Battle portraits go rectangular
+
+Decision:
+Battle-card portraits switch from square (12px radius, the V2 default for
+every identity context) to a rectangular 5:4 banner crop, full-bleed at the
+top of the card, `object-position: top`. This is the one identity context
+that stays rectangular; the profile page and the post-payment welcome card
+keep the square treatment DESIGN.md otherwise specifies.
+
+Why:
+Phase 3a's port followed DESIGN.md's stated rule literally — square
+everywhere identity is the subject, which at the time included battle
+portraits. Reviewed side by side against the design mockup, the wider 5:4
+crop reads better specifically on the battle card: the whole surface is
+built around comparing two people's work at a glance, and a bigger, wider
+photo carries that better than a small square headshot. This is a case where
+the documented rule was reasonable in the abstract but wrong for this one
+surface once seen rendered.
+
+Rejected:
+Keeping it square for consistency with every other identity context —
+consistency isn't a good enough reason on its own once the wider crop is
+visibly the better choice for this specific card, and DESIGN.md already
+carries an explicit exception mechanism for exactly this ("Changed in V2"
+call-outs) rather than requiring uniformity for its own sake.
+
+## 2026-09-10 — The Trend column shows Aura moved today, not rank movement
+
+Decision:
+The homepage Top 10 becomes a five-column table (`# / Creator / Category /
+Aura / Trend`), matching the design mockup. Its Trend column shows **Aura
+gained or lost today**, not rank movement. A creator with no battles today —
+including anyone padded in from the all-time leaderboard when fewer than ten
+qualify — gets an em dash, not a zero.
+
+The number is summed from the `aura_*_after` / `aura_*_before` columns of
+today's battles, folded into the aggregate `getTop24h()` already runs, so the
+column costs no extra query.
+
+Why:
+The mockup's Trend column shows small integers with up/down arrows, which
+reads as rank movement ("↑ +1" = climbed one place). Rank movement is not
+derivable from this schema and never will be without the `rank_snapshots`
+table, which [MVP.md](MVP.md) lists under NOT V1 and [DATABASE.md](DATABASE.md)
+specs as deliberately unbuilt. [RANKING.md](RANKING.md) § Rank movement
+already anticipated this exact situation and named the answer: a trend column
+that needs a number today shows 24h Aura change, "which *is* derivable ...
+and which is a different claim honestly made." This implements that.
+
+The visual is identical to the mockup — arrow, colour, alignment. Only the
+claim underneath it is different, and it is one we can actually stand behind.
+
+Rejected:
+- Building `rank_snapshots` to get literal rank movement — it is out of scope
+  by the MVP contract, and needs a daily capture job, not just a table.
+- Showing Daily Heat (today's win−loss differential) in the column instead.
+  It is already fetched and its magnitudes match the mockup's small integers
+  more closely, but sitting directly beside an Aura column, "+3" reads as
+  three Aura, which is wrong by an order of magnitude.
+- Dropping the column. It is real information and the design has a slot for it.
+
+## 2026-09-10 — Pulse-row faces are creators, never voters
+
+Decision:
+The facepile beside "N picks today" shows creators who were picked in today's
+battles — the top of the Daily Heat list — and each avatar links to that
+creator's profile. It renders only when someone has qualified today; with no
+qualifiers it is omitted rather than backfilled.
+
+Why:
+In the mockup the faces beside a pick count read as the people who did the
+picking. Those faces cannot exist here: voting is anonymous by design — no
+account is required to play, which is the whole point of the loop — so there
+is no identity or avatar attached to a voter session, and there never will be
+while that holds. Showing invented faces there would be fabricating the one
+thing the product deliberately does not collect.
+
+Creators who were picked today are real, already fetched with `getTop24h()`,
+and are the people the row is actually about. Linking each avatar to a profile
+makes what they are self-evident rather than leaving it ambiguous.
+
+Rejected:
+- Generic silhouettes or generated avatars as stand-in voters — fabricated
+  participants, which is the exact failure mode this avoids.
+- Showing all-time leaderboard creators when nobody qualifies today — faces of
+  people who were not in today's battles, next to a count of today's battles.
+
+## 2026-09-10 — The Live panel's fourth tile is picks today, not nominations
+
+Decision:
+"Live on Underhyped" grows from three stat tiles to four, matching the design
+mockup's layout. The mockup's fourth tile counts nominations; ours counts
+today's picks (`battlesToday`) instead.
+
+The "Just happened" feed also gains an Aura-milestone event — ⚡ "X reached
+1,600 Aura" — derived in JS from the `aura_*_before` / `aura_*_after` pair on
+the battle row that crossed a round hundred. It replaces the ⚔️ framing of
+that same battle rather than adding a row, and costs no extra query: the
+columns come back on the `getRecentBattleResults()` select that was already
+running. Creators start at 1500, so the crossing must be strictly above where
+they already were — a first win never renders as "reached 1,500 Aura".
+
+Why:
+Nominations are NOT V1 — [MVP.md](MVP.md) lists them, and DECISIONS.md
+§ 2026-09-10 "Nominations are not V1" settled it after the idea resurfaced
+three times in design review. There is no nominations count to show because
+there are no nominations. Today's picks is a real number, already fetched,
+and carries the same "things are happening right now" job the tile is there
+to do.
+
+The mockup's feed also includes 👑 "Mira Alston took the #1 spot". That is
+rank movement, which [RANKING.md](RANKING.md) § Rank movement forbids showing
+until `rank_snapshots` exists: "no surface may show a rank delta." The Aura
+milestone is the honest way to get the same "someone just did something
+notable" beat into the feed.
+
+Rejected:
+- A nominations tile wired to a placeholder or a zero — displaying a counter
+  for a feature that does not exist, which is the fabrication this avoids.
+- Leaving three tiles and letting the grid go lopsided — there is a real
+  fourth number available, so the layout does not have to be compromised.
+- A separate milestone query — the battle rows already carry the Aura columns
+  needed, so a second round trip would buy nothing.
+
+## 2026-09-11 — Enter the Arena is two links, and the name comes from you
+
+Decision:
+`/submit` becomes the five-step flow from the design mockup: two link fields
+→ a build step → a preview card with a one-tap category → an edit escape
+hatch → the handoff to checkout. The old single-screen form with six labelled
+inputs is gone.
+
+The mockup's lookup fills in a creator's real name and bio from their X
+handle. Ours does not, because it cannot: X publishes neither to an
+unauthenticated fetch. So the preview opens with the handle as the name and
+the bio reading "Building **Project**. *Add a line about yourself under Edit
+details.*" — and "Edit details" is where both get set.
+
+Why:
+That is not a compromise bolted on; it is the mockup's own fallback path. Its
+lookup is a hardcoded map of eight seeded handles, and every handle outside
+that map already gets exactly this treatment — `name: known ? known.name :
+handle`, and the same "Building …" bio line. The demo shortcut is the part
+that does not survive contact with production; the fallback is the design.
+
+What *is* real: the handle and username are parsed from the URL, the project
+name and its mark colour are derived from the domain, and the avatar comes
+from unavatar with a generated Dicebear fallback already baked into the URL —
+the same derivation every other avatar in the app uses. The build step waits
+on that avatar request rather than on a timer, so the preview card never
+renders an empty circle.
+
+Rejected:
+- Shipping the mockup's KNOWN map of eight handles — hardcoded real people's
+  names and bios, correct for eight users and fabricated for everyone else.
+- Scraping X, or fetching the project site's OG metadata to invent a bio.
+  The first needs credentials we do not have; the second is a server-side
+  fetch of a user-supplied URL, which is new scope and an SSRF surface, for
+  a line the creator can type in one tap.
+- Keeping the long form so every field is asked for up front. Two links is
+  the product promise on the page itself ("Two links. That's the whole
+  form."), and the edit step already covers everyone it does not fit.
+
+## 2026-09-11 — /submit/success renders the welcome screen instead of redirecting
+
+Decision:
+`/submit/success` now renders the design mockup's step-6 welcome screen —
+check badge, identity card, placement progress, "what happens next", Explore
+the Arena, and a share panel — instead of bouncing straight to `/c/<username>`
+the moment the webhook lands.
+
+Why:
+The redirect dropped the one screen that explains what a creator just bought.
+A brand-new profile is, correctly, empty: 1500 Aura, 0/10 placement battles,
+0/0 wins. Landing on it cold reads as "nothing happened". The welcome screen
+frames that same emptiness as a starting line, and the share panel gives the
+creator the one lever they actually have — placement clears on distinct
+voters, so more eyes genuinely does move it faster.
+
+Every number on it is read from the row the webhook inserted. Nothing is
+illustrative.
+
+Two things in the mockup are not built:
+
+- **The "Edit" button** on the card. There is no edit-profile route in V1 —
+  ARCHITECTURE.md § Auth records that Google OAuth exists but has no UI entry
+  point, and profile editing is the future feature it was kept for. The
+  mockup's button has no handler either. A visible control that does nothing
+  is worse than its absence, so it is omitted until there is something to
+  wire it to.
+- **The three hardcoded faces** in the share panel (`harshpatel502`,
+  `romg_dev`, `heyadeel`). Those are real people's avatars stamped onto every
+  new creator's welcome screen. Replaced with the top three creators
+  currently in the Arena — the ones this creator will actually be matched
+  against — each linking to its profile, per the rule already set in
+  § 2026-09-10 "Pulse-row faces are creators, never voters".
+
+Rejected:
+- Keeping the redirect and putting this content on the profile page — the
+  profile is a public page about a creator, not a receipt, and "here's what
+  happens next" is wrong for every visitor who isn't the owner.
+- Shipping the Edit button as a link to `/submit` — it would restart payment.
+
+## 2026-09-11 — The submission checkout goes back to an API session
+
+Decision:
+`createSubmissionCheckout` creates a real Dodo checkout session again —
+product from `DODO_PAYMENTS_SUBMISSION_PRODUCT_ID`, amount fixed server-side
+from `SUBMISSION_FEE_CENTS`, the validated creator payload in
+`metadata.creator_data`, and `return_url` / `cancel_url` on our own origin.
+It replaces the static Payment Link (`https://dodo.pe/submit`) that commit
+`c80213f` put in as a temporary bridge.
+
+Why:
+The bridge broke the chain in three places at once. It set no `return_url`,
+so where a payer landed was configured in the Dodo dashboard rather than in
+code. It carried no metadata, so the webhook hit its "not a submission
+payment" guard and never inserted the row. And `/submit/success` therefore
+never found a creator — every real payer got the polling state and timed out
+on "Still processing".
+
+Worse, the payload was validated and then dropped on the redirect, so a paid
+submission could not be reconstructed by hand either. Someone could pay $3
+and leave no recoverable trace of what they submitted.
+
+This is not a new design; it is what ARCHITECTURE.md § Payments steps 1-4
+already specified and what the webhook was already written to consume. The
+bridge was the deviation.
+
+Two changes from the pre-bridge version:
+
+- `return_url` comes from `getAppOrigin()` (the request's Host header), not
+  `NEXT_PUBLIC_APP_URL`. That env var went stale across the domain move and
+  took the profile page down in production; a checkout return pointed at a
+  dead domain is a strictly worse version of the same bug. The profile page
+  and `/submit/success` now share that helper.
+- The payload is serialized before the API call and rejected if it exceeds a
+  conservative metadata ceiling, so an oversized bio fails at checkout
+  creation rather than after the money has moved.
+
+`src/lib/creator-schema.test.ts` pins the serialize -> parse -> re-validate
+round trip, including the bare-domain URL rewrite and the absent-bio case.
+That round trip is the whole flow's single point of silent failure: if it
+ever stops holding, the payment succeeds and the creator row never appears.
+
+Rejected:
+- Keeping the bridge and having a human create rows by hand — there is no
+  data left to create them from.
+- Persisting a pending-submission row and passing only its id. More robust
+  against metadata limits, but it is a new table (DATABASE.md first, per
+  AGENTS.md) to solve a problem the ceiling check already covers at this
+  payload size. Worth revisiting if the schema grows.
+
+Note: the sponsor flow (`src/app/actions/sponsor.ts`) still uses its own
+static Payment Link and has the same break. Out of scope here, not fixed.
+
+## 2026-09-11 — Reverted to the static Payment Link (supersedes the entry above)
+
+Decision:
+`createSubmissionCheckout` goes back to redirecting to the static Payment
+Link `https://dodo.pe/submit`. The API checkout session from the previous
+entry is reverted. Everything else from that work stays: `getAppOrigin()`,
+`/submit/success` rendering the welcome screen, and the metadata round-trip
+tests.
+
+Why:
+The API session requires `DODO_PAYMENTS_API_KEY` and
+`DODO_PAYMENTS_WEBHOOK_KEY`, and neither is set. `dodoEnv()` validates them
+with Zod inside `getDodoClient()`, so checkout threw before any network call
+and every submission failed with "Couldn't start checkout." A static link
+needs no credentials, so the submit button works again immediately.
+
+This is a deliberate trade, not a fix. The consequences from the bridge are
+back in full:
+
+- No metadata, so the `payment.succeeded` webhook returns early at its
+  "not a submission payment" guard and never inserts the creator row.
+- So `/submit/success` never finds a row, and the welcome screen built on
+  2026-09-11 is unreachable — a real payer sees the polling state time out.
+- The validated fields are discarded at the redirect, so a paid submission
+  cannot be reconstructed by hand either.
+
+Someone can pay $3 and leave no recoverable trace of what they submitted.
+That is the accepted cost of not having the keys today.
+
+Reversing this is a git revert plus two environment variables — the webhook,
+the success page, and the schema round-trip tests are all already written
+against the API-session flow and do not need to change.
+
+Rejected:
+- Inserting the creator row before payment so the success page works. It
+  would let anyone enter the Arena without paying, breaking the entry-fee
+  gate that replaces auth entirely (ARCHITECTURE.md § Auth).
+- Stashing the draft in a cookie and rendering the welcome screen from it —
+  the screen would show a profile that does not exist in the database, with
+  an Explore/share link to a 404.
+
 ## 2026-09-11 — Mobile nav collapses into a dropdown
 
 Decision:

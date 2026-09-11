@@ -278,6 +278,28 @@
     }
   }
 
+  /* ---------------------------------------------------------------------
+     Pulse dot — the blip on the "Building your card" step of Enter the
+     Arena (src/components/submit/enter-arena-flow.tsx). The step is waiting
+     on a real avatar request, so the dot has to read as work in progress
+     rather than as a static bullet.
+     --------------------------------------------------------------------- */
+
+  .pulse-dot {
+    animation: blip 1s ease-in-out infinite;
+  }
+  @keyframes blip {
+    0%,
+    100% {
+      opacity: 0.25;
+      transform: scale(0.8);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.15);
+    }
+  }
+
   /* Mobile nav panel entrance — DESIGN.md § Components "Mobile nav". */
   @media (prefers-reduced-motion: no-preference) {
     .nav-drop {
