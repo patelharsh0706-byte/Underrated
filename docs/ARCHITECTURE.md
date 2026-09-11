@@ -149,6 +149,16 @@ creator-uploaded asset.
 the creator's **primary social link**, server-side in the webhook, never from
 client input.
 
+**Project logos** — the same resolution runs on the creator's *work* link, via
+`getUnavatarUrl`, so a domain resolves to its real favicon/logo
+(`unavatar.io/domain/{hostname}`). It renders through
+`components/domain-logo.tsx`, which falls back to the deterministic colour
+mark the logo replaced — a domain with no favicon, or a visitor who has spent
+their anonymous per-IP quota, sees exactly what the card showed before logos
+existed rather than a broken image. Used on the `/submit` preview card and the
+battle card's work link. Nothing is stored: the logo URL is derived from
+`work_url` at render time, so it self-corrects when a site changes its icon.
+
 The difference from sponsors: creators pass the generated Dicebear
 illustration to unavatar as its own `fallback=` param rather than handling
 failure client-side. unavatar then serves that fallback itself when it can't
@@ -183,8 +193,24 @@ replace seed data.
    retries.
 4. Dodo appends `?payment_id=...&status=...` to `return_url` itself (no
    template placeholder needed, unlike Stripe's `{CHECKOUT_SESSION_ID}`).
-   `/submit/success` polls briefly for the row to land (webhook delivery
-   isn't instant) then redirects to the new profile.
+   `/submit/success` looks the row up by `payment_id`, polling briefly if the
+   webhook hasn't landed yet, then renders the welcome screen — it does not
+   redirect to the profile. See [DECISIONS.md](DECISIONS.md) § 2026-09-11.
+
+When steps 2-4 run through an API checkout session, `return_url` and
+`cancel_url` are built from `getAppOrigin()` (the request's own Host header),
+never from `NEXT_PUBLIC_APP_URL`. That env var went stale across the
+underrated.lol -> underhyped.wtf move once already; pointing a paid
+checkout's return at a dead domain is the worst place for it to happen again.
+
+> **Currently shipping a static Payment Link instead.** `createSubmissionCheckout`
+> validates the submission and redirects to `https://dodo.pe/submit`, which
+> needs no API key. That skips step 2's metadata, so step 3's webhook inserts
+> nothing and step 4 never finds a row — a paid submission needs a human to
+> create it, and the submitted fields are not persisted anywhere. Steps 1-4
+> above describe the intended flow and the webhook is already written for it;
+> restoring it needs `DODO_PAYMENTS_API_KEY` and `DODO_PAYMENTS_WEBHOOK_KEY`.
+> See [DECISIONS.md](DECISIONS.md) § 2026-09-11.
 
 The fee is platform revenue. It never touches Aura, pairing, or rank — see
 [PRODUCT.md](PRODUCT.md)'s "rankings cannot be bought" principle, which this

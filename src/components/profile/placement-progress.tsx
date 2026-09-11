@@ -22,16 +22,19 @@ export function PlacementProgress({ battlesCount, voterCount }: PlacementProgres
 
   return (
     <div className="flex flex-col items-center gap-1.5">
-      <span className="rounded-full border-2 border-aura bg-aura/10 px-3 py-0.5 text-xs font-bold uppercase tracking-wide text-aura">
+      <span className="rounded-full bg-aura/12 px-3 py-1 text-[11px] font-bold tracking-wide text-aura uppercase">
         🔥 New challenger
       </span>
-      <span className="font-mono text-sm font-bold tabular-nums text-muted-foreground">
+      <span className="font-display text-sm font-bold tabular-nums text-foreground">
         {current}/{required} {label}
       </span>
-      <div className="h-2 w-40 overflow-hidden rounded-full border-2 border-foreground bg-card">
-        <div className="h-full bg-aura transition-[width] duration-200" style={{ width: `${percent}%` }} />
+      <div className="h-[9px] w-32 overflow-hidden rounded-full border border-hairline-2 bg-card">
+        <div
+          className="h-full bg-aura transition-[width] duration-200"
+          style={{ width: `${percent}%` }}
+        />
       </div>
-      <p className="text-xs text-muted-foreground">
+      <p className="max-w-[30ch] text-center text-[12.5px] font-medium text-ink-soft">
         {needsBattles
           ? "The internet is still deciding."
           : "A rank takes more than a few people. The internet is still deciding."}

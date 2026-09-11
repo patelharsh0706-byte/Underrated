@@ -295,6 +295,13 @@ export interface DailyHeatEntry extends PublicCreator {
   rank: number;
   dailyHeat: number;
   battlesToday: number;
+  /**
+   * Aura gained or lost today, summed from the `aura_*_after/before` columns
+   * of today's battles. This is NOT rank movement — rank movement needs the
+   * unbuilt `rank_snapshots` table, and RANKING.md § Rank movement names this
+   * number as the honest thing to show in its place until that table exists.
+   */
+  auraChangeToday: number;
 }
 
 interface DailyHeatRow {
@@ -314,6 +321,7 @@ interface DailyHeatRow {
   wins_today: number;
   losses_today: number;
   battles_today: number;
+  aura_change_today: number;
 }
 
 /**
@@ -344,6 +352,12 @@ export async function getTop24h(limit = 10): Promise<DailyHeatEntry[]> {
       count(*) filter (where b.winner_id = c.id)::int as wins_today,
       count(*) filter (where b.winner_id != c.id)::int as losses_today,
       count(*)::int as battles_today,
+      -- Aura actually moved today. Folds into the aggregate already running,
+      -- so the trend column costs no extra round trip.
+      coalesce(sum(
+        case when b.creator_a_id = c.id then b.aura_a_after - b.aura_a_before
+             else b.aura_b_after - b.aura_b_before end
+      ), 0)::int as aura_change_today,
       count(distinct b.voter_session)::int as voters_today
     from creators c
     join battles b on b.creator_a_id = c.id or b.creator_b_id = c.id
@@ -378,6 +392,7 @@ export async function getTop24h(limit = 10): Promise<DailyHeatEntry[]> {
     rank: index + 1,
     dailyHeat: row.wins_today - row.losses_today,
     battlesToday: row.battles_today,
+    auraChangeToday: row.aura_change_today,
   }));
 }
 
@@ -434,9 +449,15 @@ export interface HomeStats {
   paidForBattlesCents: number;
   siteVisits: number;
   onlineNow: number;
+  /** Distinct voter sessions across all battles — "people deciding" on the
+   * Live on Underhyped panel. Deliberately not "votes cast": one battles row
+   * is one pick, so a votes counter would render the same number as
+   * battlesSoFar. See DECISIONS.md § 2026-09-10 and DATABASE.md § Derived,
+   * Not Stored. */
+  peopleDeciding: number;
 }
 
-/** Powers the homepage's live stats bar. See DATABASE.md#visitor_pings. */
+/** Powers the homepage's Live on Underhyped panel. See DATABASE.md#visitor_pings. */
 export async function getHomeStats(): Promise<HomeStats> {
   const [
     [visitorRow],
@@ -444,6 +465,7 @@ export async function getHomeStats(): Promise<HomeStats> {
     [{ battlesToday }],
     [{ creatorsInArena }],
     [{ paidForBattlesCents }],
+    [{ peopleDeciding }],
   ] = await Promise.all([
     db
       .select({
@@ -466,6 +488,9 @@ export async function getHomeStats(): Promise<HomeStats> {
     db
       .select({ paidForBattlesCents: sql<number>`coalesce(sum(${creators.entryFeeCents}), 0)::int` })
       .from(creators),
+    db
+      .select({ peopleDeciding: sql<number>`count(distinct ${battles.voterSession})::int` })
+      .from(battles),
   ]);
 
   return {
@@ -476,7 +501,81 @@ export async function getHomeStats(): Promise<HomeStats> {
     battlesToday,
     creatorsInArena,
     paidForBattlesCents,
+    peopleDeciding,
   };
+}
+
+export interface RecentBattleResult {
+  winnerName: string;
+  winnerUsername: string;
+  loserName: string;
+  loserUsername: string;
+  createdAt: Date;
+  /**
+   * The round-hundred Aura mark the winner crossed on this battle, or null.
+   * Read straight off the battle's own `aura_*_before`/`aura_*_after` pair,
+   * so it is a fact about a battle that happened, not a guess from a current
+   * total. Creators start at 1500, so a first win never counts as "reached
+   * 1500" — the crossing has to be strictly above where they already were.
+   */
+  auraMilestone: number | null;
+}
+
+const MILESTONE_STEP = 100;
+
+function milestoneCrossed(before: number, after: number): number | null {
+  if (after <= before) return null;
+  const mark = Math.floor(after / MILESTONE_STEP) * MILESTONE_STEP;
+  return mark > before ? mark : null;
+}
+
+/** "Just happened" feed on the Live on Underhyped panel — who beat whom,
+ * most recent first. Two lookups, not a join: the second is a single
+ * `IN (...)` over the small set of creators actually involved, which reads
+ * clearer than aliasing `creators` twice for a winner/loser self-join. */
+export async function getRecentBattleResults(limit = 5): Promise<RecentBattleResult[]> {
+  const rows = await db
+    .select({
+      creatorAId: battles.creatorAId,
+      creatorBId: battles.creatorBId,
+      winnerId: battles.winnerId,
+      auraABefore: battles.auraABefore,
+      auraBBefore: battles.auraBBefore,
+      auraAAfter: battles.auraAAfter,
+      auraBAfter: battles.auraBAfter,
+      createdAt: battles.createdAt,
+    })
+    .from(battles)
+    .orderBy(desc(battles.createdAt))
+    .limit(limit);
+
+  if (rows.length === 0) return [];
+
+  const ids = [...new Set(rows.flatMap((row) => [row.creatorAId, row.creatorBId]))];
+  const found = await db
+    .select({ id: creators.id, name: creators.name, username: creators.username })
+    .from(creators)
+    .where(inArray(creators.id, ids));
+  const byId = new Map(found.map((row) => [row.id, row]));
+
+  return rows.map((row) => {
+    const winnerIsA = row.winnerId === row.creatorAId;
+    const loserId = winnerIsA ? row.creatorBId : row.creatorAId;
+    const winner = byId.get(row.winnerId);
+    const loser = byId.get(loserId);
+
+    return {
+      winnerName: winner?.name ?? "Someone",
+      winnerUsername: winner?.username ?? "",
+      loserName: loser?.name ?? "someone",
+      loserUsername: loser?.username ?? "",
+      createdAt: row.createdAt,
+      auraMilestone: milestoneCrossed(
+        winnerIsA ? row.auraABefore : row.auraBBefore,
+        winnerIsA ? row.auraAAfter : row.auraBAfter,
+      ),
+    };
+  });
 }
 
 export interface RecentJoin {

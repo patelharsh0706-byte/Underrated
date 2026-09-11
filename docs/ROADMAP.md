@@ -16,6 +16,25 @@ Nothing in this file may be built without moving it into [MVP.md](MVP.md) first.
 - 24h Spotlight
 - 7-day Spotlight
 - Sponsor analytics
+- **Rank movement** — the leaderboard trend arrow, "climbed to #4", "took the
+  #1 spot". Needs the `rank_snapshots` table already specced in
+  [DATABASE.md](DATABASE.md) plus a daily capture job. The design exists and
+  the schema is written; only the build is deferred. Until then surfaces show
+  24h Aura change instead — see [RANKING.md](RANKING.md) § Rank movement.
+- **Nominations** — putting another creator into the Arena. Out of V1 by
+  decision ([DECISIONS.md](DECISIONS.md) § 2026-09-10). Open questions to
+  answer before it can be scheduled: does a nomination skip the $3 entry fee,
+  can the nominated person decline or remove themselves, and what stops a
+  mass-nomination farm. It also weakens the current invariant that every
+  creator in the Arena paid to be there.
+- **Battle impressions** — logging every pairing *shown*, separately from the
+  pick, so "votes cast" becomes a number that differs from "battles fought".
+  Would let the live section carry a genuinely large activity figure; costs a
+  write on every battle render, so it needs a decision entry first.
+- **Activity feed persistence** — "Just happened" is currently assembled from
+  joins, battles and Aura milestones at read time. If it grows past a handful
+  of event types, it wants one `activity` table written at event time rather
+  than a widening union query.
 - Same-creator-same-IP daily voting cap — stops a creator from repeatedly
   picking themselves to inflate Aura. A given request IP can vote a given
   creator to victory at most once per UTC day. Needs a nullable `voter_ip`
