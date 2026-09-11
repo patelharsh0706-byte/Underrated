@@ -778,3 +778,44 @@ Rejected:
   one-line hosting setting.
 - Collapsing the six homepage stat queries into one — worth doing, but as
   an optimisation after the region is right, not as the fix.
+
+## 2026-09-11 — The database client is configured for a frozen function, not a long-lived server
+
+Decision:
+`src/lib/db/index.ts` creates the postgres.js client with `prepare: false`,
+`max_pipeline: 0`, `idle_timeout: 20`, `max_lifetime: 300`, and
+`connect_timeout: 10`.
+
+Why:
+After pinning the function region (entry above), `/` still hung
+intermittently — sometimes a full page in under a second, sometimes no
+bytes at all for minutes — while `pg_stat_activity` showed nothing in
+flight from the app. The earlier symptoms fit the same cause: a backend
+stuck `active` on `ClientRead`, and one query whose Bind carried `'f'`,
+the wire encoding of a boolean from a different statement.
+
+A Vercel function is frozen between requests. postgres.js keeps its
+module-level pool across that freeze, but Supavisor and the network do not
+keep the idle sockets alive underneath it. On the next request the client
+writes to a socket it believes is open: nothing answers, so the request
+waits out TCP rather than the database. When a socket dies mid-pipeline,
+postgres.js re-sends its queued statements and the queue can misalign,
+which is where the crossed parameter came from.
+
+The defaults — no idle timeout, no lifetime, a 30 s connect timeout, up to
+100 pipelined statements per socket — are for a long-lived server. Each
+option above closes one of those gaps: idle sockets are dropped before the
+function is likely to be frozen, every socket is recycled, a dead handshake
+fails fast, and no statement is ever queued behind another on one socket
+through a transaction-mode pooler, which PgBouncer and Supavisor both
+document as unsafe.
+
+Rejected:
+- Switching to the session-mode pooler (port 5432) — supports pipelining
+  and prepared statements, but the pool is small and serverless instances
+  would exhaust it.
+- A per-request client (`postgres()` inside the render) — correct but pays
+  the full handshake on every request; the tuned pool keeps warm sockets
+  for bursts while still dropping them across a freeze.
+- Raising Vercel `maxDuration` or Postgres `statement_timeout` — both only
+  change how long the hang lasts.
