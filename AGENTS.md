@@ -127,6 +127,10 @@ Paid sponsorship must never influence creator ranking.
   V2 rule is current and the V1 line is kept only so the change reads as
   deliberate. Do not "restore" it.
 - Architectural choices get logged in [docs/DECISIONS.md](docs/DECISIONS.md).
+- Any bug that reached a user gets an entry in [docs/ISSUES.md](docs/ISSUES.md):
+  symptom, real cause, fix, and a Prevention line. Read that file before
+  debugging anything — several of these have already shipped twice — and check
+  new work against the recurring shapes listed at the top of it.
 - No secrets in code. Every secret goes through `.env.example`.
 
 ## Before Completing Work

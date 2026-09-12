@@ -783,8 +783,13 @@ Rejected:
 
 Decision:
 `src/lib/db/index.ts` creates the postgres.js client with `prepare: false`,
-`max_pipeline: 0`, `idle_timeout: 20`, `max_lifetime: 300`, and
+`max_pipeline: 1`, `idle_timeout: 20`, `max_lifetime: 300`, and
 `connect_timeout: 10`.
+
+> **Corrected 2026-09-12.** This shipped as `max_pipeline: 0`, which broke
+> every transaction in the app — including the one that moves Aura. The value
+> is 1; the reasoning below is unchanged. See the 2026-09-12 entry
+> "max_pipeline is 1, because 0 silently disables every transaction".
 
 Why:
 After pinning the function region (entry above), `/` still hung
@@ -853,3 +858,93 @@ Rejected:
   § 2026-09-10 "The Trend column shows Aura moved today").
 - Leaving it empty — the honest option, and what shipped first; overruled
   because an empty row looks like a bug to everyone who is not us.
+
+## 2026-09-12 — max_pipeline is 1, because 0 silently disables every transaction
+
+Decision:
+The postgres.js `max_pipeline` is `1`, not `0`. The entry above
+("The database client is configured for a frozen function") stands in full —
+only the value changes.
+
+Why:
+`0` looks like the strongest form of "never pipeline", and it is not a value
+postgres.js rejects. What it actually does is turn off transactions. In
+`node_modules/postgres/src/connection.js` the executor returns:
+
+```js
+write(toBuffer(q))
+  && !q.describeFirst
+  && !q.cursorFn
+  && sent.length < max_pipeline          // 0 < 0 → false
+  && (!q.options.onexecute || q.options.onexecute(connection))
+```
+
+`&&` short-circuits, so at `max_pipeline: 0` the `onexecute` callback never
+runs — and `onexecute` is what moves the connection into the reserved queue
+for `sql.begin` (`src/index.js`, `onexecute` → `move(c, reserved)`). The
+connection therefore never counts as reserved, and the guard that fires when
+a `BEGIN` completes:
+
+```js
+if (result.command === 'BEGIN' && max !== 1 && !connection.reserved)
+  return errored(Errors.generic('UNSAFE_TRANSACTION', ...))
+```
+
+kills the transaction immediately. `1` keeps the intent exactly — one
+in-flight statement per socket, nothing queued behind it — while letting the
+reservation handshake happen.
+
+What it cost: `pickWinner` is entirely inside `db.transaction()`, because
+AGENTS.md requires voting to be transactional. So every pick on production
+threw `UNSAFE_TRANSACTION`, `handlePick`'s `catch` treated it as a stale pair
+and advanced to the next battle, and Aura never moved for anyone. Reads are
+not transactional, so the leaderboard and profiles looked perfectly healthy
+throughout — the site appeared to work while the core loop scored nothing.
+
+Verified against the production database before and after: `sql.begin` at
+`max_pipeline: 0` fails with `UNSAFE_TRANSACTION`; at `1` and at the default
+`100` it commits.
+
+Rejected:
+- Dropping to `max: 1` — also satisfies the driver's guard, but serialises
+  every request in the instance onto one socket.
+- `sql.reserve()` around the vote — the reservation `sql.begin` already does,
+  written out by hand; it would work and it hides the real misconfiguration
+  from every other transaction in the app.
+- Removing the option — the default of 100 pipelines freely through a
+  transaction-mode pooler, which is what the entry above exists to prevent.
+
+## 2026-09-12 — Today's pick count is live client state, seeded by the server
+
+Decision:
+`battlesToday` is no longer a server prop read once per render. A small client
+context (`src/components/battle/picks-today.tsx`) holds it, seeded from
+`getHomeStats()` on every page render, and `pickWinner` returns the
+authoritative count from inside its own transaction for the arena to publish.
+Both places the arena block shows the figure — the pulse row's "N picks today"
+and the stats bar's "Battles today" — read that one value.
+
+Why:
+The number a pick moves was the one number on the page that never moved. Both
+counters were server props, so they sat frozen for the life of the page while
+the voter kept picking; only the Live panel's tile corrected itself, on its own
+45 s ping, which meant the same page could show two different figures for the
+same thing. "Feedback is immediate" (DESIGN.md § Principles 6) applies to the
+counter as much as to Aura.
+
+The count comes back from inside the vote transaction rather than being
+incremented locally, so it stays honest: it already includes this pick, it
+includes everyone else's picks since the page loaded, and a repeat pick that
+scored nothing reports the unchanged count instead of a fake bump. Published
+monotonically, so a slow response cannot walk the number backwards.
+
+Rejected:
+- `router.refresh()` after each pick — refetches the whole tree, and the
+  battle loop is meant to have no dead time (DESIGN.md § Principles 3).
+- Incrementing locally on a counted pick — cheaper, but invents a number that
+  drifts from the server and ignores every other voter.
+- Polling it like the Live panel does — a second heartbeat for one integer,
+  and still up to 45 s late for the voter's own pick.
+- One live-stats provider shared with the Live panel — the right end state,
+  but a larger refactor than this fix needs; the panel keeps its own poll and
+  converges on the same figure.
