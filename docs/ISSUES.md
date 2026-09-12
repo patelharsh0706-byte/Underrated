@@ -17,6 +17,44 @@ Status: **FIXED** (shipped and verified) · **OPEN** (known, not yet fixed).
 
 ---
 
+## 2026-09-12 — A picked creator came back with its old Aura · FIXED
+
+**Symptom.** Picking a creator showed their Aura go up, but when the same face
+appeared in a later battle it was back to the number it had before the pick.
+
+**Cause.** The next pair is prefetched so the loop has no dead time — but it
+was fetched *before* the pick that changes Aura. Page load prefetched pair B
+immediately; the pick in pair A moved two creators' Aura; 700 ms later pair B
+was displayed still carrying its pre-pick snapshot. `advance()` then prefetched
+the following pair straight away, again before the next pick, so every pair on
+screen was a snapshot taken one pick too early. With nine active creators a
+face reappears constantly, so it showed almost every battle.
+
+**Fix.** Three layers, because the first alone does not cover a creator picked
+several battles ago or the server-rendered first pair:
+1. A counted pick discards the queued pair and refetches inside the result
+   window, so the prefetch follows the pick instead of preceding it.
+2. The Aura `pickWinner` returns from inside the vote transaction is remembered
+   per creator and outranks the row a prefetched pair arrived with. Still
+   server truth — it picks the later of two server figures, never a
+   client-side calculation (AGENTS.md "Never modify Aura client-side").
+3. An epoch counter, so a prefetch already in flight when the pick lands cannot
+   overwrite the fresh pair with its older rows.
+
+Also keyed the battle cards by creator id. `useCountUp` animates from whatever
+the card last showed, and the unkeyed cards reused one instance across battles
+— Priya's 1463 counted *down* from the previous creator's 1666. Without the
+key, a corrected Aura looks like Aura moving.
+
+**Prevention.** `freshestAura` in `src/components/battle/aura.ts` is a pure
+function with tests covering the precedence order, including this exact case.
+**Class of bug:** cached or prefetched data that predates a write. Anything
+prefetched before a mutation is stale by definition — either refetch after the
+mutation or carry its authoritative result forward. The same reasoning fixed
+the frozen counter above.
+
+---
+
 ## 2026-09-12 — Every pick failed silently; no Aura ever moved · FIXED
 
 **Symptom.** Clicking a creator advanced to the next battle and changed

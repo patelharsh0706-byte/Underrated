@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { nextBattle, pickWinner, type PickResult } from "@/app/actions/battle";
+import { freshestAura } from "@/components/battle/aura";
 import { CreatorCard } from "@/components/battle/creator-card";
 import { usePicksToday, usePublishPicksToday } from "@/components/battle/picks-today";
 import type { PublicCreator } from "@/lib/db/queries";
@@ -44,12 +45,23 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
   const picksToday = usePicksToday(battlesToday);
   const publishPicksToday = usePublishPicksToday();
 
-  const prefetchNext = useCallback(async () => {
-    if (prefetchInFlight.current) return;
+  // Bumped on every counted pick. A prefetch carries the epoch it started in,
+  // so rows fetched before a pick are discarded rather than shown with the
+  // Aura that pick has already moved.
+  const pickEpoch = useRef(0);
+
+  // Aura this session has moved, as reported by the vote transaction — server
+  // truth, never a client-side calculation. See freshestAura in ./aura.
+  const [knownAura, setKnownAura] = useState<Record<string, number>>({});
+
+  const prefetchNext = useCallback(async (force = false) => {
+    if (prefetchInFlight.current && !force) return;
     prefetchInFlight.current = true;
+    const epoch = pickEpoch.current;
     try {
       const pair = await nextBattle();
-      nextPairRef.current = pair;
+      // A pick landed while this was in flight: these rows predate it.
+      if (epoch === pickEpoch.current) nextPairRef.current = pair;
     } catch {
       // Prefetch failures are silent — we retry when the current battle resolves.
     } finally {
@@ -90,6 +102,22 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
         setResult(pickResult);
         setPhase("result");
         publishPicksToday?.(pickResult.battlesToday);
+
+        if (pickResult.counted) {
+          // This pick moved two creators' Aura, so anything already queued was
+          // fetched before it happened. Remember the authoritative numbers and
+          // refetch the next pair inside the result window, so the same face
+          // never comes back carrying the Aura it had before you picked it.
+          setKnownAura((known) => ({
+            ...known,
+            [pickResult.winnerId]: pickResult.winnerAura,
+            [pickResult.loserId]: pickResult.loserAura,
+          }));
+          pickEpoch.current += 1;
+          nextPairRef.current = null;
+          void prefetchNext(true);
+        }
+
         setTimeout(
           () => void advance(),
           pickResult.counted ? RESULT_DISPLAY_MS : REPEAT_DISPLAY_MS,
@@ -100,17 +128,12 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
         void advance();
       }
     },
-    [phase, advance, publishPicksToday],
+    [phase, advance, prefetchNext, publishPicksToday],
   );
 
   const [a, b] = current;
 
-  const auraFor = (creator: PublicCreator) => {
-    if (!result) return creator.aura;
-    if (result.winnerId === creator.id) return result.winnerAura;
-    if (result.loserId === creator.id) return result.loserAura;
-    return creator.aura;
-  };
+  const auraFor = (creator: PublicCreator) => freshestAura(creator, result, knownAura);
 
   const outcomeFor = (creator: PublicCreator) => {
     if (!result) return null;
@@ -130,7 +153,12 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
   return (
     <div className="flex w-full max-w-3xl flex-col items-center gap-4">
       <div className="relative grid w-full grid-cols-2 gap-3 sm:gap-6">
+        {/* Keyed by creator: the count-up animates from whatever the card last
+            showed, so an unkeyed card counts the new creator's Aura down from
+            the previous creator's number. A fresh instance starts at the right
+            figure and only animates a delta that is really theirs. */}
         <CreatorCard
+          key={a.id}
           creator={a}
           displayedAura={auraFor(a)}
           delta={deltaFor(a)}
@@ -140,6 +168,7 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
           onPick={() => void handlePick(a.id, b.id)}
         />
         <CreatorCard
+          key={b.id}
           creator={b}
           displayedAura={auraFor(b)}
           delta={deltaFor(b)}
