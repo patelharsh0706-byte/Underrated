@@ -7,6 +7,15 @@ import { RankBadge } from "./rank-badge";
 import { rankTitleFor } from "./rank-title";
 import type { RankedEntry } from "./types";
 
+// Below `sm` the side cards are ~90px wide — too narrow for "SIDE CHARACTER"
+// to sit on one line — so #2/#3 drop the chip there and take their rank-title
+// colour on the number instead. Same rule the homepage Top 10 uses; see
+// DESIGN.md § Components › Ranked tables.
+const RANK_NUMBER_COLORS: Record<number, string> = {
+  2: "text-rank-second",
+  3: "text-rank-third",
+};
+
 interface PodiumProps {
   /** Exactly three entries, already in rank order [1st, 2nd, 3rd]. */
   top3: [RankedEntry, RankedEntry, RankedEntry];
@@ -17,16 +26,35 @@ interface PodiumProps {
 // Rank 1 renders visually raised and lime, dead center — DOM order is
 // [2nd, 1st, 3rd] so a plain 3-column grid places the tallest card in the
 // middle without any absolute positioning.
+//
+// The column ratio is wider on phones than on desktop: at ~390px a 1.12
+// ratio reads as three equal cards, so #1 gets a third more width there and
+// every type/avatar step applies at mobile rather than only from `sm` up.
+// Cards stay bottom-aligned, so #1 being taller is what raises it — see
+// PodiumCard for what #2/#3 shed to stay shorter than it.
 export function Podium({ top3, isDaily, mainCharacterId }: PodiumProps) {
   const [first, second, third] = top3;
   return (
     <section
-      className="mb-8 grid grid-cols-[1fr_1.12fr_1fr] items-end gap-2 sm:mb-12 sm:gap-4"
+      className="mb-8 grid grid-cols-[1fr_1.38fr_1fr] items-end gap-1.5 sm:mb-12 sm:grid-cols-[1fr_1.12fr_1fr] sm:gap-4"
       aria-label="Top three creators"
     >
-      <PodiumCard entry={second} isDaily={isDaily} mainCharacterId={mainCharacterId} />
-      <PodiumCard entry={first} isDaily={isDaily} mainCharacterId={mainCharacterId} first />
-      <PodiumCard entry={third} isDaily={isDaily} mainCharacterId={mainCharacterId} />
+      <PodiumCard
+        entry={second}
+        isDaily={isDaily}
+        mainCharacterId={mainCharacterId}
+      />
+      <PodiumCard
+        entry={first}
+        isDaily={isDaily}
+        mainCharacterId={mainCharacterId}
+        first
+      />
+      <PodiumCard
+        entry={third}
+        isDaily={isDaily}
+        mainCharacterId={mainCharacterId}
+      />
     </section>
   );
 }
@@ -53,16 +81,21 @@ function PodiumCard({
     <Link
       href={`/c/${entry.username}`}
       className={cn(
-        "flex flex-col items-center gap-1 rounded-card p-3 pb-4 text-center shadow-card transition-transform hover:-translate-y-0.5 sm:items-start sm:gap-[7px] sm:p-[18px] sm:pb-5 sm:text-left",
+        "flex min-w-0 flex-col items-center gap-1 rounded-card p-2.5 pb-3.5 text-center shadow-card transition-transform hover:-translate-y-0.5 sm:items-start sm:gap-[7px] sm:p-[18px] sm:pb-5 sm:text-left",
         first
-          ? "bg-lime p-4 pb-5 shadow-[0_2px_4px_rgba(17,17,17,0.05),0_26px_46px_-18px_rgba(150,190,20,0.65)] sm:p-6 sm:pb-[26px]"
+          ? "bg-lime p-3.5 pb-5 shadow-[0_2px_4px_rgba(17,17,17,0.05),0_26px_46px_-18px_rgba(150,190,20,0.65)] sm:p-6 sm:pb-[26px]"
           : "bg-card",
       )}
     >
       <span
         className={cn(
-          "font-display text-lg leading-none font-black tracking-tight",
-          first ? "sm:text-[32px]" : "sm:text-[26px]",
+          "font-display leading-none font-black tracking-tight",
+          first
+            ? "text-[26px] sm:text-[32px]"
+            : cn(
+                "text-base sm:text-[26px] sm:text-foreground",
+                RANK_NUMBER_COLORS[entry.rank],
+              ),
         )}
       >
         {entry.rank}
@@ -72,7 +105,7 @@ function PodiumCard({
         <span
           className={cn(
             "relative shrink-0 overflow-hidden rounded-full bg-muted",
-            first ? "size-12 sm:size-[92px]" : "size-10 sm:size-[74px]",
+            first ? "size-[66px] sm:size-[92px]" : "size-9 sm:size-[74px]",
           )}
         >
           {entry.avatarUrl ? (
@@ -89,7 +122,7 @@ function PodiumCard({
 
         <div className="flex flex-col items-center sm:items-end">
           {first ? (
-            <span className="hidden font-hand text-[13px] leading-tight font-bold tracking-wide text-ink-soft uppercase sm:block">
+            <span className="block font-hand text-[9.5px] leading-tight font-bold tracking-wide text-ink-soft uppercase sm:text-[13px]">
               most underhyped
               <br />
               right now.
@@ -98,8 +131,12 @@ function PodiumCard({
           <b
             className={cn(
               "block font-display font-extrabold tracking-tight tabular-nums",
-              isDaily ? (entry.metric >= 0 ? "text-winner" : "text-down") : "text-aura",
-              first ? "text-base sm:text-[26px]" : "text-sm sm:text-[22px]",
+              isDaily
+                ? entry.metric >= 0
+                  ? "text-winner"
+                  : "text-down"
+                : "text-aura",
+              first ? "text-lg sm:text-[26px]" : "text-[13px] sm:text-[22px]",
             )}
           >
             {!isDaily ? "🔥" : null}
@@ -111,16 +148,29 @@ function PodiumCard({
       <h3
         className={cn(
           "w-full truncate font-display font-extrabold tracking-tight",
-          first ? "text-base sm:text-2xl" : "text-sm sm:text-xl",
+          first ? "text-lg sm:text-2xl" : "text-[13px] sm:text-xl",
         )}
       >
         {entry.name}
       </h3>
-      <p className="w-full truncate text-[11px] text-ink-soft sm:-mt-1 sm:text-sm">
+      <p
+        className={cn(
+          "w-full truncate text-ink-soft sm:-mt-1 sm:text-sm",
+          first ? "text-[11px]" : "text-[10px]",
+        )}
+      >
         @{entry.username}
       </p>
 
-      {title ? <RankBadge title={title} /> : null}
+      {title ? (
+        <RankBadge
+          title={title}
+          className={cn(
+            "whitespace-nowrap px-1 text-[8px] tracking-[0.03em] sm:px-[7px] sm:text-[9.5px] sm:tracking-[0.1em]",
+            !first && "hidden sm:inline-block",
+          )}
+        />
+      ) : null}
 
       {entry.bio ? (
         <p className="hidden text-sm leading-snug text-foreground sm:mt-0.5 sm:line-clamp-2 sm:block">
@@ -132,7 +182,11 @@ function PodiumCard({
         <span
           className={cn(
             "mt-1.5 rounded-full border border-hairline px-2.5 py-[3px] text-[8.5px] font-bold tracking-[0.09em] text-ink-soft uppercase sm:self-start sm:rounded-full sm:border sm:px-3 sm:py-1 sm:text-[12.5px] sm:font-medium sm:tracking-normal sm:normal-case",
-            first && "sm:border-[rgba(17,17,17,0.14)] sm:bg-white/55 sm:text-foreground",
+            // Category is the first detail the cramped side cards shed on a
+            // phone — DESIGN.md § Principles 4.
+            !first && "hidden sm:block",
+            first &&
+              "sm:border-[rgba(17,17,17,0.14)] sm:bg-white/55 sm:text-foreground",
           )}
         >
           {entry.category}
