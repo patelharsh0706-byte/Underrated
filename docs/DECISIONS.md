@@ -948,3 +948,49 @@ Rejected:
 - One live-stats provider shared with the Live panel — the right end state,
   but a larger refactor than this fix needs; the panel keeps its own poll and
   converges on the same figure.
+
+## 2026-09-12 — The app connects in session mode, and max_pipeline is never set
+
+Decision:
+`DATABASE_URL` points at the Supabase pooler in **session mode** (port 5432 on
+the pooler host), not transaction mode (6543). `max_pipeline` is not set at all,
+and `max: 4` bounds what one function instance can take.
+
+This reverses the "Rejected: switching to the session-mode pooler" line in the
+2026-09-11 entry above. That rejection reasoned about pool size and never
+tested correctness; transaction mode turned out not to work for this app at all.
+
+Why:
+Transaction mode hands a client's statements between backends. With
+`prepare: false` every parameterised query uses a split
+Describe → Flush → Execute exchange, and a handoff inside that exchange puts
+parameters from one statement into another statement's Bind. The visible
+result was `invalid input syntax for type integer: "f"` — `'f'` being the wire
+encoding of a boolean from a different query — backends stuck `active` on
+`ClientRead`, and requests hanging until they were cancelled.
+
+Measured on the production build against the real database: transaction mode
+failed 9 of 14 homepage requests; session mode passed 35 of 35, including 10
+concurrent, at roughly half the latency (~0.55 s vs 1.2–3.2 s).
+
+`max_pipeline` is left unset because both values it was ever given broke the
+app — 0 disabled every transaction (see the entry above), 1 desynchronised the
+protocol. The library default is correct.
+
+Honest status:
+Session mode did **not** end the outage on its own. After the switch and a
+redeploy, production still failed 8 of 12 homepage requests, and backends were
+still observed stuck `active` on `ClientRead` running the homepage's
+recent-battles and recent-joins queries. So the pooler mode was one real
+defect, not the whole cause. The remaining suspect is the homepage itself: it
+fires roughly fifteen queries per render across several `Promise.all` groups,
+and it is the only route that fails — every cached or lighter route
+(`/leaderboard`, `/about`, `/rules`, `/sponsor`, creator profiles) has been
+reliable at 0.2–0.5 s throughout. See ISSUES.md § 2026-09-12 "The homepage
+fails roughly half the time in production".
+
+Rejected:
+- Staying on transaction mode — measured worse on every axis.
+- The direct connection (`db.<ref>.supabase.co:5432`) — the host no longer
+  resolves for this project, so it is not an option even for migrations.
+- `max: 1` — hangs outright; postgres.js needs room for more than one socket.

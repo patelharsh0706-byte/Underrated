@@ -17,6 +17,74 @@ Status: **FIXED** (shipped and verified) · **OPEN** (known, not yet fixed).
 
 ---
 
+## 2026-09-12 — The homepage fails roughly half the time in production · OPEN
+
+**Symptom.** `underhyped.wtf` intermittently does not load. Reported as "out of
+5 times, 2 times the website would not be running". Measured worse than that
+from here: **9 of 14** homepage requests failed before any change, **8 of 12**
+after switching pooler modes, and **4 of 8** even in a warm burst. Most failures
+are a hang until the client gives up; some are a 500.
+
+**Only the homepage.** Every other route has been reliable at 0.2–0.5 s
+throughout every measurement: `/leaderboard` (ISR), `/about`, `/rules`,
+`/sponsor`, and creator profiles — which are dynamic and hit the database too.
+`/` is the one route that fires roughly fifteen queries per render across
+several `Promise.all` groups.
+
+**What is confirmed.** Backends sit `active` on `ClientRead` — Postgres is
+mid-statement waiting for the client while the client waits for Postgres, so
+neither side moves. Parameters from one statement arrive in another statement's
+Bind: `invalid input syntax for type integer: "f"`, where `$1` should have been
+`10` and `'f'` is the wire encoding of a boolean from a different query. Stuck
+connections accumulate and poison the pool.
+
+**Fixed so far** (real defects, neither sufficient):
+- `max_pipeline` unset. At 1 it desynchronised the protocol; at 0 it had
+  already disabled every transaction (separate entry above).
+- Session mode (port 5432) instead of transaction mode (6543), which hands
+  statements between backends mid-exchange. Locally this took the production
+  build from 9-of-14 failing to **35 of 35 passing** at half the latency —
+  and still did not fix production. In production it made things worse: the
+  homepage went from intermittent failure to a total outage. Postgres logs
+  showed `ShareLock` waits up to 76 s, statement-timeout cancellations, and
+  `there is already a transaction in progress` — a connection handed back to
+  the pool with an open transaction still on it. Transaction-mode pooling had
+  been silently absorbing this by resetting connection state after every
+  transaction; session mode has no such reset, so a stuck transaction now
+  holds its locks for its full lifetime.
+- Found the stuck transaction: `pickWinner` in
+  [src/app/actions/battle.ts](../src/app/actions/battle.ts) locked the winner
+  row and the loser row as two separate `for("update")` queries. Two
+  concurrent picks on the same pair in opposite order (A-beats-B vs B-beats-A,
+  routine with popular creators) lock in opposite order and queue behind each
+  other. Fixed by locking both rows in one query, ordered by id, so any two
+  transactions touching the same pair always acquire locks in the same order.
+
+**Ruled out by testing.** `prepare` true and false; `fetch_types: false`;
+`max_pipeline` 0, 1 and default; `max: 1` (hangs outright); the voter-session
+cookie (cookieless and cookied requests both hang); dev vs production build
+(reproduces in both). A standalone script issuing the same queries with the
+same options never fails, so the trigger is how the app drives the driver, not
+the driver's configuration alone.
+
+**Next suspect.** The homepage's own query volume and concurrency. The two
+candidate fixes, neither tried yet: collapse `getHomeStats`' six parallel
+counts into one statement and reduce the per-render query count; and cache or
+stream `/` so a slow query cannot fail the whole page, the way `/leaderboard`
+already survives. `/leaderboard`'s perfect record is the strongest clue
+available — the difference is not the database, it is how much of it each
+render needs at once.
+
+**Prevention.** Not yet earned; the issue is open. What the investigation
+already shows: *this is the third distinct bug introduced by tuning this one
+client* (`max_pipeline: 0`, then `max_pipeline: 1`, then a still-open hang), so
+every change to the database client must be validated against the running app
+under repeated requests, never against a standalone script and never by the
+absence of the previous symptom. **Class of bug:** a config value that fails
+silently — the same shape as the two entries below it.
+
+---
+
 ## 2026-09-12 — A picked creator came back with its old Aura · FIXED
 
 **Symptom.** Picking a creator showed their Aura go up, but when the same face
@@ -75,14 +143,16 @@ to work while the core loop scored nothing. `handlePick`'s `catch` treats any
 failure as a stale pair and advances, so the UI reported success.
 No `battles` row was written between `2026-09-11 15:01 UTC` and the fix.
 
-**Fix.** `max_pipeline: 1` — same intent (one in-flight statement per socket
-through the transaction-mode pooler), reservation handshake intact.
+**Fix.** Shipped as `max_pipeline: 1` — same intent (one in-flight statement
+per socket through the transaction-mode pooler) with the reservation handshake
+intact. **Superseded the same day:** 1 turned out to desynchronise the protocol,
+so the option is now unset entirely. See the open entry at the top of this file.
 `src/lib/db/client-options.ts`, DECISIONS.md § 2026-09-12.
 
 **Prevention.**
-- `src/lib/db/client-options.test.ts` asserts `max_pipeline >= 1` and the other
-  options that fail silently at runtime. The options moved into their own
-  module purely so they could be asserted without a database.
+- `src/lib/db/client-options.test.ts` asserts that `max_pipeline` is unset, plus
+  the other options that fail silently at runtime. The options moved into their
+  own module purely so they could be asserted without a database.
 - The 2026-09-11 decision entry carries a correction note, so the `0` cannot be
   "restored" as if it were the considered value.
 - **Class of bug:** a driver option whose wrong value is not a type error, not
