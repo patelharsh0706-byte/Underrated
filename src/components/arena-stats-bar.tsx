@@ -1,14 +1,22 @@
+"use client";
+
+import { usePicksToday } from "@/components/battle/picks-today";
+
 interface ArenaStatsBarProps {
+  /** Server value from getHomeStats(); the live count takes over once the
+   *  voter starts picking — see picks-today.tsx. */
   battlesToday: number;
   creatorsInArena: number;
 }
 
 export function ArenaStatsBar({ battlesToday, creatorsInArena }: ArenaStatsBarProps) {
+  const picksToday = usePicksToday(battlesToday);
+
   return (
     <section className="flex w-full max-w-3xl flex-col items-center gap-3 sm:flex-row sm:justify-between sm:gap-6">
       <div className="flex flex-col items-center gap-0.5">
         <span className="font-display text-lg font-extrabold tracking-tight tabular-nums sm:text-2xl">
-          {battlesToday.toLocaleString()}
+          {picksToday.toLocaleString()}
         </span>
         <span className="text-[11px] uppercase tracking-wide text-ink-soft">Battles today</span>
       </div>

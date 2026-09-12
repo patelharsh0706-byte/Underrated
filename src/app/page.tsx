@@ -1,5 +1,6 @@
 import { ArenaStatsBar } from "@/components/arena-stats-bar";
 import { BattleArena } from "@/components/battle/battle-arena";
+import { PicksTodayProvider } from "@/components/battle/picks-today";
 import { EnterArenaCta } from "@/components/enter-arena-cta";
 import { Scribble } from "@/components/scribble";
 import { StatsPanel } from "@/components/battle/stats-panel";
@@ -116,21 +117,25 @@ export default async function HomePage() {
         </p>
       </section>
 
-      <BattleArena
-        initialPair={pair}
-        battlesToday={homeStats.battlesToday}
-        faces={pulseFaces}
-      />
+      {/* Both counters below read one live value, so a pick moves the number
+          it just changed instead of leaving it frozen until a reload. */}
+      <PicksTodayProvider initial={homeStats.battlesToday}>
+        <BattleArena
+          initialPair={pair}
+          battlesToday={homeStats.battlesToday}
+          faces={pulseFaces}
+        />
 
-      {/* CTA before the stats bar: the pulse row hands straight off to the
-          one action the page wants, and the stats bar then closes the block
-          rather than interrupting it. */}
-      <EnterArenaCta />
+        {/* CTA before the stats bar: the pulse row hands straight off to the
+            one action the page wants, and the stats bar then closes the block
+            rather than interrupting it. */}
+        <EnterArenaCta />
 
-      <ArenaStatsBar
-        battlesToday={homeStats.battlesToday}
-        creatorsInArena={homeStats.creatorsInArena}
-      />
+        <ArenaStatsBar
+          battlesToday={homeStats.battlesToday}
+          creatorsInArena={homeStats.creatorsInArena}
+        />
+      </PicksTodayProvider>
 
       {/* Static explainer — no data, so it lives inline here rather than as
           its own component; it has exactly one consumer. */}

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { nextBattle, pickWinner, type PickResult } from "@/app/actions/battle";
 import { CreatorCard } from "@/components/battle/creator-card";
+import { usePicksToday, usePublishPicksToday } from "@/components/battle/picks-today";
 import type { PublicCreator } from "@/lib/db/queries";
 import { cn } from "@/lib/utils";
 
@@ -29,7 +30,7 @@ export interface PulseFace {
 
 interface BattleArenaProps {
   initialPair: Pair;
-  /** Real count from getHomeStats(). */
+  /** Real count from getHomeStats(), seeding the live value. */
   battlesToday: number;
   faces: PulseFace[];
 }
@@ -40,6 +41,8 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
   const [phase, setPhase] = useState<"idle" | "picking" | "result">("idle");
   const nextPairRef = useRef<Pair | null>(null);
   const prefetchInFlight = useRef(false);
+  const picksToday = usePicksToday(battlesToday);
+  const publishPicksToday = usePublishPicksToday();
 
   const prefetchNext = useCallback(async () => {
     if (prefetchInFlight.current) return;
@@ -86,6 +89,7 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
         const pickResult = await pickWinner({ winnerId, loserId });
         setResult(pickResult);
         setPhase("result");
+        publishPicksToday?.(pickResult.battlesToday);
         setTimeout(
           () => void advance(),
           pickResult.counted ? RESULT_DISPLAY_MS : REPEAT_DISPLAY_MS,
@@ -96,7 +100,7 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
         void advance();
       }
     },
-    [phase, advance],
+    [phase, advance, publishPicksToday],
   );
 
   const [a, b] = current;
@@ -209,8 +213,8 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
           </span>
         ) : null}
 
-        <span className="font-display font-extrabold tracking-tight text-foreground">
-          {battlesToday.toLocaleString()} picks today
+        <span className="font-display font-extrabold tracking-tight tabular-nums text-foreground">
+          {picksToday.toLocaleString()} picks today
         </span>
 
         <button
