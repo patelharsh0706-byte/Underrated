@@ -75,16 +75,19 @@ export default async function HomePage() {
     top10 = [...dailyHeat, ...padding];
   }
 
-  // Faces for the pulse row: creators who were actually picked in today's
-  // battles. Comes off dailyHeat, so it costs no extra query and is empty
-  // whenever nobody has qualified today — an empty facepile beats a facepile
-  // of people who weren't there. See BattleArena's PulseFace note on why
-  // these are creators and never voters.
-  const pulseFaces = dailyHeat.slice(0, 4).map((entry) => ({
-    username: entry.username,
-    name: entry.name,
-    avatarUrl: entry.avatarUrl,
-  }));
+  // Faces for the pulse row. Today's battled creators when there are any,
+  // otherwise the top of the board — `top10` is already resolved above, so
+  // either way this costs no extra query and the row is never face-less.
+  // The fallback is deliberate: see DECISIONS.md § 2026-09-12 "The pulse-row
+  // facepile is always populated". They are still always real creators with
+  // working profile links, and still never voters.
+  const pulseFaces = (dailyHeat.length > 0 ? dailyHeat : top10)
+    .slice(0, 4)
+    .map((entry) => ({
+      username: entry.username,
+      name: entry.name,
+      avatarUrl: entry.avatarUrl,
+    }));
 
   return (
     <main className="flex flex-1 flex-col items-center gap-10 px-4 py-10 sm:gap-14 sm:py-16">

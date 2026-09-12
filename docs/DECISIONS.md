@@ -819,3 +819,37 @@ Rejected:
   for bursts while still dropping them across a freeze.
 - Raising Vercel `maxDuration` or Postgres `statement_timeout` — both only
   change how long the hang lasts.
+
+## 2026-09-12 — The pulse-row facepile is always populated
+
+Decision:
+The facepile beside the pick counter shows today's battled creators when
+there are any and the top of the board when there are not, instead of
+rendering nothing. Four faces, always. `top10` is already resolved on the
+page, so the fallback costs no extra query.
+
+Why:
+The faces came only from `dailyHeat`, which resets at 00:00 UTC. For the
+hours between the day rolling over and the day's first pick — which is most
+of the European and American morning — production rendered a bare
+"0 picks today · Skip this battle" with an empty space where the pile
+belongs. It read as broken rather than as quiet. Requested directly: keep
+the facepile constant.
+
+The cost, stated plainly: in fallback the faces no longer mean "these
+people were in today's battles". They are still real, active creators and
+every avatar still links to a real profile, so nothing on screen is
+fabricated — but the row is decorative in that window rather than
+informative. This softens UX rule 10 ("nothing on screen implies a feature
+that does not exist") at its edge; it does not break it, because the
+feature and the people are both real.
+
+Rejected:
+- Hardcoding four usernames — the faces would survive those creators being
+  deactivated or renamed, and would eventually 404.
+- A rolling 24-hour window instead of the UTC-day boundary — it would fill
+  the gap, but it desynchronises the pulse row from Daily Heat and Main
+  Character, which all deliberately reset at the same instant (DECISIONS.md
+  § 2026-09-10 "The Trend column shows Aura moved today").
+- Leaving it empty — the honest option, and what shipped first; overruled
+  because an empty row looks like a bug to everyone who is not us.

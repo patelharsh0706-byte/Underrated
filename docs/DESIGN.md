@@ -179,7 +179,11 @@ so a missing logo never shifts the row.
 **Facepiles** — circular avatars, 32px, overlapping by ~10px, 2px ground-
 coloured ring to separate them, each one a link to that creator's profile.
 Used beside the pick counter under the battle. They show creators, never
-voters — voting is anonymous and has no face to show.
+voters — voting is anonymous and has no face to show. The pulse-row pile is
+always populated: today's battled creators when there are any, the top of
+the board otherwise, so the row never renders face-less between the UTC day
+rolling over and the day's first pick. See DECISIONS.md § 2026-09-12 "The
+pulse-row facepile is always populated".
 
 **Live panel** — one card, three stacked bands separated by hairlines: an
 uppercase letter-spaced title with a green dot and the online count on the
