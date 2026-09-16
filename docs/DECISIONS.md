@@ -1040,3 +1040,93 @@ Rejected:
 - Recategorising the seeded three into Builder — an illustrator and a musician
   are not builders, and inventing a label for a fabricated person to fill a
   leaderboard is worse than removing them from it.
+
+## 2026-09-17 — V1 is done; V2 begins
+
+Decision:
+The MVP Definition of Done for V1 was met as of 2026-09-17. V1 scope is shipped
+and stable on production. [MVP.md](MVP.md) now carries the scope contract for **V2**
+("Picker Identity via Receipts"), which begins immediately.
+
+V2's opening feature is Receipts: proof you backed a creator before they blew up.
+Identity is opt-in and never read by ranking — a picker can play battles forever
+without an account, and spotting (the new identity-related action) never affects Aura,
+pairing, battles, or leaderboard.
+
+V1's "NOT V1" list is kept intact as historical record. V2's "NOT V2" list pulls
+in each V2 item explicitly, and adds new deferred items (auto-spotting, `user_id`
+on battles, public picker profiles, spot undo).
+
+Why:
+V1 was defined to answer a narrow question: can we build a trustworthy creator
+ranking with minimal complexity? Yes, and it ships now. V2 asks: given that
+foundation, can pickers get something for the trust they place in us early?
+Receipts answers that.
+
+Rejected:
+- Extending V1 scope to include Receipts — Receipts requires identity, which
+  V1 explicitly rejects ("picking stays account-free"). Reopening that in V1
+  destabilizes the already-shipped boundary.
+- Deferring Receipts to "V2 later" — identity is now a product lever that
+  changes gameplay ("why create an account?"), so delaying it delays V2's
+  value. Ship it now as Phase 1 of V2.
+- Keeping separate codebases for V1 and V2 — this is one codebase that
+  evolves. V1 is a historical fact, not a deployable branch.
+
+## 2026-09-17 — Receipts: opt-in picker identity, spots are not picks
+
+Decision:
+**Spot** is a new deliberate action, separate from a pick. Tapping the eye button
+on a battle card or creator profile never counts as a pick, never affects Aura,
+pairing, battles, or leaderboard, and never increments the session's pick count.
+It requires Google sign-in (entry point to Receipts); picking stays account-free.
+
+After 5 picks in a session, a dismissible prompt appears: "5 battles in. Want us
+to keep your receipts?" Tapping "Keep my receipts" routes to Google sign-in.
+Dismissing sets a cookie; nudge reappears at 25 picks.
+
+After sign-in, `/receipts` shows: battles played (all-time, all-time in Phase 1),
+people backed (unique creators spotted), best spot card, and spot list with rank
+at spot and current rank. `/receipts/card` renders a shareable OG image.
+
+Rank at spot time is stored as a snapshot (`rank_at_spot`, nullable); if the
+creator was in placement at spot time, `rank_at_spot = null` and the UI falls
+back to "backed at {aura} Aura". This is an accepted risk for Phase 1 — future
+phases can handle placement-time spots differently.
+
+Why:
+- **Spot is separate:** Conflating spot with pick tempts ranking/pairing to read it,
+  breaking the invariant that identity never affects ranking. Spot is opt-in,
+  pick is not; they must be separate tables and queries.
+- **Google only in Phase 1:** Supabase Auth is already wired for Google, and
+  Receipts is strong enough a use case to justify the sign-in friction. X later.
+- **Session nudge:** After 5 picks, a voter has enough context to decide if
+  Receipts matter to them. Nudging them then respects picker agency; forcing
+  sign-in at pick #1 breaks rule 2 ("signing in is only ever offered, never required").
+- **Dismissal cookie:** Respects the picker's choice; re-showing at 25 picks gives
+  them another chance if they reconsider after more battle context.
+- **Rank at spot is nullable:** Spotting a creator in placement has no rank to
+  snapshot yet. Storing null and falling back to Aura is cheaper than retroactively
+  computing rank when the creator gets ranked later.
+
+Amends:
+- 2026-09-05 (Google OAuth) — Google OAuth now has a UI entry point (Receipts nudge),
+  whereas 2026-09-05 noted there was none in V1.
+- 2026-09-10 (identity as opt-in) — Reinforces that a voter *may* have an identity
+  (opt-in via Receipts), but facepile rule stands: voter faces are never shown.
+
+Rejected:
+- Auto-spotting every pick — Spot must be deliberate. A picker should feel the
+  difference between "I think they're great" (spot) and "I pick them this round"
+  (pick). Auto-spotting erases that distinction.
+- `user_id` on `battles` table — Identity stays separate from ranking. Queries
+  that rank creators never read `user_id`; attribution of battles to pickers is
+  done via `battles.voter_session` → `picker_sessions.user_id` join, so the
+  tables are decoupled. Adding `user_id` to battles risks a future dev reading it
+  by mistake in a ranking query.
+- Public picker profiles / facepile — Voters stay private in V2. A picker can
+  share *their* receipts (what they spotted), but not a public URL where others
+  can see who spotted whom (facepile risk). Deferred to V3+.
+- Spot undo / un-spot — A spot is a historical record (like a pick). Once done,
+  it stays. Future phases can add retraction UI if needed, but Phase 1 doesn't
+  offer it.

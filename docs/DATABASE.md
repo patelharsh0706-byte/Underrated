@@ -256,9 +256,69 @@ Per table:
 - `visitor_pings` — no client read, no client write. Only the server reads it,
   to compute the aggregate numbers shown on the stats bar; no policy is
   granted to the anon or authenticated roles at all.
-- `rank_snapshots` — when built: no client read, no client write. Written only
+    - `rank_snapshots` — when built: no client read, no client write. Written only
   by the scheduled capture job under the service role; the trend arrow is
   served from a server query like every other derived number.
+
+    - `spots` — no client read, no client write. Server-only via service role.
+      Mirrors `visitor_pings`: identity data is segregated from ranking data.
+    - `picker_sessions` — no client read, no client write. Server-only via service role.
+      Links voter sessions to user identity.
+
+### spots
+
+Receipts: Picker identity marker. One row per user per creator spotted.
+
+```
+id                uuid pk
+user_id           uuid fk → auth.users.id, on delete cascade
+creator_id        uuid fk → creators.id
+rank_at_spot      integer null    snapshot of creator's rank at spot time
+aura_at_spot      integer         snapshot of creator's aura at spot time
+created_at        timestamptz
+
+UNIQUE(user_id, creator_id)
+INDEX (user_id)
+INDEX (creator_id)
+```
+
+**Invariants:**
+- Immutable: rows never update or delete (Phase 1).
+- One spot per user per creator (unique constraint).
+- `rank_at_spot` is null if creator was in placement; else computed rank.
+- `aura_at_spot` is immutable snapshot, used for rank computation.
+- RLS enabled, no policies (server-only via service role, like `visitor_pings`).
+
+**Attribution via join:** Battles are never marked with `user_id`. A picker's battle
+history is attributed via `battles.voter_session → picker_sessions.user_id` join.
+This keeps identity structurally separate from Aura/ranking queries.
+
+### picker_sessions
+
+Receipts: Session-to-identity linker. One row per voter session linked to a user.
+
+```
+voter_session     text pk        same value as battles.voter_session
+user_id           uuid fk → auth.users.id
+linked_at         timestamptz
+
+INDEX (user_id)
+```
+
+**Invariants:**
+- First link wins: `ON CONFLICT DO NOTHING` ensures one session links to at most one user.
+- Links never update or delete (Phase 1).
+- RLS enabled, no policies (server-only via service role).
+
+**Battle attribution:** A picker's battles are counted via:
+```sql
+SELECT count(*) FROM battles
+WHERE voter_session IN (
+  SELECT voter_session FROM picker_sessions WHERE user_id = $1
+)
+```
+
+Ranking queries never see this join; identity is kept separate by design.
 
 ## Indexes
 
