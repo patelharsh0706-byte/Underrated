@@ -3,7 +3,7 @@ import "server-only";
 import { and, desc, eq, getTableColumns, gt, inArray, lte, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { battles, creators, sponsorships, visitorPings } from "@/lib/db/schema";
+import { battles, creators, pickerSessions, sponsorships, visitorPings } from "@/lib/db/schema";
 import type { CreatorFields } from "@/lib/creator-schema";
 import {
   DAILY_HEAT_BATTLES_REQUIRED,
@@ -597,4 +597,12 @@ export async function getRecentJoins(limit = 5): Promise<RecentJoin[]> {
     .from(creators)
     .orderBy(desc(creators.createdAt))
     .limit(limit);
+}
+
+/** Link a voter session to a user identity. First link wins: ON CONFLICT DO NOTHING. */
+export async function linkPickerSession(voterSession: string, userId: string): Promise<void> {
+  await db
+    .insert(pickerSessions)
+    .values({ voterSession, userId })
+    .onConflictDoNothing();
 }
