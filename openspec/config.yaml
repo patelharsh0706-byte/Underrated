@@ -1,0 +1,31 @@
+project:
+  name: underhyped
+  description: Creator discovery and ranking platform with receipts system
+  version: "2.0"
+  
+stack:
+  framework: Next.js 16
+  language: TypeScript
+  database: Supabase (PostgreSQL)
+  orm: Drizzle ORM
+  testing: Vitest
+  ui: Radix UI + CVA
+  auth: Supabase Auth (Google OAuth)
+
+testing:
+  runner: vitest
+  strict_tdd: true
+  evidence_required:
+    - Unit tests for pure modules
+    - Integration tests for queries
+    - E2E verification on verify phase
+
+strict_tdd: true
+
+conventions:
+  - Commits are atomic, testable units
+  - Each task has RED → GREEN → REFACTOR cycle
+  - Database changes via Drizzle migrations only
+  - Server actions marked with "use server"
+  - RLS policies documented in DATABASE.md
+  - Vocab: "Spot", "Receipts", "Picker" (authenticated voter)
