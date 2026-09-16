@@ -32,7 +32,9 @@ const caveat = Caveat({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://underhyped.wtf"),
+  // www is the canonical host — the apex 308s to it, and crawlers (Twitter
+  // especially) will not follow a redirect on og:image.
+  metadataBase: new URL("https://www.underhyped.wtf"),
   title: "Underhyped",
   description: "Discover people before everyone else does.",
   openGraph: {
