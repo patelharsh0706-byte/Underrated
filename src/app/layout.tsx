@@ -32,8 +32,21 @@ const caveat = Caveat({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://underhyped.wtf"),
   title: "Underhyped",
   description: "Discover people before everyone else does.",
+  openGraph: {
+    title: "Underhyped",
+    description: "Discover people before everyone else does.",
+    images: ["/og-image.png"],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Underhyped",
+    description: "Discover people before everyone else does.",
+    images: ["/og-image.png"],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
