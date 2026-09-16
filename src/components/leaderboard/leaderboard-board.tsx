@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { CATEGORIES } from "@/components/submit/enter-arena-flow";
+import { CATEGORIES } from "@/lib/creator-schema";
 import { DAILY_HEAT_BATTLES_REQUIRED, DAILY_HEAT_VOTERS_REQUIRED } from "@/lib/ranking/daily-heat";
 import { PLACEMENT_BATTLES_REQUIRED, PLACEMENT_VOTERS_REQUIRED } from "@/lib/ranking/placement";
 import { cn } from "@/lib/utils";

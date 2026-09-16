@@ -6,7 +6,7 @@ import { createSubmissionCheckout, type SubmitCreatorResult } from "@/app/action
 import { DomainLogo } from "@/components/domain-logo";
 import { MarkerSwipe } from "@/components/marker-swipe";
 import type { ALLOWED_SOCIALS } from "@/lib/creator-schema";
-import { SUBMISSION_FEE_CENTS } from "@/lib/creator-schema";
+import { CATEGORIES, SUBMISSION_FEE_CENTS, type Category } from "@/lib/creator-schema";
 import { getCreatorAvatarUrl, getUnavatarUrl, toUsernameSlug } from "@/lib/unavatar";
 import { cn } from "@/lib/utils";
 
@@ -17,8 +17,6 @@ const FEE = `$${(SUBMISSION_FEE_CENTS / 100).toFixed(SUBMISSION_FEE_CENTS % 100 
 // Source of truth for real creator categories — the leaderboard's category
 // filter imports this directly rather than re-declaring it, so the two can
 // never drift apart. See leaderboard-board.tsx.
-export const CATEGORIES = ["Indie Developer", "Builder", "CEO/Founder"] as const;
-
 type AllowedSocial = (typeof ALLOWED_SOCIALS)[number];
 
 // Same palette the battle card's work-link monogram uses, picked the same
@@ -40,7 +38,8 @@ interface Draft {
   mark: string;
   /** The project's real favicon/logo, via unavatar's domain lookup. */
   logo: string | null;
-  cat: string;
+  /** "" until the creator picks one; the submit button stays disabled. */
+  cat: Category | "";
 }
 
 /** A handle out of anything that looks like an X URL or a bare @name. */
@@ -305,6 +304,10 @@ export function EnterArenaFlow() {
 
   const enter = () => {
     if (!draft) return;
+    // The button is disabled without a category; this makes that an invariant
+    // the type system can see rather than one only the markup enforces.
+    const category = draft.cat;
+    if (!category) return;
     setResult(null);
     setStep("done");
 
@@ -313,7 +316,7 @@ export function EnterArenaFlow() {
         name: draft.name,
         username: draft.user,
         bio: draft.bio || undefined,
-        category: draft.cat,
+        category,
         workUrl: draft.work,
         socials: { twitter: draft.social } as Record<AllowedSocial, string>,
         primarySocial: "twitter",

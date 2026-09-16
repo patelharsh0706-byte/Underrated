@@ -5,10 +5,20 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 import { creators } from "../src/lib/db/schema";
+import { type Category } from "../src/lib/creator-schema";
 
 type Socials = Record<string, string>;
 
-// Seed data only. Never run against a database with real creators.
+// Seed data only. Never run against a database with real creators — this was
+// run against production once, and three fictional people sat on the live
+// leaderboard for weeks carrying categories no filter could match. They are
+// deactivated now; see ISSUES.md § 2026-09-14.
+//
+// `category` is typed as Category, so the three V1 values in creator-schema.ts
+// are the only ones this file can produce. These creators predate that
+// taxonomy (they were illustrators, musicians, photographers), so the mapping
+// below is approximate by nature — they are fictional, and the point is that
+// local data can always be filtered.
 // workUrl is the strongest single piece of evidence for that creator's craft;
 // socials are keyed by platform, and primarySocial picks which one shows on
 // the battle card. followerCount is self-reported, shown pre-vote instead of
@@ -16,7 +26,7 @@ type Socials = Record<string, string>;
 const SEED_CREATORS: {
   username: string;
   name: string;
-  category: string;
+  category: Category;
   bio: string;
   workUrl: string;
   socials: Socials;
@@ -26,7 +36,7 @@ const SEED_CREATORS: {
   {
     username: "mira_paints",
     name: "Mira Alston",
-    category: "illustration",
+    category: "Builder",
     bio: "Gouache portraits of strangers on the subway.",
     workUrl: "https://miraalston.myportfolio.com",
     socials: { instagram: "https://instagram.com/mira_paints", twitter: "https://x.com/mira_paints" },
@@ -36,7 +46,7 @@ const SEED_CREATORS: {
   {
     username: "kdev404",
     name: "Kenji Osei",
-    category: "dev",
+    category: "Indie Developer",
     bio: "Building a text editor that only I will ever use.",
     workUrl: "https://github.com/kdev404/inkwell",
     socials: { twitter: "https://x.com/kdev404", github: "https://github.com/kdev404" },
@@ -46,7 +56,7 @@ const SEED_CREATORS: {
   {
     username: "loosethread",
     name: "Priya Nandan",
-    category: "music",
+    category: "Builder",
     bio: "Bedroom pop, one take, no autotune.",
     workUrl: "https://open.spotify.com/artist/loosethread",
     socials: { spotify: "https://open.spotify.com/artist/loosethread", instagram: "https://instagram.com/loosethread" },
@@ -56,7 +66,7 @@ const SEED_CREATORS: {
   {
     username: "wrtwithsam",
     name: "Samuel Kirsch",
-    category: "writing",
+    category: "Builder",
     bio: "Short fiction about people who miss their trains.",
     workUrl: "https://medium.com/@wrtwithsam/the-8-14-out-of-penn",
     socials: { twitter: "https://x.com/wrtwithsam" },
@@ -66,7 +76,7 @@ const SEED_CREATORS: {
   {
     username: "glyph.deb",
     name: "Deborah Ochoa",
-    category: "design",
+    category: "Builder",
     bio: "Type foundry of one. Releases a typeface every solstice.",
     workUrl: "https://glyphdeb.type.foundry",
     socials: { instagram: "https://instagram.com/glyph.deb", twitter: "https://x.com/glyphdeb" },
@@ -76,7 +86,7 @@ const SEED_CREATORS: {
   {
     username: "filmgrainjay",
     name: "Jay Whitfield",
-    category: "photography",
+    category: "Builder",
     bio: "Shoots only on expired film. Refuses to explain why.",
     workUrl: "https://filmgrainjay.com",
     socials: { instagram: "https://instagram.com/filmgrainjay" },
@@ -86,7 +96,7 @@ const SEED_CREATORS: {
   {
     username: "verse_null",
     name: "Aidan Cho",
-    category: "comedy",
+    category: "Builder",
     bio: "Stand-up about being extremely online and extremely tired.",
     workUrl: "https://youtube.com/watch?v=verse-null-set-3",
     socials: { youtube: "https://youtube.com/@verse_null", twitter: "https://x.com/verse_null" },
@@ -96,7 +106,7 @@ const SEED_CREATORS: {
   {
     username: "lo.fi.luz",
     name: "Luz Marino",
-    category: "music",
+    category: "Builder",
     bio: "Makes lo-fi beats out of field recordings from her block.",
     workUrl: "https://open.spotify.com/artist/lofiluz",
     socials: { spotify: "https://open.spotify.com/artist/lofiluz", tiktok: "https://tiktok.com/@lo.fi.luz" },
@@ -106,7 +116,7 @@ const SEED_CREATORS: {
   {
     username: "stackofrenee",
     name: "Renee Vasquez",
-    category: "dev",
+    category: "Indie Developer",
     bio: "Open-source maintainer of a library eleven people use.",
     workUrl: "https://github.com/stackofrenee/beacon",
     socials: { github: "https://github.com/stackofrenee", twitter: "https://x.com/stackofrenee" },
@@ -116,7 +126,7 @@ const SEED_CREATORS: {
   {
     username: "inkbyowen",
     name: "Owen Delacroix",
-    category: "illustration",
+    category: "Builder",
     bio: "One-panel comics about bad dates.",
     workUrl: "https://instagram.com/inkbyowen",
     socials: { instagram: "https://instagram.com/inkbyowen" },
@@ -126,7 +136,7 @@ const SEED_CREATORS: {
   {
     username: "thecutroom",
     name: "Farrah Ibsen",
-    category: "film",
+    category: "Builder",
     bio: "Edits trailers for movies that don't exist yet.",
     workUrl: "https://vimeo.com/thecutroom",
     socials: { instagram: "https://instagram.com/thecutroom" },
@@ -136,7 +146,7 @@ const SEED_CREATORS: {
   {
     username: "noteform",
     name: "Tobias Reyes",
-    category: "writing",
+    category: "Builder",
     bio: "Essays that started as tweets and got out of hand.",
     workUrl: "https://noteform.substack.com",
     socials: { twitter: "https://x.com/noteform" },
@@ -146,7 +156,7 @@ const SEED_CREATORS: {
   {
     username: "clay.and.co",
     name: "Coralie Nyugen",
-    category: "design",
+    category: "Builder",
     bio: "Ceramics that look like they're mid-collapse. On purpose.",
     workUrl: "https://clayandco.shop",
     socials: { instagram: "https://instagram.com/clay.and.co" },
@@ -156,7 +166,7 @@ const SEED_CREATORS: {
   {
     username: "synth_moth",
     name: "Elias Vargas",
-    category: "music",
+    category: "Builder",
     bio: "Modular synth, no lyrics, three EPs deep.",
     workUrl: "https://open.spotify.com/artist/synthmoth",
     socials: { spotify: "https://open.spotify.com/artist/synthmoth", instagram: "https://instagram.com/synth_moth" },
@@ -166,7 +176,7 @@ const SEED_CREATORS: {
   {
     username: "wideangle_bea",
     name: "Beatrix Solano",
-    category: "photography",
+    category: "Builder",
     bio: "Documents empty parking lots at golden hour.",
     workUrl: "https://wideanglebea.com",
     socials: { instagram: "https://instagram.com/wideangle_bea" },
@@ -176,7 +186,7 @@ const SEED_CREATORS: {
   {
     username: "pxl_marlowe",
     name: "Marlowe Finch",
-    category: "dev",
+    category: "Indie Developer",
     bio: "Solo game dev. Six-year project, still unnamed.",
     workUrl: "https://pxlmarlowe.itch.io",
     socials: { twitter: "https://x.com/pxl_marlowe", linkedin: "https://linkedin.com/in/marlowefinch" },
@@ -186,7 +196,7 @@ const SEED_CREATORS: {
   {
     username: "punchlineparker",
     name: "Parker Ilic",
-    category: "comedy",
+    category: "Builder",
     bio: "Sketch writer, mostly for an audience of his roommates.",
     workUrl: "https://youtube.com/watch?v=punchline-sketch-04",
     socials: { twitter: "https://x.com/punchlineparker" },
@@ -196,7 +206,7 @@ const SEED_CREATORS: {
   {
     username: "brushfire_nia",
     name: "Nia Abara",
-    category: "illustration",
+    category: "Builder",
     bio: "Paints protest signs after the protests are over.",
     workUrl: "https://niaabara.myportfolio.com",
     socials: { instagram: "https://instagram.com/brushfire_nia" },
@@ -206,7 +216,7 @@ const SEED_CREATORS: {
   {
     username: "midreel_theo",
     name: "Theo Lindqvist",
-    category: "film",
+    category: "Builder",
     bio: "Micro-documentaries about people's junk drawers.",
     workUrl: "https://youtube.com/@midreel_theo",
     socials: { youtube: "https://youtube.com/@midreel_theo" },
@@ -216,7 +226,7 @@ const SEED_CREATORS: {
   {
     username: "quietchords_ivy",
     name: "Ivy Castellano",
-    category: "music",
+    category: "Builder",
     bio: "Folk covers of songs that were never folk to begin with.",
     workUrl: "https://open.spotify.com/artist/quietchordsivy",
     socials: { spotify: "https://open.spotify.com/artist/quietchordsivy", youtube: "https://youtube.com/@quietchords_ivy" },

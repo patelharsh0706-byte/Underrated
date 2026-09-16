@@ -18,6 +18,18 @@ function normalizeUrlInput(val: unknown): unknown {
   return normalizeToUrlString(val) ?? val;
 }
 
+/**
+ * The three V1 categories, singular because a category labels one person.
+ * This is the only place they are defined — the submit chips, the leaderboard
+ * filter and the schema below all read it, so the list cannot drift from the
+ * values actually stored on creators. It did drift once, and every category
+ * filter returned an empty board for weeks. See ISSUES.md § 2026-09-14 and
+ * DECISIONS.md § 2026-09-14.
+ */
+export const CATEGORIES = ["Indie Developer", "Builder", "CEO/Founder"] as const;
+
+export type Category = (typeof CATEGORIES)[number];
+
 export const ALLOWED_SOCIALS = [
   "twitter",
   "instagram",
@@ -38,7 +50,9 @@ export const creatorFieldsSchema = z.object({
     .max(30)
     .regex(/^[a-z0-9_.]+$/, "Lowercase letters, numbers, . and _ only"),
   bio: z.string().trim().max(140).optional(),
-  category: z.string().trim().min(1, "Pick a category"),
+  // Enum, not a free string: this is what stops a new value being written that
+  // no filter chip can ever match.
+  category: z.enum(CATEGORIES, { error: "Pick a category" }),
   workUrl: z.preprocess(normalizeUrlInput, z.url("Enter a valid URL")),
   socials: z
     .partialRecord(z.enum(ALLOWED_SOCIALS), z.url())

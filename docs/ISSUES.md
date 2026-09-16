@@ -255,31 +255,48 @@ function and its database.
 
 ---
 
-## 2026-09-07 — Category labels flip-flopped three times · OPEN
+## 2026-09-07 — Category labels flip-flopped three times · FIXED 2026-09-14
 
-**Symptom.** Three commits in one day: singular labels (`c79478c`), reverted to
-plural (`994f4f1`), then singular again (`495344c`) — the last one shipping
-with a note that the decision record still disagreed.
+**Symptom.** Clicking any category chip on `/leaderboard` showed an empty
+board. Reported as "when I click on Indie Developer, I can't see all the people
+who are Indie Developers. It shows blank."
 
-**Still broken today.** `CATEGORIES` in `enter-arena-flow.tsx` is
-`["Indie Developer", "Builder", "CEO/Founder"]` (singular). The nine active
-creators store `"Indie Developers"` (6), plus legacy `dev`, `illustration` and
-`music` (1 each). `/leaderboard` filters with exact equality
-(`entry.category === category`), so **every category chip returns an empty
-board**, and DECISIONS.md § categories still records the plural taxonomy.
+**Cause.** The list of categories lived in a component
+(`enter-arena-flow.tsx`) while the values lived free-form in the database
+(`z.string().trim().min(1)`), with nothing tying them together. They drifted.
+Three commits on 2026-09-07 flipped the labels singular → plural → singular
+without settling, and the last one shipped knowing the decision record still
+disagreed. The filter compares with exact equality, so the mismatch was total
+and silent: chips read `"Indie Developer"`, six creators stored
+`"Indie Developers"`, and three seeded demo people stored `dev`,
+`illustration` and `music` — values from a taxonomy that predated the
+three-category decision entirely. Only `CEO/Founder` worked, because that
+creator was added after the chips shipped.
 
-**Fix needed** (three parts, none of them done):
-1. Decide the taxonomy once — singular or plural — and update
-   DECISIONS.md § categories to match.
-2. Normalise the existing rows, including the three legacy values that predate
-   the taxonomy entirely.
-3. Make the filter tolerant of, or migrated past, the mismatch.
+**Fix.**
+- `CATEGORIES` moved to `src/lib/creator-schema.ts` as the single definition,
+  read by the submit chips, the leaderboard filter and the schema.
+- `category` validated with `z.enum(CATEGORIES)` instead of a free string, so
+  both write paths — the checkout action and the Dodo webhook — reject a value
+  no filter could match.
+- `scripts/seed.ts` types its category field as `Category`; it can no longer
+  produce a value the app does not know.
+- Data: six rows migrated to `"Indie Developer"`; the three seeded demo people
+  deactivated. Battle history untouched, so no real creator's Aura moved.
 
-**Prevention.** The taxonomy is stated in two places that can drift, with live
-data as a silent third. One constant should own it, the decision record should
-point at that constant rather than restating the values, and a filter that can
-only ever return zero rows should be caught by a test over real category
-values.
+**Prevention.** Tests in `creator-schema.test.ts` pin the exact list and assert
+that the drifted values (`"Indie Developers"`, `dev`, `illustration`, `music`)
+are rejected. The enum is the real guard: the previous fix was a commit message
+asking someone to reconcile the record later, and nobody did for a week.
+**Class of bug:** a constant that drifted from its decision record. The enum
+converts that from a thing people must remember into a thing the compiler and
+the schema enforce — it immediately caught the submit flow carrying `category`
+as an unconstrained `string`.
+
+**Also worth knowing.** `scripts/seed.ts` says "never run against a database
+with real creators" and had been run against production: three fictional people
+sat on the live public leaderboard for weeks. Deactivated now, not deleted, so
+the battles they took part in still add up.
 
 ---
 

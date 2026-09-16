@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 
-import { checkoutInputSchema, creatorFieldsSchema, SUBMISSION_FEE_CENTS } from "./creator-schema";
+import {
+  CATEGORIES,
+  checkoutInputSchema,
+  creatorFieldsSchema,
+  SUBMISSION_FEE_CENTS,
+} from "./creator-schema";
 
 /**
  * The submit action serializes its validated payload into Dodo checkout
@@ -74,5 +79,30 @@ describe("checkoutInputSchema", () => {
     const parsed = checkoutInputSchema.parse({ ...validSubmission, amountCents: 1 });
     expect(parsed).not.toHaveProperty("amountCents");
     expect(SUBMISSION_FEE_CENTS).toBe(300);
+  });
+});
+
+// Regression guard for ISSUES.md § 2026-09-14 "Every category filter returned
+// an empty board". The chips, the submit form and the stored values all read
+// CATEGORIES, so the only way they can drift apart again is if a value is
+// written that is not in this list.
+describe("category taxonomy", () => {
+  it("is the three V1 categories, singular", () => {
+    // Singular because a category labels one person. The plural spelling is
+    // what drifted from the database and emptied every filter.
+    expect([...CATEGORIES]).toEqual(["Indie Developer", "Builder", "CEO/Founder"]);
+  });
+
+  it("rejects a category outside the list", () => {
+    for (const bad of ["Indie Developers", "dev", "illustration", "music", ""]) {
+      const result = creatorFieldsSchema.shape.category.safeParse(bad);
+      expect(result.success).toBe(false);
+    }
+  });
+
+  it("accepts every category the UI can offer", () => {
+    for (const good of CATEGORIES) {
+      expect(creatorFieldsSchema.shape.category.safeParse(good).success).toBe(true);
+    }
   });
 });

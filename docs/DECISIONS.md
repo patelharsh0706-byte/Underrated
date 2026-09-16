@@ -189,8 +189,14 @@ longer sends an amount at all — `SUBMISSION_FEE_CENTS` in
 `lib/creator-schema.ts` is the single source of truth, applied in
 `createSubmissionCheckout`. The amount picker is gone from `/submit`.
 
-V1 also ships exactly three categories: **Indie Developers, Builders,
-CEO/Founders**, stored as human labels rather than slugs.
+V1 also ships exactly three categories: **Indie Developer, Builder,
+CEO/Founder**, stored as human labels rather than slugs.
+
+> **Corrected 2026-09-14.** This entry recorded the plural spelling while the
+> shipped UI used the singular, and the two never reconciled — every category
+> filter returned an empty board. Singular is correct, a category labels one
+> person, and `CATEGORIES` in `src/lib/creator-schema.ts` is now the single
+> definition. See the 2026-09-14 entry below.
 
 Why:
 "Pay what you want, from $1" made the entry fee a decision the creator had to
@@ -994,3 +1000,43 @@ Rejected:
 - The direct connection (`db.<ref>.supabase.co:5432`) — the host no longer
   resolves for this project, so it is not an option even for migrations.
 - `max: 1` — hangs outright; postgres.js needs room for more than one socket.
+
+## 2026-09-14 — One definition of the categories, enforced at the write path
+
+Decision:
+`CATEGORIES` lives in `src/lib/creator-schema.ts` — singular: **Indie
+Developer, Builder, CEO/Founder** — and is the only definition. The submit
+chips, the leaderboard filter and `creatorFieldsSchema` all read it, and
+`category` is validated with `z.enum(CATEGORIES)` instead of a free string.
+`scripts/seed.ts` types its category field as `Category`, so it cannot
+produce a value the app does not know.
+
+Why:
+The list existed in a component while the values lived free-form in the
+database, with nothing tying them together. They drifted: the UI shipped
+singular, the rows stored plural, and the decision record said plural too. The
+result was silent and total — every category chip filtered on exact equality
+and matched nothing, so the board went empty. The taxonomy had already
+flip-flopped three times in one day on 2026-09-07 without settling.
+
+An enum at the write path is what makes this structural rather than a
+convention. Both paths that create a creator — the checkout action and the
+Dodo webhook — validate against the same list, so a value no filter can match
+can no longer be stored. The enum immediately earned its place: it caught the
+submit flow carrying `category` as an unconstrained `string`.
+
+Data migrated with the decision: six creators from "Indie Developers" to
+"Indie Developer", and the three seeded demo people (Kenji Osei, Mira Alston,
+Priya Nandan) deactivated — they were fictional profiles on a live public
+leaderboard whose categories (`dev`, `illustration`, `music`) predated the
+taxonomy entirely. Their battle history is untouched, so no real creator's
+Aura moved.
+
+Rejected:
+- Plural, to match the old record — it would have broken the newest real
+  creator's row and every creator added since, to preserve a line of text.
+- A tolerant filter (case- and plural-insensitive matching) — hides the drift
+  instead of preventing it, and the next new value breaks it again.
+- Recategorising the seeded three into Builder — an illustrator and a musician
+  are not builders, and inventing a label for a fabricated person to fill a
+  leaderboard is worse than removing them from it.
