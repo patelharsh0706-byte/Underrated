@@ -3,7 +3,7 @@ import "server-only";
 import { and, desc, eq, getTableColumns, gt, inArray, lte, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { battles, creators, pickerSessions, sponsorships, visitorPings } from "@/lib/db/schema";
+import { battles, creators, pickerSessions, sponsorships, spots, visitorPings } from "@/lib/db/schema";
 import type { CreatorFields } from "@/lib/creator-schema";
 import {
   DAILY_HEAT_BATTLES_REQUIRED,
@@ -605,4 +605,48 @@ export async function linkPickerSession(voterSession: string, userId: string): P
     .insert(pickerSessions)
     .values({ voterSession, userId })
     .onConflictDoNothing();
+}
+
+/** Insert a spot. Returns { alreadySpotted: boolean }. */
+export async function spotCreator(data: {
+  userId: string;
+  creatorId: string;
+  rankAtSpot: number | null;
+  auraAtSpot: number;
+}): Promise<{ alreadySpotted: boolean }> {
+  const result = await db
+    .insert(spots)
+    .values(data)
+    .onConflictDoNothing()
+    .returning({ id: spots.id });
+
+  // If no row was inserted, it's a duplicate
+  return { alreadySpotted: result.length === 0 };
+}
+
+/** Get a user's spot for a creator (or null if not spotted). */
+export async function getMySpot(userId: string, creatorId: string) {
+  const result = await db
+    .select()
+    .from(spots)
+    .where(
+      and(eq(spots.userId, userId), eq(spots.creatorId, creatorId))
+    )
+    .limit(1);
+
+  return result[0] ?? null;
+}
+
+/** Get set of creator IDs spotted by a user. */
+export async function getSpottedIds(userId: string, creatorIds: string[]) {
+  if (creatorIds.length === 0) return new Set<string>();
+
+  const result = await db
+    .select({ creatorId: spots.creatorId })
+    .from(spots)
+    .where(
+      and(eq(spots.userId, userId), inArray(spots.creatorId, creatorIds))
+    );
+
+  return new Set(result.map((row) => row.creatorId));
 }
