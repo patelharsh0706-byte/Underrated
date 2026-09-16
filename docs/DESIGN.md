@@ -306,3 +306,63 @@ docs/references/
 ```
 
 Agents: check `docs/references/` before designing a screen.
+
+## Receipts Feature (V2)
+
+### Spot button
+
+Location: Top-left of battle card portrait (36px circle) and next to share button on profiles (pill or icon).
+
+Styling:
+- **Idle:** Ground fill (`#F7F7F2`), hairline border, dark ink eye icon
+- **Spotted:** Lime fill (`#D8FF3E`), dark ink eye icon
+- **Hover:** Slightly darker (lime hover / ground hover)
+- **Aria labels:** `aria-label="Spot {firstName}"`, `aria-pressed={true|false}`
+- **Hit area:** ≥ 44px (touch-safe)
+
+Behavior:
+- `type="button"`, `stopPropagation()` (no nested-button issue)
+- Signed-out: tap → Receipts prompt
+- Signed-in: tap → optimistic update (eye fills lime) → server action → revert on error
+
+### Receipts prompt
+
+Role: Dialog (Escape/backdrop close, reduced-motion safe).
+
+Variants:
+
+**Nudge** (after 5 picks, bottom sheet mobile / centered card desktop):
+```
+5 BATTLES IN.
+Want us to keep your receipts?
+We'll remember who you backed before everyone else catches up.
+
+[🔵 KEEP MY RECEIPTS →]  (Primary lime, Google button)
+[Not now]                (Ghost)
+```
+
+**Spot** (on button tap when signed-out):
+```
+Spot {firstName}?
+Sign in and we'll keep the receipt.
+
+[🔵 SIGN IN WITH GOOGLE →]
+[Not now]
+```
+
+Buttons call `startGoogleSignIn(next)` with current path as fallback.
+
+### Navigation
+
+Add to `site-header.tsx` `NAV_LINKS`:
+```
+{ href: "/receipts", label: "Receipts" }
+```
+
+### Rule 2 (Sign-in)
+
+**Updated:** "Sign-in exists only to keep receipts, and is only ever offered, never required."
+- Picking stays account-free (unchanged from V1)
+- Sign-in is only offered via Receipts nudge (after 5 picks)
+- Tapping Spot button when unsigned-out shows prompt, not a forced sign-in
+

@@ -169,3 +169,16 @@ Underhyped is not:
 - a moderation-heavy community
 
 Ideas that belong to a later version go to [ROADMAP.md](ROADMAP.md), not into V1.
+
+## V2: Pickers Get Receipts
+
+The loop evolves: discover creators → spot them early → receipts (proof of early backing)
+→ creators share rankings.
+
+**Receipts** answers "why would a voter create an account?" With proof you backed a creator
+before they blew up, a picker is invested in the outcome. The early believer story is now
+trackable and shareable.
+
+Spotting is separate from picking (never affects ranking). Sign-in is only offered (never
+required). Identity stays opt-in; picking forever without an account is still possible.
+

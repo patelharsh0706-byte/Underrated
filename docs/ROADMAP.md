@@ -9,8 +9,11 @@ Nothing in this file may be built without moving it into [MVP.md](MVP.md) first.
 
 ## V2
 
-- Scout profiles
-- Early believer system — credit for backing someone before they blew up
+- Receipts weekly digest ("Your eye this week") — in Phase 2 of V2
+- X sign-in — added to auth options alongside Google
+- Public receipts URL — shared individual receipts (not facepile)
+- Receipts analytics dashboard — which creators did I spot, where are they now
+- Un-spot / retract receipt — ability to remove a spot
 - Talent Scout Score
 - Better creator verification
 - 24h Spotlight

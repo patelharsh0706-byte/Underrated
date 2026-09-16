@@ -277,3 +277,46 @@ Secrets only via env vars declared in `.env.example`. Never commit `.env`.
 ## Quality Gates
 
 Every task ends with: typecheck, lint, tests, production build. All must pass.
+
+## Auth (V2)
+
+**Receipts is the entry point.** Google sign-in is wired via Receipts nudge (after 5 picks);
+no other auth UI exists in Phase 1.
+
+Identity is opt-in and never read by ranking or pairing. A picker can play battles forever
+without an account. Spotting (identity-related action) never affects Aura, battles, or
+leaderboard.
+
+### Session linking
+
+When a voter signs in via Google:
+1. Exchange auth code in callback
+2. Get user from Supabase (`auth.getClaims()` or `getUser()`)
+3. Get or create voter session from cookie (`readVoterSession()`)
+4. Link session to user ID: `INSERT INTO picker_sessions (voter_session, user_id) VALUES (...) ON CONFLICT DO NOTHING`
+5. Redirect to `/receipts` (or `next` param if guarded)
+
+First link wins: `ON CONFLICT DO NOTHING` ensures one session links to at most one user.
+If a voter creates two accounts, only the first link persists.
+
+### Battle attribution
+
+Battles table is never marked with `user_id` (preserves isolation from ranking).
+A picker's battles are attributed via join:
+
+```sql
+SELECT count(*) FROM battles
+WHERE voter_session IN (
+  SELECT voter_session FROM picker_sessions WHERE user_id = $1
+)
+```
+
+This join is only used in identity/Receipts queries, never in ranking/pairing queries.
+Ranking queries never see `picker_sessions` or `auth.users.id`.
+
+### Profile page
+
+Profile page stays ISR (`revalidate=15`) and cookie-free: no `getClaims()` calls in RSC.
+Spot button is a client island that hydrates on mount, calling `auth.getSession()` locally
+(cache read, not network).
+
