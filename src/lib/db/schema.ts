@@ -120,3 +120,41 @@ export const sponsorships = pgTable(
     uniqueIndex("sponsorships_dodo_payment_key").on(table.dodoPaymentId),
   ],
 );
+
+// Receipts: Picker identity markers. One spot per user per creator.
+// RLS enabled, no policies (server-only via service role, like visitor_pings).
+export const spots = pgTable(
+  "spots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    creatorId: uuid("creator_id")
+      .notNull()
+      .references(() => creators.id),
+    rankAtSpot: integer("rank_at_spot"), // null if creator in placement
+    auraAtSpot: integer("aura_at_spot").notNull(), // immutable snapshot
+    createdAt: timestamptz("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("spots_user_creator_key").on(table.userId, table.creatorId),
+    index("spots_user_id_idx").on(table.userId),
+    index("spots_creator_id_idx").on(table.creatorId),
+  ],
+);
+
+// Receipts: Session-to-identity linker. One row per voter session linked to a user.
+// RLS enabled, no policies (server-only via service role, like visitor_pings).
+// First link wins: ON CONFLICT DO NOTHING.
+export const pickerSessions = pgTable(
+  "picker_sessions",
+  {
+    voterSession: text("voter_session").primaryKey(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => authUsers.id),
+    linkedAt: timestamptz("linked_at").notNull().defaultNow(),
+  },
+  (table) => [index("picker_sessions_user_id_idx").on(table.userId)],
+);
