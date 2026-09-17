@@ -1,42 +1,15 @@
-"use client";
+import { ShareButton } from "@/components/profile/share-button";
 
-import { useState } from "react";
-
-export function ReceiptsShareButton() {
-  const [isPending, setIsPending] = useState(false);
-
-  const handleShare = async () => {
-    setIsPending(true);
-    try {
-      const response = await fetch("/receipts/card");
-      const blob = await response.blob();
-      const file = new File([blob], "receipts-card.png", {
-        type: "image/png",
-      });
-
-      if (navigator.canShare?.({ files: [file] })) {
-        await navigator.share({ files: [file] });
-      } else {
-        // Fallback: open in new tab
-        const url = URL.createObjectURL(blob);
-        window.open(url, "_blank");
-      }
-    } catch (error) {
-      console.error("Share failed:", error);
-      // Fallback: open card endpoint
-      window.open("/receipts/card", "_blank");
-    } finally {
-      setIsPending(false);
-    }
-  };
-
+/**
+ * Receipts are public, so sharing is sharing the *link* — the page carries its
+ * own OG card, which is the picture. Reuses the profile share button rather
+ * than shipping a second clipboard implementation; it already handles the
+ * native sheet, the clipboard permission quirks, and the execCommand fallback.
+ */
+export function ReceiptsShareButton({ url }: { url: string }) {
   return (
-    <button
-      onClick={handleShare}
-      disabled={isPending}
-      className="w-full bg-lime-400 text-gray-900 font-semibold py-3 rounded-lg hover:bg-lime-500 disabled:opacity-50"
-    >
-      {isPending ? "Sharing..." : "🟢 FOUND HERE FIRST"}
-    </button>
+    <div className="flex justify-center">
+      <ShareButton url={url} label="Share your receipts" />
+    </div>
   );
 }

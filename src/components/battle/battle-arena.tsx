@@ -8,6 +8,9 @@ import { nextBattle, pickWinner, type PickResult } from "@/app/actions/battle";
 import { freshestAura } from "@/components/battle/aura";
 import { CreatorCard } from "@/components/battle/creator-card";
 import { usePicksToday, usePublishPicksToday } from "@/components/battle/picks-today";
+import { ReceiptsPrompt } from "@/components/receipts/receipts-prompt";
+import { spotCreator } from "@/app/actions/spot";
+import { useReceiptsNudge } from "@/lib/receipts/useReceipts";
 import type { PublicCreator } from "@/lib/db/queries";
 import { cn } from "@/lib/utils";
 
@@ -34,9 +37,61 @@ interface BattleArenaProps {
   /** Real count from getHomeStats(), seeding the live value. */
   battlesToday: number;
   faces: PulseFace[];
+  /** Receipts: signed-in state and pre-fetched spots for both initial creators. */
+  isSignedIn?: boolean;
+  initialSpottedIds?: string[];
 }
 
-export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaProps) {
+export function BattleArena({
+  initialPair,
+  battlesToday,
+  faces,
+  isSignedIn = false,
+  initialSpottedIds = [],
+}: BattleArenaProps) {
+  const [spottedIds, setSpottedIds] = useState<Set<string>>(() => new Set(initialSpottedIds));
+  const [sessionPicks, setSessionPicks] = useState(0);
+  const [spotPrompt, setSpotPrompt] = useState<{ firstName: string } | null>(null);
+  const { showNudge, dismissNudge } = useReceiptsNudge(sessionPicks, isSignedIn);
+
+  const promptOpen: { variant: "nudge" | "spot"; firstName?: string } | null = spotPrompt
+    ? { variant: "spot", firstName: spotPrompt.firstName }
+    : showNudge
+    ? { variant: "nudge" }
+    : null;
+
+  const handleSpot = useCallback(async (creatorId: string) => {
+    setSpottedIds((prev) => new Set(prev).add(creatorId));
+    try {
+      const res = await spotCreator({ creatorId });
+      if (!res.ok) {
+        setSpottedIds((prev) => {
+          const next = new Set(prev);
+          next.delete(creatorId);
+          return next;
+        });
+      }
+    } catch {
+      setSpottedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(creatorId);
+        return next;
+      });
+    }
+  }, []);
+
+  const handleSignInPrompt = useCallback((firstName: string) => {
+    setSpotPrompt({ firstName });
+  }, []);
+
+  const handleDismissPrompt = useCallback(() => {
+    if (spotPrompt) {
+      setSpotPrompt(null);
+      return;
+    }
+    dismissNudge();
+  }, [spotPrompt, dismissNudge]);
+
   const [current, setCurrent] = useState<Pair>(initialPair);
   const [result, setResult] = useState<PickResult | null>(null);
   const [phase, setPhase] = useState<"idle" | "picking" | "result">("idle");
@@ -113,6 +168,7 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
             [pickResult.winnerId]: pickResult.winnerAura,
             [pickResult.loserId]: pickResult.loserAura,
           }));
+          setSessionPicks((n) => n + 1);
           pickEpoch.current += 1;
           nextPairRef.current = null;
           void prefetchNext(true);
@@ -166,6 +222,10 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
           counted={result?.counted ?? true}
           disabled={phase !== "idle"}
           onPick={() => void handlePick(a.id, b.id)}
+          spotted={spottedIds.has(a.id)}
+          isSignedIn={isSignedIn}
+          onSpot={handleSpot}
+          onSignInPrompt={handleSignInPrompt}
         />
         <CreatorCard
           key={b.id}
@@ -176,6 +236,10 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
           counted={result?.counted ?? true}
           disabled={phase !== "idle"}
           onPick={() => void handlePick(b.id, a.id)}
+          spotted={spottedIds.has(b.id)}
+          isSignedIn={isSignedIn}
+          onSpot={handleSpot}
+          onSignInPrompt={handleSignInPrompt}
         />
 
         <div className="pointer-events-none absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-1/2">
@@ -255,6 +319,13 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
           Skip this battle →
         </button>
       </div>
+
+      <ReceiptsPrompt
+        variant={promptOpen?.variant ?? "nudge"}
+        firstName={promptOpen?.firstName}
+        isOpen={promptOpen !== null}
+        onDismiss={handleDismissPrompt}
+      />
     </div>
   );
 }

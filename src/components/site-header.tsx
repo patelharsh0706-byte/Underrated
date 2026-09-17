@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { AccountAvatar } from "@/components/auth/account-avatar";
 import { MobileNav, type NavLink } from "@/components/mobile-nav";
 
 // V2 shell — see DESIGN.md § Page Inventory and DECISIONS.md § 2026-09-10
@@ -17,6 +18,7 @@ import { MobileNav, type NavLink } from "@/components/mobile-nav";
 const NAV_LINKS: NavLink[] = [
   { href: "/", label: "Arena" },
   { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/receipts", label: "Receipts" },
   { href: "/about", label: "About" },
   { href: "/rules", label: "Rules" },
 ];
@@ -49,6 +51,12 @@ export function SiteHeader() {
       >
         Enter the arena
       </Link>
+
+      {/* Renders nothing when signed out, so the anonymous header is unchanged.
+          Sits between the CTA and the hamburger so the wrapping flex row still
+          fits at 360px. */}
+      <AccountAvatar />
+
       <MobileNav links={NAV_LINKS} />
     </header>
   );

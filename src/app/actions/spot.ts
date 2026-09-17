@@ -5,13 +5,14 @@ import { z } from "zod";
 import { getUserId } from "@/lib/auth";
 import {
   spotCreator as dbSpotCreator,
-  getSpottedIds,
   getMySpot,
+  getRankForCreator,
 } from "@/lib/db/queries";
 import { readVoterSession } from "@/lib/session";
 import { isMockMode } from "@/lib/db/mock-data";
 import { db } from "@/lib/db";
 import { creators } from "@/lib/db/schema";
+import { isRanked } from "@/lib/ranking/placement";
 
 const SpotCreatorInput = z.object({
   creatorId: z.string().uuid("Invalid creator ID"),
@@ -49,9 +50,9 @@ export async function spotCreator(input: SpotCreatorInput): Promise<SpotResult> 
     }
 
     const c = creator[0];
-    // Compute rank at spot time (creator is ranked if battles_count >= 10)
-    const isRanked = c.battlesCount >= 10;
-    const rankAtSpot = isRanked ? computeRankForAura(c.aura) : null;
+    const rankAtSpot = isRanked(c.battlesCount, 0)
+      ? await getRankForCreator(creatorId)
+      : null;
 
     // Insert spot (ON CONFLICT DO NOTHING)
     const result = await dbSpotCreator({
@@ -86,8 +87,4 @@ export async function getMySpotAction(creatorId: string) {
   return getMySpot(userId, creatorId);
 }
 
-// Compute rank from aura (copied from ranking logic)
-function computeRankForAura(aura: number): number {
-  // Placeholder: actual logic from RANKING.md
-  return Math.max(1, Math.floor(aura / 100));
-}
+

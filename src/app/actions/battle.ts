@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { battles, creators } from "@/lib/db/schema";
 import { getRandomPair, type PublicCreator } from "@/lib/db/queries";
 import { computeEloUpdate } from "@/lib/ranking/elo";
+import { claimVoterSession } from "@/lib/receipts/claim-session";
 import { getOrCreateVoterSession, readVoterSession } from "@/lib/session";
 
 export async function nextBattle(): Promise<[PublicCreator, PublicCreator]> {
@@ -58,7 +59,7 @@ export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promis
   const { winnerId, loserId } = pickWinnerInput.parse(input);
   const voterSession = await getOrCreateVoterSession();
 
-  return db.transaction(async (tx) => {
+  const result = await db.transaction(async (tx) => {
     // Same UTC-day boundary getHomeStats() and getTop24h() use, so every
     // "today" number on the page resets at the same instant.
     const picksToday = async () => {
@@ -156,4 +157,15 @@ export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promis
       battlesToday: await picksToday(),
     };
   });
+
+  // Outside the transaction, and never allowed to fail the pick: attribution is
+  // a receipts concern, the vote is the product. A session that fails to link
+  // here gets another chance on the picker's next pick.
+  try {
+    await claimVoterSession(voterSession);
+  } catch (error) {
+    console.error("Failed to claim voter session:", error);
+  }
+
+  return result;
 }

@@ -44,3 +44,6 @@ next-env.d.ts
 
 # scraped third-party reference material, not project source
 .firecrawl/
+# Local Pi runtime state
+.atl/
+.pi/

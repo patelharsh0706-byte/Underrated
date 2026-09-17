@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  shouldShowReceiptsNudge,
-  RECEIPTS_NUDGE_AT,
-  RECEIPTS_NUDGE_AGAIN_AT,
-} from "./nudge";
+import { shouldShowReceiptsNudge } from "./nudge";
 
 describe("shouldShowReceiptsNudge", () => {
   it("shows nudge at 5 picks", () => {

@@ -144,6 +144,26 @@ export const spots = pgTable(
   ],
 );
 
+// Receipts: A picker's public identity. Keyed by auth.users.id — DATABASE.md
+// says never extend auth.users, add a public.profiles table instead.
+// The username is derived from the Google email on first sign-in and is what
+// /[username]/receipts resolves against, so it is unique and immutable-ish
+// (editing is a later feature; the column is here so it can be).
+// RLS enabled, no policies (server-only via service role, like visitor_pings).
+export const profiles = pgTable(
+  "profiles",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .references(() => authUsers.id, { onDelete: "cascade" }),
+    username: text("username").notNull(),
+    displayName: text("display_name"),
+    avatarUrl: text("avatar_url"),
+    createdAt: timestamptz("created_at").notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("profiles_username_key").on(table.username)],
+);
+
 // Receipts: Session-to-identity linker. One row per voter session linked to a user.
 // RLS enabled, no policies (server-only via service role, like visitor_pings).
 // First link wins: ON CONFLICT DO NOTHING.

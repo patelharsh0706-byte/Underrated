@@ -1,24 +1,33 @@
+import { type EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
-import { createClient } from "@/lib/supabase/server";
-import { getOrCreateVoterSession } from "@/lib/session";
 import { ensureProfile, linkPickerSession } from "@/lib/db/queries";
+import { getOrCreateVoterSession } from "@/lib/session";
+import { createClient } from "@/lib/supabase/server";
 
+/**
+ * Email OTP / magic-link sign-in.
+ *
+ * The OAuth callback next door handles the PKCE `code` exchange; email links
+ * arrive as a `token_hash` + `type` instead and need `verifyOtp`. Same work
+ * afterwards — create the profile, claim the browser's voter session, land on
+ * their receipts — so the two routes stay deliberately symmetrical.
+ */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
-  const code = searchParams.get("code");
+  const tokenHash = searchParams.get("token_hash");
+  const type = searchParams.get("type") as EmailOtpType | null;
   const requestedNext = searchParams.get("next");
 
-  // Guard: must be an absolute in-app path, never protocol-relative.
   const next =
     requestedNext && requestedNext.startsWith("/") && !requestedNext.startsWith("//")
       ? requestedNext
       : null;
 
-  if (code) {
+  if (tokenHash && type) {
     try {
       const supabase = await createClient();
-      const { error } = await supabase.auth.exchangeCodeForSession(code);
+      const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
 
       if (!error) {
         const voterSession = await getOrCreateVoterSession();
@@ -27,8 +36,6 @@ export async function GET(request: Request) {
         } = await supabase.auth.getUser();
 
         if (user) {
-          // The picker's public handle, derived from their email the first
-          // time they sign in. Everything after this can address them by it.
           const profile = await ensureProfile({
             userId: user.id,
             email: user.email ?? "",
@@ -39,19 +46,17 @@ export async function GET(request: Request) {
             avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? null,
           });
 
-          // Everything this browser has already picked becomes theirs.
-          // First link wins — a session never changes hands.
           if (voterSession) await linkPickerSession(voterSession, user.id);
 
-          // Land on their own receipts unless they were sent somewhere specific.
-          const destination = next ?? (profile ? `/${profile.username}/receipts` : "/receipts");
-          return NextResponse.redirect(`${origin}${destination}`);
+          return NextResponse.redirect(
+            `${origin}${next ?? (profile ? `/${profile.username}/receipts` : "/receipts")}`,
+          );
         }
 
         return NextResponse.redirect(`${origin}${next ?? "/receipts"}`);
       }
     } catch (error) {
-      console.error("Auth callback error:", error);
+      console.error("Auth confirm error:", error);
     }
   }
 

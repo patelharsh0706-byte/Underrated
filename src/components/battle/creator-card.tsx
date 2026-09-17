@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 
 import { DomainLogo } from "@/components/domain-logo";
+import { SpotButton } from "@/components/battle/spot-button";
 import type { PublicCreator } from "@/lib/db/queries";
 import { isRanked } from "@/lib/ranking/placement";
 import { getUnavatarUrl } from "@/lib/unavatar";
@@ -50,6 +51,10 @@ interface CreatorCardProps {
   counted: boolean;
   disabled: boolean;
   onPick: () => void;
+  spotted?: boolean;
+  isSignedIn?: boolean;
+  onSpot?: (creatorId: string) => void;
+  onSignInPrompt?: (firstName: string) => void;
 }
 
 // Deterministic, not random — the same creator gets the same mark colour on
@@ -118,6 +123,10 @@ export function CreatorCard({
   counted,
   disabled,
   onPick,
+  spotted,
+  isSignedIn,
+  onSpot,
+  onSignInPrompt,
 }: CreatorCardProps) {
   const hasResult = delta !== null;
   const firstName = creator.name.split(" ")[0];
@@ -152,6 +161,17 @@ export function CreatorCard({
             sizes="(min-width: 640px) 380px, 50vw"
             className="object-cover object-top"
             unoptimized
+          />
+        ) : null}
+
+        {onSpot ? (
+          <SpotButton
+            creatorId={creator.id}
+            firstName={firstName}
+            spotted={spotted ?? false}
+            isSignedIn={isSignedIn ?? false}
+            onSpot={() => onSpot(creator.id)}
+            onSignInPrompt={() => onSignInPrompt?.(firstName)}
           />
         ) : null}
 

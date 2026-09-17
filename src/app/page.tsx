@@ -13,8 +13,10 @@ import {
   getRandomPair,
   getRecentBattleResults,
   getRecentJoins,
+  getSpottedIds,
   getTop24h,
 } from "@/lib/db/queries";
+import { getUserId } from "@/lib/auth";
 import {
   isMockMode,
   mockActiveSponsorship,
@@ -34,6 +36,7 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   // Drives the alternating placement slot — see RANKING.md § Pairing.
   const voterSession = await readVoterSession();
+  const userId = isMockMode() ? null : await getUserId();
 
   // PREVIEW_MOCK=1 — see src/lib/db/mock-data.ts. Temporary, for viewing
   // the frontend without a live database.
@@ -54,6 +57,10 @@ export default async function HomePage() {
         getRecentJoins(),
         getRecentBattleResults(),
       ]);
+
+  const initialSpottedIds = userId
+    ? Array.from(await getSpottedIds(userId, [pair[0].id, pair[1].id]))
+    : [];
 
   // Nobody's hit the 5-battles-today floor yet — fall back to all-time Aura
   // so the panel is never empty. See RANKING.md.
@@ -124,6 +131,8 @@ export default async function HomePage() {
           initialPair={pair}
           battlesToday={homeStats.battlesToday}
           faces={pulseFaces}
+          isSignedIn={Boolean(userId)}
+          initialSpottedIds={initialSpottedIds}
         />
 
         {/* CTA before the stats bar: the pulse row hands straight off to the

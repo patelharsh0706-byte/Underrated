@@ -30,6 +30,7 @@ describe("pickBestSpot", () => {
         createdAt: new Date("2026-01-01"),
         name: "A",
         username: "a",
+            auraAtSpot: 1500,
       },
       {
         rankAtSpot: 100,
@@ -38,6 +39,7 @@ describe("pickBestSpot", () => {
         createdAt: new Date("2026-01-01"),
         name: "B",
         username: "b",
+            auraAtSpot: 1500,
       },
     ];
     const best = pickBestSpot(spots);
@@ -53,6 +55,7 @@ describe("pickBestSpot", () => {
         createdAt: new Date("2026-01-01"),
         name: "Old",
         username: "old",
+            auraAtSpot: 1500,
       },
       {
         rankAtSpot: 100,
@@ -61,10 +64,50 @@ describe("pickBestSpot", () => {
         createdAt: new Date("2026-09-17"),
         name: "New",
         username: "new",
+            auraAtSpot: 1500,
       },
     ];
     const best = pickBestSpot(spots);
     expect(best?.name).toBe("New");
+  });
+
+  it("excludes a creator who has not climbed", () => {
+    const flatOrFalling: SpotForReceipt[] = [
+      {
+        rankAtSpot: 50,
+        currentRank: 50,
+        isActive: true,
+        createdAt: new Date("2026-01-01"),
+        name: "Flat",
+        username: "flat",
+        auraAtSpot: 1500,
+      },
+      {
+        rankAtSpot: 40,
+        currentRank: 90,
+        isActive: true,
+        createdAt: new Date("2026-01-01"),
+        name: "Fell",
+        username: "fell",
+        auraAtSpot: 1500,
+      },
+    ];
+    expect(pickBestSpot(flatOrFalling)).toBeUndefined();
+  });
+
+  it("excludes a spot whose creator is still in placement now", () => {
+    const stillUnranked: SpotForReceipt[] = [
+      {
+        rankAtSpot: 47,
+        currentRank: null,
+        isActive: true,
+        createdAt: new Date("2026-01-01"),
+        name: "Unranked Now",
+        username: "unranked",
+        auraAtSpot: 1500,
+      },
+    ];
+    expect(pickBestSpot(stillUnranked)).toBeUndefined();
   });
 
   it("excludes null ranks and inactive", () => {
@@ -76,6 +119,7 @@ describe("pickBestSpot", () => {
         createdAt: new Date("2026-01-01"),
         name: "Null Rank",
         username: "nullrank",
+            auraAtSpot: 1500,
       },
       {
         rankAtSpot: 100,
@@ -84,6 +128,7 @@ describe("pickBestSpot", () => {
         createdAt: new Date("2026-01-01"),
         name: "Inactive",
         username: "inactive",
+            auraAtSpot: 1500,
       },
       {
         rankAtSpot: 100,
@@ -92,6 +137,7 @@ describe("pickBestSpot", () => {
         createdAt: new Date("2026-01-01"),
         name: "Valid",
         username: "valid",
+            auraAtSpot: 1500,
       },
     ];
     const best = pickBestSpot(spots);

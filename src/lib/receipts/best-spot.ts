@@ -1,42 +1,46 @@
 export interface SpotForReceipt {
   rankAtSpot: number | null;
   currentRank: number | null;
+  auraAtSpot: number;
   isActive: boolean;
   createdAt: Date;
   name: string;
   username: string;
 }
 
+/** A spot that actually has two ranks to compare — what the page can brag about. */
+export type BestSpot = SpotForReceipt & { rankAtSpot: number; currentRank: number };
+
+/** Places climbed since the spot. -Infinity when either end is unknown, so an
+ * incomparable spot always sorts last. */
 export function climbOf(rankAtSpot: number | null, currentRank: number | null): number {
   if (!rankAtSpot || !currentRank) return -Infinity;
   return rankAtSpot - currentRank;
 }
 
 /**
- * Pick the best spot from a list (max climb, ties go to newest).
- * Excludes spots with null ranks or inactive creators.
+ * The spot worth showing: the biggest climb, ties to the newest.
+ *
+ * Excluded, because none of them are a receipt:
+ * - either rank unknown — a creator spotted during placement has no "at #47"
+ * - the creator is no longer active
+ * - the creator has not actually climbed (a flat or falling rank is not a call)
  */
-export function pickBestSpot(spots: SpotForReceipt[]): SpotForReceipt | undefined {
-  if (spots.length === 0) return undefined;
+export function pickBestSpot(spots: SpotForReceipt[]): BestSpot | undefined {
+  const candidates = spots.filter(
+    (s): s is BestSpot =>
+      s.isActive &&
+      s.rankAtSpot !== null &&
+      s.currentRank !== null &&
+      climbOf(s.rankAtSpot, s.currentRank) > 0,
+  );
 
-  // Filter: must have a rank at spot and be active
-  const validSpots = spots.filter((s) => s.rankAtSpot !== null && s.isActive);
-  if (validSpots.length === 0) return undefined;
+  if (candidates.length === 0) return undefined;
 
-  // Compute climbs
-  const withClimb = validSpots.map((s) => ({
-    ...s,
-    climb: climbOf(s.rankAtSpot, s.currentRank),
-  }));
-
-  // Sort: max climb desc, then newest first
-  withClimb.sort((a, b) => {
-    if (b.climb !== a.climb) return b.climb - a.climb;
-    return b.createdAt.getTime() - a.createdAt.getTime();
+  return candidates.reduce((best, s) => {
+    const diff = climbOf(s.rankAtSpot, s.currentRank) - climbOf(best.rankAtSpot, best.currentRank);
+    if (diff > 0) return s;
+    if (diff === 0 && s.createdAt.getTime() > best.createdAt.getTime()) return s;
+    return best;
   });
-
-  // Drop the climb property and return
-  const best = withClimb[0];
-  const { climb, ...rest } = best;
-  return rest;
 }

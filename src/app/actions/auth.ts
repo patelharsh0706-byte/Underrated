@@ -4,8 +4,8 @@ import { redirect } from "next/navigation";
 
 import { createClient } from "@/lib/supabase/server";
 
-// Kept for a future claim/manage-profile flow — see DECISIONS.md 2026-09-05.
-// No current entry point in the UI.
+// Entry point: the Sign out row on /account, reached from the header avatar.
+// (Was dormant with no UI entry point from 2026-09-05 until Receipts.)
 export async function signOut() {
   const supabase = await createClient();
   await supabase.auth.signOut();

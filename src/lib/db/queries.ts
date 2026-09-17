@@ -3,8 +3,17 @@ import "server-only";
 import { and, desc, eq, getTableColumns, gt, inArray, lte, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { battles, creators, pickerSessions, sponsorships, spots, visitorPings } from "@/lib/db/schema";
+import {
+  battles,
+  creators,
+  pickerSessions,
+  profiles,
+  sponsorships,
+  spots,
+  visitorPings,
+} from "@/lib/db/schema";
 import type { CreatorFields } from "@/lib/creator-schema";
+import { resolveUsername, usernameFromEmail } from "@/lib/receipts/username";
 import {
   DAILY_HEAT_BATTLES_REQUIRED,
   DAILY_HEAT_VOTERS_REQUIRED,
@@ -599,6 +608,58 @@ export async function getRecentJoins(limit = 5): Promise<RecentJoin[]> {
     .limit(limit);
 }
 
+/** A picker's public identity. Null until they have signed in at least once. */
+export async function getProfileByUserId(userId: string) {
+  const [row] = await db.select().from(profiles).where(eq(profiles.id, userId)).limit(1);
+  return row ?? null;
+}
+
+/** Resolve a public receipts URL back to the picker who owns it. */
+export async function getProfileByUsername(username: string) {
+  const [row] = await db
+    .select()
+    .from(profiles)
+    .where(sql`lower(${profiles.username}) = lower(${username})`)
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * The profile for a signed-in user, created on first sight.
+ *
+ * Called from the auth callback, so it runs once per sign-in and must be
+ * cheap on the common path: one select, and an insert only the first time.
+ * The username is derived from the email — see receipts/username.ts.
+ */
+export async function ensureProfile(input: {
+  userId: string;
+  email: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+}) {
+  const existing = await getProfileByUserId(input.userId);
+  if (existing) return existing;
+
+  const username = await resolveUsername(
+    usernameFromEmail(input.email),
+    async (candidate) => (await getProfileByUsername(candidate)) !== null,
+  );
+
+  const [row] = await db
+    .insert(profiles)
+    .values({
+      id: input.userId,
+      username,
+      displayName: input.displayName,
+      avatarUrl: input.avatarUrl,
+    })
+    .onConflictDoNothing()
+    .returning();
+
+  // A concurrent sign-in won the insert — read back whatever landed.
+  return row ?? (await getProfileByUserId(input.userId));
+}
+
 /** Link a voter session to a user identity. First link wins: ON CONFLICT DO NOTHING. */
 export async function linkPickerSession(voterSession: string, userId: string): Promise<void> {
   await db
@@ -649,4 +710,117 @@ export async function getSpottedIds(userId: string, creatorIds: string[]) {
     );
 
   return new Set(result.map((row) => row.creatorId));
+}
+
+export interface ReceiptSpot {
+  creatorId: string;
+  username: string;
+  name: string;
+  avatarUrl: string | null;
+  rankAtSpot: number | null;
+  auraAtSpot: number;
+  currentRank: number | null;
+  isActive: boolean;
+  createdAt: Date;
+}
+
+export interface Receipts {
+  /** Battles played in the last 7 days — the page reads "YOUR EYE THIS WEEK". */
+  battlesCount: number;
+  /** Creators backed in the last 7 days, matching the battles window. */
+  spotsCount: number;
+  /** Every spot ever made, newest first. A receipt does not expire. */
+  spots: ReceiptSpot[];
+}
+
+/** The window both counters on the receipts page are scoped to. */
+export const RECEIPTS_WINDOW_DAYS = 7;
+
+/** All receipts data for a picker. */
+export async function getReceipts(userId: string): Promise<Receipts> {
+  const since = sql`now() - interval '${sql.raw(String(RECEIPTS_WINDOW_DAYS))} days'`;
+
+  // Battles played this week, across every session this user has linked.
+  const [{ battlesCount }] = await db
+    .select({ battlesCount: sql<number>`count(*)::int` })
+    .from(battles)
+    .innerJoin(pickerSessions, eq(battles.voterSession, pickerSessions.voterSession))
+    .where(and(eq(pickerSessions.userId, userId), sql`${battles.createdAt} >= ${since}`));
+
+  // Fetch all spots with current creator data
+  const spotRows = await db
+    .select({
+      creatorId: spots.creatorId,
+      rankAtSpot: spots.rankAtSpot,
+      auraAtSpot: spots.auraAtSpot,
+      createdAt: spots.createdAt,
+      username: creators.username,
+      name: creators.name,
+      avatarUrl: creators.avatarUrl,
+      aura: creators.aura,
+      battlesCount: creators.battlesCount,
+      isActive: creators.isActive,
+    })
+    .from(spots)
+    .innerJoin(creators, eq(spots.creatorId, creators.id))
+    .where(eq(spots.userId, userId))
+    .orderBy(desc(spots.createdAt));
+
+  // Compute current rank for each ranked creator in one query
+  // Rank is position among ranked creators ordered by Aura — the same
+  // definition getLeaderboard uses, derived the same way, so a receipt and the
+  // leaderboard can never disagree.
+  //
+  // Deliberately not a correlated "count creators with higher aura" subquery:
+  // the previous one silently returned 1 for every creator (the outer
+  // reference did not survive Drizzle's template) *and* ignored the
+  // distinct-voter half of isRanked, so unranked creators got a rank. Ordering
+  // one small id list has neither failure mode.
+  const rankedRows = await db
+    .select({ id: creators.id })
+    .from(creators)
+    .where(and(eq(creators.isActive, true), isRankedSql))
+    .orderBy(desc(creators.aura));
+
+  const rankMap = new Map(rankedRows.map((row, index) => [row.id, index + 1]));
+
+  const resultSpots: ReceiptSpot[] = spotRows.map((r) => ({
+    creatorId: r.creatorId,
+    username: r.username,
+    name: r.name,
+    avatarUrl: r.avatarUrl,
+    rankAtSpot: r.rankAtSpot,
+    auraAtSpot: r.auraAtSpot,
+    currentRank: rankMap.get(r.creatorId) ?? null,
+    isActive: r.isActive,
+    createdAt: r.createdAt,
+  }));
+
+  const windowStart = Date.now() - RECEIPTS_WINDOW_DAYS * 24 * 60 * 60 * 1000;
+
+  return {
+    battlesCount: battlesCount ?? 0,
+    // Counted in JS off rows already fetched rather than as a second query —
+    // the homepage hang (ISSUES.md 2026-09-12) is a query-volume problem and
+    // this page is one more surface that must not add avoidable statements.
+    spotsCount: resultSpots.filter((s) => s.createdAt.getTime() >= windowStart).length,
+    spots: resultSpots,
+  };
+}
+
+/** Compute the current rank for a creator by counting active ranked creators with higher Aura. */
+export async function getRankForCreator(creatorId: string): Promise<number | null> {
+  const [row] = await db
+    .select(creatorSelection)
+    .from(creators)
+    .where(and(eq(creators.id, creatorId), eq(creators.isActive, true)));
+
+  if (!row || !isRanked(row.battlesCount, row.voterCount)) return null;
+
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(creators)
+    .where(and(eq(creators.isActive, true), isRankedSql, sql`${creators.aura} > ${row.aura}`));
+
+  return count + 1;
 }
