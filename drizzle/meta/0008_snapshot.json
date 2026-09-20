@@ -1,6 +1,6 @@
 {
-  "id": "f4bd910f-ef25-419d-b8a0-c01691b28fd3",
-  "prevId": "a93a78b3-e2cf-46f7-8413-2cf9bb82cf69",
+  "id": "d3537cbb-0214-4365-8895-de928836ae4d",
+  "prevId": "f4bd910f-ef25-419d-b8a0-c01691b28fd3",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -388,6 +388,132 @@
           "schemaTo": "auth",
           "columnsFrom": [
             "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.payments": {
+      "name": "payments",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "dodo_payment_id": {
+          "name": "dodo_payment_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "customer_email": {
+          "name": "customer_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "customer_name": {
+          "name": "customer_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "x_profile_url": {
+          "name": "x_profile_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "work_url": {
+          "name": "work_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "creator_id": {
+          "name": "creator_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "received_at": {
+          "name": "received_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "payments_dodo_payment_key": {
+          "name": "payments_dodo_payment_key",
+          "columns": [
+            {
+              "expression": "dodo_payment_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "payments_creator_id_idx": {
+          "name": "payments_creator_id_idx",
+          "columns": [
+            {
+              "expression": "creator_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "payments_creator_id_creators_id_fk": {
+          "name": "payments_creator_id_creators_id_fk",
+          "tableFrom": "payments",
+          "tableTo": "creators",
+          "columnsFrom": [
+            "creator_id"
           ],
           "columnsTo": [
             "id"

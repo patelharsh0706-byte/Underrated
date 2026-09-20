@@ -292,3 +292,59 @@ one.
 Self-hosting or a first-party proxy route to dodge ad blockers — real data
 loss, but it means owning an endpoint and a CSP surface for a number that
 only informs marketing. Not worth it at V1.
+
+## 2026-09-20 — Payments ledger, separate from creators
+
+Decision:
+A `payments` table: one row per successful Dodo payment, written by the
+webhook on every `payment.succeeded`. Carries Dodo's own `customer_email` /
+`customer_name`, the form's `x_profile_url` / `work_url` when metadata is
+present, the raw metadata, and a nullable `creator_id` linked once a creator
+exists. `count(*)` is the payment count; `creator_id IS NULL` is the list of
+people who paid but have no creator row yet.
+
+On a successful payment the webhook does three things in order: insert the
+creator (avatar resolved, straight into the battle pool — `getRandomPair`
+serves any active creator), then write the ledger row, then link the two.
+The creator insert is wrapped so a failure there can never stop the ledger
+write. The creator stays in `creators` exactly as before; the ledger is
+additional, not a replacement.
+
+Why:
+On 2026-09-18 two real payments succeeded and left no trace anywhere in the
+database. The webhook's first line was `if (!metadata.creator_data) return;`
+— correct for "not a submission payment", but the static Payment Link the
+submit flow redirects to carries no metadata, so every real submission
+looked like that and was dropped silently. `creators` was the only place a
+payment could be recorded, and only as a side-effect of creating a creator.
+When that failed, money received became invisible: not reconcilable, and
+not even distinguishable from a webhook that never fired.
+
+Recording unconditionally means a payment is never silent again, and the
+payer is identifiable — Dodo collects email and name at checkout — even when
+the form data is lost.
+
+Ranking: this table is read by nothing in the game loop. It never influences
+Aura, pairing, rank, or which creators are served. Paying is recorded, not
+rewarded — per PRODUCT.md, the fee buys nothing about rank.
+
+Rejected:
+A `paid_at` column on `creators` — it can only record a payment that also
+produced a creator row, which is exactly the case that was failing. It
+would not have caught either missing payment.
+
+Recording failed/cancelled intents too — a row would then not mean "money
+received", and the count would need filtering to be useful. Only
+`payment.succeeded` is written.
+
+Also fixed here, because it blocked the migration: the Drizzle snapshot chain
+was stale back to migration 0000 — `creators` still listed the long-removed
+`links` column and lacked six current ones; `sponsorships` still had
+`stripe_id`. Migrations 0001–0007 were hand-written without regenerating the
+snapshot, so `drizzle-kit generate` hit rename prompts and would have emitted
+ALTERs already applied to production. The `0007` snapshot has been
+regenerated from `schema.ts` (the source of truth, which matches production).
+Every future schema change must go through `drizzle-kit generate` so the
+snapshot stays honest — and never `db:push`, which diffs against the live
+database and would drop `picker_sessions`, `profiles` and `spots`, three
+tables that exist in production but not in `schema.ts`.
