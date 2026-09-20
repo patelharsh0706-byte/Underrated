@@ -219,6 +219,44 @@ creator with no prior snapshot renders as "—", never as a climb from nowhere.
 Retention: keep 90 days. Older rows answer no question the product asks, and
 the table grows by one row per ranked creator per day forever otherwise.
 
+### payments
+
+One row per **successful** Dodo Payments payment, written by the webhook the
+moment `payment.succeeded` arrives — before any attempt to create a creator
+from it. This is the ledger of money received; `creators` is not.
+
+```
+id               uuid pk
+dodo_payment_id  text unique      idempotency key — Dodo retries on non-2xx
+amount_cents     integer
+currency         text
+customer_email   text             from Dodo's customer object, not the form
+customer_name    text             from Dodo's customer object, not the form
+x_profile_url    text             from the form data in payment metadata
+work_url         text             from the form data in payment metadata
+metadata         jsonb            raw payload metadata, kept even if unparseable
+creator_id       uuid fk nullable → creators.id, set once a row exists
+received_at      timestamptz
+```
+
+`customer_email` / `customer_name` are always present — Dodo collects them at
+checkout. `x_profile_url` / `work_url` are only present when the payment
+carried the submitted form as metadata; with the current static Payment Link
+they are null, and they fill in once the checkout passes metadata again.
+
+Why it exists: the submit flow sends people to a static Payment Link that
+carries no form data, so the webhook could not create a creator and — until
+this table — recorded nothing at all. Two real payments arrived on
+2026-09-18 and left no trace anywhere in the database. `customer_email` and
+`customer_name` come from Dodo's own checkout, so a payment is identifiable
+and the payer contactable even when the form data is lost.
+
+`creator_id IS NULL` is the orphan list: paid, no creator yet. When one is
+added by hand, link it. The count of rows is the count of payments.
+
+Only `payment.succeeded` is recorded. Failed, cancelled and pending intents
+are not — a row here always means money was received.
+
 ## Invariants
 
 These matter more than the columns. Enforce them in the database where possible,
@@ -232,6 +270,10 @@ in the server layer where not.
 - username availability is checked before payment, never after — don't
   charge someone for a username that turns out to be taken
 - entry fee amount never influences Aura, pairing, or rank
+- a `payments` row never influences Aura, pairing, rank, or which creators
+  are served — it is a ledger, read by nothing in the game loop
+- every `payment.succeeded` webhook produces a `payments` row, whether or
+  not a creator could be created from it — money received is never silent
 - Aura cannot be changed by the client
 - every battle retains historical rating information (`aura_*_before` / `aura_*_after`)
 - battle rows are never updated or deleted

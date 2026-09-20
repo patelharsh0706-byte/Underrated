@@ -100,6 +100,35 @@ export const visitorPings = pgTable(
   ],
 );
 
+// Ledger of money received. One row per successful Dodo payment, written by
+// the webhook before any attempt to create a creator — so a payment whose
+// form data was lost still lands here with the payer's email. Read by nothing
+// in the game loop; it never influences Aura, pairing, or rank. See
+// DATABASE.md § payments.
+export const payments = pgTable(
+  "payments",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    dodoPaymentId: text("dodo_payment_id").notNull(),
+    amountCents: integer("amount_cents").notNull(),
+    currency: text("currency").notNull(),
+    customerEmail: text("customer_email"),
+    customerName: text("customer_name"),
+    // From the submitted form via payment metadata. Null while the static
+    // Payment Link is in use, since that carries no form data.
+    xProfileUrl: text("x_profile_url"),
+    workUrl: text("work_url"),
+    metadata: jsonb("metadata"),
+    // Null until a creator exists for this payment — the orphan list.
+    creatorId: uuid("creator_id").references(() => creators.id),
+    receivedAt: timestamptz("received_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("payments_dodo_payment_key").on(table.dodoPaymentId),
+    index("payments_creator_id_idx").on(table.creatorId),
+  ],
+);
+
 export const sponsorships = pgTable(
   "sponsorships",
   {
