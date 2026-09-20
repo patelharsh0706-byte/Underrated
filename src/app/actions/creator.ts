@@ -10,20 +10,27 @@ export interface SubmitCreatorResult {
   fieldErrors?: Partial<Record<string, string>>;
 }
 
+/** Static Dodo Payments Payment Link. No API key needed to send someone here. */
+const SUBMISSION_PAYMENT_LINK = "https://dodo.pe/submit";
+
 /**
- * TODO(dodo-payments): sends the creator to a static Dodo Payments Payment
- * Link (https://dodo.pe/submit) instead of an API-created checkout session
- * with metadata — a deliberate, temporary bridge until the real product/API
- * integration is wired up. This means the payment is NOT correlated to this
- * specific submission: nothing here creates the creator row, and the
- * webhook (api/dodo-payments/webhook/route.ts) has no submission metadata
- * to insert from, so a paid submission currently needs a human to create
- * the row afterward (see insertCreator in db/queries.ts).
+ * Validates the submission, then sends the creator to a static Dodo Payments
+ * Payment Link.
  *
- * Once a real Product + API checkout session replaces this static link,
- * pass the validated creator payload through the session's metadata (as
- * `createSubmissionCheckout` used to before this bridge) so the webhook can
- * call insertCreator() automatically again. See ARCHITECTURE.md § Payments.
+ * The link carries no per-submission metadata, which has a consequence worth
+ * stating plainly: the `payment.succeeded` webhook has no `creator_data` to
+ * read, so it returns early and **never inserts the creator row**. Nothing
+ * downstream can recover from that on its own —
+ * `/submit/success` looks the row up by `payment_id`, finds nothing, and
+ * shows its polling state until it times out. A paid submission needs a human
+ * to create the row (see `insertCreator` in db/queries.ts), and the fields
+ * validated here are not persisted anywhere, so the only record of what was
+ * submitted is whatever Dodo captured.
+ *
+ * The API-checkout version that closes this loop is in git history at
+ * `d422c37` — restoring it needs `DODO_PAYMENTS_API_KEY` and
+ * `DODO_PAYMENTS_WEBHOOK_KEY`, which is the only reason it isn't here. See
+ * ARCHITECTURE.md § Payments and DECISIONS.md § 2026-09-11.
  */
 export async function createSubmissionCheckout(
   input: CheckoutInput,
@@ -40,13 +47,12 @@ export async function createSubmissionCheckout(
     return { error: "Fix the highlighted fields.", fieldErrors };
   }
 
-  const data = parsed.data;
-
-  if (await isUsernameTaken(data.username)) {
+  // Still checked before payment — never charge for a username that's taken.
+  if (await isUsernameTaken(parsed.data.username)) {
     return { error: "That username is taken.", fieldErrors: { username: "Already taken" } };
   }
 
-  redirect("https://dodo.pe/submit");
+  redirect(SUBMISSION_PAYMENT_LINK);
 }
 
 /** Polled by /submit/success while the webhook is still landing. */

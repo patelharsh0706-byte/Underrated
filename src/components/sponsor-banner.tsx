@@ -12,17 +12,15 @@ export function SponsorBanner({ sponsorship }: SponsorBannerProps) {
     return (
       <Link
         href="/sponsor"
-        className="flex w-full max-w-3xl flex-col items-center gap-2 rounded-xl border-2 border-dashed border-foreground/30 px-6 py-8 text-center hover:border-foreground"
+        className="flex w-full max-w-3xl flex-col items-center gap-2 rounded-card border border-dashed border-hairline-2 px-6 py-8 text-center transition-colors hover:border-foreground/40"
       >
-        <span className="text-lg font-bold tracking-tight sm:text-xl">
+        <span className="font-display text-lg font-extrabold tracking-tight sm:text-xl">
           Feeling your startup is underhyped too?
         </span>
-        <span className="text-sm text-muted-foreground">
-          Own the only sponsor spot on Underhyped.
-        </span>
-        <span className="mt-3 flex items-center gap-3">
-          <span className="font-mono font-bold text-aura">$30 · 30 days</span>
-          <span className="rounded-xl border-2 border-foreground bg-primary px-4 py-2 text-xs font-bold uppercase tracking-wide text-primary-foreground">
+        <span className="text-sm text-ink-soft">Own the only sponsor spot on Underhyped.</span>
+        <span className="mt-3 flex flex-col items-center gap-3 sm:flex-row">
+          <span className="font-display font-bold text-aura">$30 · 30 days</span>
+          <span className="rounded-lg bg-lime px-5 py-2.5 font-display text-xs font-bold uppercase tracking-wide text-foreground">
             Take the spotlight →
           </span>
         </span>
@@ -35,21 +33,19 @@ export function SponsorBanner({ sponsorship }: SponsorBannerProps) {
       href={sponsorship.targetUrl}
       target="_blank"
       rel="noopener noreferrer sponsored"
-      className="flex w-full max-w-3xl items-center gap-4 rounded-xl border-2 border-foreground bg-card px-5 py-4 transition-transform hover:-translate-y-0.5"
+      className="flex w-full max-w-3xl items-center gap-4 rounded-card border border-hairline bg-card px-5 py-4 shadow-card transition-transform hover:-translate-y-0.5"
     >
       <span className="rounded-full bg-aura px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
         Sponsored
       </span>
       <SponsorLogo imageUrl={sponsorship.imageUrl} sponsorName={sponsorship.sponsorName} />
       <span className="flex flex-1 flex-col overflow-hidden">
-        <span className="truncate text-sm font-bold">{sponsorship.sponsorName}</span>
+        <span className="truncate font-display text-sm font-bold">{sponsorship.sponsorName}</span>
         {sponsorship.description ? (
-          <span className="truncate text-xs text-muted-foreground">
-            {sponsorship.description}
-          </span>
+          <span className="truncate text-xs text-ink-soft">{sponsorship.description}</span>
         ) : null}
       </span>
-      <span className="shrink-0 text-xs text-muted-foreground">↗</span>
+      <span className="shrink-0 text-xs text-ink-soft">↗</span>
     </a>
   );
 }

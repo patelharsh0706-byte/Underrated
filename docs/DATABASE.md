@@ -14,6 +14,7 @@ creators
 battles
 sponsorships
 visitor_pings
+rank_snapshots   designed, not built — see below
 ```
 
 ## Relationships
@@ -183,6 +184,41 @@ when a ping arrives more than 30 minutes after that visitor's previous
 `last_seen_at`. This is decided entirely server-side from timestamps already
 on the row — no session flag is tracked on the client.
 
+### rank_snapshots
+
+**Designed, not built.** Specced here because rank movement keeps being asked
+for in design review and needs to be answered the same way every time: it is
+not derivable from what we store today. Nothing reads or writes this table
+until the feature is scheduled — see [MVP.md](MVP.md) NOT V1.
+
+Rank is derived from `aura desc` at query time and never stored
+([Derived, Not Stored](#derived-not-stored)). That gives today's rank and
+nothing else, so "climbed to #4", "took the #1 spot" and the leaderboard's
+trend arrow — all of which compare a rank to its earlier self — have no source.
+One row per ranked creator per day is the smallest thing that fixes that.
+
+```
+id            uuid pk
+creator_id    uuid fk -> creators(id)
+rank          integer        position among ranked creators on that day
+aura          integer        Aura at capture time, for "reached N Aura"
+captured_on   date           UTC day, same boundary as Daily Heat
+created_at    timestamptz
+```
+
+`unique (creator_id, captured_on)` — one snapshot per creator per day, so a
+retried job cannot double-write.
+
+Captured once daily by a scheduled job at the UTC day boundary, over ranked
+creators only — a creator still in placement has no rank to snapshot, and
+appears in this table for the first time on the day they clear placement.
+
+Movement is then `yesterday.rank - today.rank`, positive meaning a climb. A
+creator with no prior snapshot renders as "—", never as a climb from nowhere.
+
+Retention: keep 90 days. Older rows answer no question the product asks, and
+the table grows by one row per ranked creator per day forever otherwise.
+
 ### payments
 
 One row per **successful** Dodo Payments payment, written by the webhook the
@@ -262,6 +298,9 @@ Per table:
 - `visitor_pings` — no client read, no client write. Only the server reads it,
   to compute the aggregate numbers shown on the stats bar; no policy is
   granted to the anon or authenticated roles at all.
+- `rank_snapshots` — when built: no client read, no client write. Written only
+  by the scheduled capture job under the service role; the trend arrow is
+  served from a server query like every other derived number.
 
 ## Indexes
 
@@ -271,9 +310,13 @@ creators(username)         profile lookup
 creators(is_active)        pool selection
 battles(created_at)        Daily Heat
 battles(winner_id, created_at)
+battles(voter_session)         "people deciding" distinct count
 sponsorships(start_at, end_at)
 visitor_pings(voter_session)   upsert target, one row per visitor
 visitor_pings(last_seen_at)    "N here now" / online count
+
+rank_snapshots(creator_id, captured_on) unique   when built — one per day
+rank_snapshots(captured_on)                      when built — day lookup
 ```
 
 ## Derived, Not Stored
@@ -283,6 +326,14 @@ visitor_pings(last_seen_at)    "N here now" / online count
   query time. Never a column. See [RANKING.md](RANKING.md) § Placement.
 - **Daily Heat** — computed from today's battles. Never a column. See [RANKING.md](RANKING.md).
 - **Main Character** — computed daily from Daily Heat.
+- **People deciding** — `count(distinct voter_session)` over `battles`. The
+  "Live on Underhyped" counter. Distinct from the battle count on purpose: one
+  battle row *is* one pick, so a "votes cast" figure would be the same number
+  as "battles fought". See [DECISIONS.md](DECISIONS.md) § 2026-09-10.
+
+**Rank movement is the exception.** It cannot be derived, because we store only
+the current Aura — the past rank is gone the moment it changes. That is what
+`rank_snapshots` exists for, and why it is a table rather than a query.
 
 If any of these become too slow, cache them. Do not denormalize them into `creators`
 without recording the decision in [DECISIONS.md](DECISIONS.md).

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Archivo, Caveat, Geist, Geist_Mono } from "next/font/google";
 import Script from "next/script";
 
 import { SiteFooter } from "@/components/site-footer";
@@ -17,16 +17,45 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+// V2 type system — see DESIGN.md § Type. Archivo carries headlines, numbers,
+// buttons and labels; Caveat is marginalia only, never UI text. Geist stays
+// the body face — untouched above.
+const archivo = Archivo({
+  variable: "--font-archivo",
+  subsets: ["latin"],
+});
+
+const caveat = Caveat({
+  variable: "--font-caveat",
+  subsets: ["latin"],
+  weight: ["600", "700"],
+});
+
 export const metadata: Metadata = {
+  // www is the canonical host — the apex 308s to it, and crawlers (Twitter
+  // especially) will not follow a redirect on og:image.
+  metadataBase: new URL("https://www.underhyped.wtf"),
   title: "Underhyped",
   description: "Discover people before everyone else does.",
+  openGraph: {
+    title: "Underhyped",
+    description: "Discover people before everyone else does.",
+    images: ["/og-image.png"],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Underhyped",
+    description: "Discover people before everyone else does.",
+    images: ["/og-image.png"],
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${archivo.variable} ${caveat.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <SiteHeader />

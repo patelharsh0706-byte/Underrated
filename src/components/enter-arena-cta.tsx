@@ -6,22 +6,29 @@ import { SUBMISSION_FEE_CENTS } from "@/lib/creator-schema";
 // here would be a third copy free to drift from the real charge.
 const FEE = `$${(SUBMISSION_FEE_CENTS / 100).toFixed(SUBMISSION_FEE_CENTS % 100 === 0 ? 0 : 2)}`;
 
+/**
+ * Deliberately cardless: this sits on the open ground between the battle and
+ * the stats bar, so the lime button is the only thing carrying weight. A card
+ * around it would put a second box directly under the two battle cards and
+ * flatten the one moment the page wants you to look at.
+ */
 export function EnterArenaCta() {
   return (
-    <section className="flex w-full max-w-3xl flex-col items-center gap-2 rounded-xl border-2 border-foreground bg-card px-6 py-6 text-center">
-      <h2 className="text-lg font-bold tracking-tight sm:text-xl">
-        Think you&apos;re underhyped?
-      </h2>
-      <p className="text-sm text-muted-foreground">
-        Join the arena and let the internet decide.
-      </p>
+    <section className="flex w-full max-w-3xl flex-col items-center px-4 text-center">
       <Link
         href="/submit"
-        className="mt-2 rounded-xl border-2 border-foreground bg-primary px-4 py-2 text-xs font-bold uppercase tracking-wide text-primary-foreground"
+        className="w-full rounded-[14px] bg-lime px-10 py-4 font-display text-lg font-extrabold tracking-tight text-foreground shadow-[0_14px_34px_-14px_rgb(216_255_62)] transition-transform hover:-translate-y-0.5 hover:bg-lime-deep sm:w-auto sm:px-14 sm:py-5 sm:text-[22px]"
       >
-        Enter the arena →
+        Enter the Arena →
       </Link>
-      <p className="text-xs text-muted-foreground">{FEE} to enter</p>
+
+      <p className="mt-5 text-sm text-ink-soft sm:text-[15px]">
+        {FEE} to enter · the internet decides the rest
+      </p>
+
+      <p className="mt-3 font-display text-[11.5px] font-semibold tracking-[0.2em] text-ink-faint uppercase">
+        Discover · Pick · Boost · Repeat
+      </p>
     </section>
   );
 }

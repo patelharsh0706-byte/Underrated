@@ -1,6 +1,6 @@
 "use server";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
@@ -35,6 +35,14 @@ export interface PickResult {
    * rather than animate a delta that did not happen.
    */
   counted: boolean;
+  /**
+   * Picks recorded today, read inside the same transaction as the insert — so
+   * it already includes this pick when `counted`, and is the plain current
+   * count when it isn't. The arena's "today" counters are server-rendered
+   * once and would otherwise sit frozen for the life of the page while the
+   * voter keeps playing.
+   */
+  battlesToday: number;
 }
 
 /**
@@ -51,16 +59,28 @@ export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promis
   const voterSession = await getOrCreateVoterSession();
 
   return db.transaction(async (tx) => {
-    const [winner] = await tx
+    // Same UTC-day boundary getHomeStats() and getTop24h() use, so every
+    // "today" number on the page resets at the same instant.
+    const picksToday = async () => {
+      const [row] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(battles)
+        .where(sql`${battles.createdAt} >= date_trunc('day', now() at time zone 'utc')`);
+      return row.count;
+    };
+
+    // Lock both rows in one query, ordered by id, so two concurrent picks on
+    // the same pair always acquire their locks in the same order. Locking
+    // winner then loser separately let opposite-order picks on the same pair
+    // deadlock/queue behind each other — see ISSUES.md § 2026-09-12.
+    const rows = await tx
       .select()
       .from(creators)
-      .where(eq(creators.id, winnerId))
+      .where(inArray(creators.id, [winnerId, loserId]))
+      .orderBy(creators.id)
       .for("update");
-    const [loser] = await tx
-      .select()
-      .from(creators)
-      .where(eq(creators.id, loserId))
-      .for("update");
+    const winner = rows.find((row) => row.id === winnerId);
+    const loser = rows.find((row) => row.id === loserId);
 
     if (!winner || !loser) {
       throw new Error("One of the creators in this battle no longer exists");
@@ -92,6 +112,7 @@ export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promis
         loserAura: loser.aura,
         delta: 0,
         counted: false,
+        battlesToday: await picksToday(),
       };
     }
 
@@ -132,6 +153,7 @@ export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promis
       loserAura: loserAfter,
       delta,
       counted: true,
+      battlesToday: await picksToday(),
     };
   });
 }
