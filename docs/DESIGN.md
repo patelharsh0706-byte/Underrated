@@ -339,7 +339,16 @@ Role: Dialog (Escape/backdrop close, reduced-motion safe).
 
 Variants:
 
-**Nudge** (after 5 picks, bottom sheet mobile / centered card desktop):
+**Nudge** (after 5 picks, centered card at every width):
+
+> **Changed 2026-09-21.** This read "bottom sheet mobile / centered card
+> desktop", and the implementation was pinned to the left at every width
+> because a `<dialog open>` inside a flex-centred overlay is
+> `position: absolute` and ignores the centring. Both variants are now a
+> native dialog opened with `showModal()` — top layer, centred, Escape and
+> backdrop close, focus contained — and both centre on phones too, as asked.
+> A bottom sheet on mobile can be reintroduced deliberately if centred proves
+> worse on phones.
 ```
 5 BATTLES IN.
 Want us to keep your receipts?

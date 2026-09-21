@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+
 import { startGoogleSignIn } from "@/lib/supabase/oauth";
 
 type ReceiptsPromptVariant = "nudge" | "spot";
@@ -12,13 +13,38 @@ interface ReceiptsPromptProps {
   onDismiss: () => void;
 }
 
-export function ReceiptsPrompt({
-  variant,
-  firstName,
-  isOpen,
-  onDismiss,
-}: ReceiptsPromptProps) {
+const TITLE_ID = "receipts-prompt-title";
+
+/**
+ * The Receipts prompt — DESIGN.md § Receipts prompt. One component, two
+ * variants: the nudge after five picks, and "Spot {name}?" when a signed-out
+ * voter taps the Spot button.
+ *
+ * A native <dialog> opened with showModal(), which is what makes it a dialog
+ * rather than a styled div: the browser puts it in the top layer and centres
+ * it, traps focus inside, closes it on Escape, and paints ::backdrop behind
+ * it. The previous version rendered <dialog open> inside a flex-centred
+ * overlay — the UA stylesheet makes <dialog> position:absolute, which takes it
+ * out of flex layout, so it sat pinned to the left with no Escape and no focus
+ * containment.
+ *
+ * Every way out — Escape, a click on the backdrop, "Not now" — goes through the
+ * dialog's own close event, so onDismiss fires exactly once per dismissal.
+ */
+export function ReceiptsPrompt({ variant, firstName, isOpen, onDismiss }: ReceiptsPromptProps) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
   const [isPending, setIsPending] = useState(false);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!isOpen || !dialog) return;
+    // showModal() throws on an already-open dialog — Fast Refresh can re-run
+    // this effect against the same element.
+    if (!dialog.open) dialog.showModal();
+    return () => {
+      if (dialog.open) dialog.close();
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -32,52 +58,50 @@ export function ReceiptsPrompt({
     }
   };
 
-  const handleDismiss = () => {
-    onDismiss();
-  };
-
   const isNudge = variant === "nudge";
-  const title = isNudge
-    ? "5 BATTLES IN."
-    : `Spot ${firstName}?`;
+  const title = isNudge ? "5 BATTLES IN." : `Spot ${firstName}?`;
   const description = isNudge
     ? "Want us to keep your receipts? We'll remember who you backed before everyone else catches up."
     : "Sign in and we'll keep the receipt.";
-  const buttonLabel = isNudge
-    ? "KEEP MY RECEIPTS →"
-    : "SIGN IN WITH GOOGLE →";
+  const buttonLabel = isNudge ? "KEEP MY RECEIPTS →" : "SIGN IN WITH GOOGLE →";
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
-      onClick={onDismiss}
-      role="presentation"
+    // p-0 with an inner wrapper: a click that reaches the <dialog> element
+    // itself is a click on the backdrop, not on the card's padding.
+    <dialog
+      ref={dialogRef}
+      aria-labelledby={TITLE_ID}
+      onClose={onDismiss}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) e.currentTarget.close();
+      }}
+      className="m-auto w-[calc(100%-2rem)] max-w-sm rounded-card bg-card p-0 text-foreground shadow-lift backdrop:bg-black/50"
     >
-      <dialog
-        open
-        className="bg-white rounded-2xl p-6 max-w-sm shadow-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-lg font-bold mb-2">{title}</h2>
-        <p className="text-sm text-gray-600 mb-6">{description}</p>
+      <div className="p-6">
+        <h2 id={TITLE_ID} className="font-display text-lg font-extrabold tracking-tight">
+          {title}
+        </h2>
+        <p className="mt-2 text-sm text-ink-soft">{description}</p>
 
-        <div className="flex flex-col gap-3">
+        <div className="mt-6 flex flex-col gap-3">
           <button
+            type="button"
             onClick={handleSignIn}
             disabled={isPending}
-            className="w-full bg-lime-400 text-gray-900 font-semibold py-2 rounded-lg hover:bg-lime-500 disabled:opacity-50 transition-colors"
+            className="w-full rounded-[14px] bg-lime py-3 font-display text-sm font-bold tracking-wide text-foreground transition-colors hover:bg-lime-deep disabled:opacity-50"
           >
             {isPending ? "Signing in..." : buttonLabel}
           </button>
           <button
-            onClick={handleDismiss}
+            type="button"
+            onClick={() => dialogRef.current?.close()}
             disabled={isPending}
-            className="w-full text-gray-600 py-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="w-full py-2 text-sm text-ink-soft underline underline-offset-4 transition-colors hover:text-foreground disabled:opacity-50"
           >
             Not now
           </button>
         </div>
-      </dialog>
-    </div>
+      </div>
+    </dialog>
   );
 }
