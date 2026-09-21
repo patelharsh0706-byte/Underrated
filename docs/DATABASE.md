@@ -336,6 +336,14 @@ UNIQUE (lower(username))
 snapshot and re-emit `spots` and `profiles`. Apply a new migration the same way
 the previous one was and record the path here when it is settled.
 
+**Deploy order for `0010`:** `ensureProfile` writes `email` on every insert as
+of the commit that adds this column, so `0010` must run against production
+**before** that code is promoted — an insert reaching a column that does not
+exist yet fails outright. Run `db:migrate` (or apply via the Supabase SQL
+editor, whichever path `0009` used) before the deploy, not after. `email` is
+nullable, so the migration itself is safe to run early; it is the code that is
+not safe to run before it.
+
 ### picker_sessions
 
 Receipts: Session-to-identity linker. One row per voter session linked to a user.

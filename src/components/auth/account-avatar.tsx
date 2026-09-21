@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { getUserId, hasAuthCookie } from "@/lib/auth";
-import { getOrCreateProfile } from "@/lib/receipts/profile";
+import { getProfileByUserId } from "@/lib/db/queries";
 
 /** First letters of a name, or of a handle when there is no name. */
 function initialsOf(label: string): string {
@@ -20,8 +20,11 @@ function initialsOf(label: string): string {
  * Renders nothing at all when signed out, so an anonymous visitor sees exactly
  * the header they see today and pays no query for it (hasAuthCookie is a
  * cookie read; the profile lookup is by primary key and only runs past it).
- * Signed in without a profile is the one case that costs more — one create,
- * once — see lib/receipts/profile.ts.
+ * Signed in without a profile also renders nothing — this component must
+ * stay read-only because it's on every route, including ISR pages, which
+ * must not gain a write. Self-heal happens on /receipts and /account
+ * (both force-dynamic) — see lib/receipts/profile.ts — and the avatar
+ * simply appears once one of those has run for that user.
  */
 export async function AccountAvatar() {
   if (!(await hasAuthCookie())) return null;
@@ -29,9 +32,11 @@ export async function AccountAvatar() {
   const userId = await getUserId();
   if (!userId) return null;
 
-  // Self-heals a missing profile; renders nothing rather than throwing if
-  // that fails, because this is on every page.
-  const profile = await getOrCreateProfile(userId);
+  // Deliberately read-only: this renders on every route, including ISR
+  // pages, so it must not write. Self-heal for a signed-in user with no
+  // profile happens on /receipts and /account (both force-dynamic) instead;
+  // the avatar simply appears once one of those has run for this user.
+  const profile = await getProfileByUserId(userId);
   if (!profile) return null;
 
   const label = profile.displayName ?? profile.username;

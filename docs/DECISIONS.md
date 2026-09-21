@@ -1130,3 +1130,58 @@ Rejected:
 - Spot undo / un-spot — A spot is a historical record (like a pick). Once done,
   it stays. Future phases can add retraction UI if needed, but Phase 1 doesn't
   offer it.
+
+## 2026-09-21 — OAuth redirect URLs are always built from the request origin
+
+Decision:
+Every sign-in entry point builds its Supabase `redirectTo` from
+`window.location.origin`, through one shared helper
+(`src/lib/supabase/callback-url.ts`). No sign-in code reads a
+`NEXT_PUBLIC_*_URL` env var.
+
+Why:
+Two of the three entry points (the Spot/nudge prompt, the receipts pitch
+button) built their callback URL from `NEXT_PUBLIC_SITE_URL` — present in
+`.env.local`, absent from `.env.example` and the env schema, and unset on
+Vercel. Supabase rejected the malformed URL against its redirect allow-list
+and fell back to the dashboard Site URL, so `/auth/callback` — the only place
+a profile was created — never ran for those two entry points, while the third
+(`/sign-in`, already origin-based) worked. Same bug class as the 2026-09-05
+entry above (`NEXT_PUBLIC_APP_URL` took down every profile page): a
+deploy-time env var duplicating something the request already knows. See
+`ISSUES.md § 2026-09-21`.
+
+Rejected:
+- Fixing only the two broken entry points — would leave three copies of the
+  same URL-building logic to keep in sync by hand, which is exactly how this
+  drifted the first time.
+
+## 2026-09-21 — A missing profile self-heals; the auth callback is not the only path
+
+Decision:
+`getOrCreateProfile` (`src/lib/receipts/profile.ts`) creates a signed-in
+user's profile — and links their voter session — the first time a page
+actually needs one, rather than relying solely on the auth callback having
+run. It fails closed to `null`; callers render a signed-in fallback, never
+the signed-out pitch. It is called from `/receipts` and `/account` (both
+`force-dynamic`) — not from the header avatar, which stays a plain read-only
+lookup because it renders on every route, including ISR pages that must not
+gain a write on render.
+
+Why:
+The callback was a single point of failure for identity: any way of skipping
+it (a mis-built redirect URL, or a throw after the session cookies were
+already set) left a signed-in user with no profile, permanently — `/account`
+redirected them to `/receipts`, which showed the signed-out pitch. See
+`ISSUES.md § 2026-09-21`.
+
+Rejected:
+- An `auth.users` insert trigger creating the row database-side — the
+  canonical Supabase pattern, and it would have made this bug impossible.
+  Not chosen because DATABASE.md keeps writes server-side via the service
+  role and Drizzle owns the schema; worth revisiting if a fourth signed-in
+  surface needs a profile.
+- Self-healing from the header avatar too — its miss path costs a network
+  call plus two inserts, which is a write on render; the avatar renders on
+  every route including three ISR pages, so it stays read-only and simply
+  shows once one of the two force-dynamic pages has healed the user.

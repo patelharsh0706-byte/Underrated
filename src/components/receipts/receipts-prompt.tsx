@@ -35,16 +35,24 @@ export function ReceiptsPrompt({ variant, firstName, isOpen, onDismiss }: Receip
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [isPending, setIsPending] = useState(false);
 
+  // Runs after every render, not gated on an isOpen transition: isOpen is
+  // `spotPrompt !== null || showNudge`, two independent conditions merged by
+  // the caller. Dismissing whichever one is on top can leave the other still
+  // true — isOpen stays true→true across that render even though the native
+  // dialog already received its own close (Escape, backdrop, "Not now") and
+  // is now sitting closed in the DOM. Checking dialog.open directly, instead
+  // of relying on an isOpen edge, reopens it for the prompt still pending.
   useEffect(() => {
     const dialog = dialogRef.current;
-    if (!isOpen || !dialog) return;
-    // showModal() throws on an already-open dialog — Fast Refresh can re-run
-    // this effect against the same element.
-    if (!dialog.open) dialog.showModal();
-    return () => {
-      if (dialog.open) dialog.close();
-    };
-  }, [isOpen]);
+    if (!dialog) return;
+    if (isOpen) {
+      // showModal() throws on an already-open dialog — Fast Refresh can
+      // re-run this effect against the same element.
+      if (!dialog.open) dialog.showModal();
+    } else if (dialog.open) {
+      dialog.close();
+    }
+  });
 
   if (!isOpen) return null;
 

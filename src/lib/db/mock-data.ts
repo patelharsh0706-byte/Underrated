@@ -28,6 +28,13 @@ import type {
 } from "@/lib/db/queries";
 
 export function isMockMode(): boolean {
+  // VERCEL_ENV, not NODE_ENV: a local `next build && next start` also sets
+  // NODE_ENV=production, and that stays a legitimate way to test mock mode
+  // against a production build. VERCEL_ENV is Vercel's own signal for an
+  // actual deployment, so this refuses to activate only there — a stray
+  // PREVIEW_MOCK=1 in the Vercel production env can't silently swap the live
+  // game for fixtures and swallow every real pick.
+  if (process.env.VERCEL_ENV === "production") return false;
   return process.env.PREVIEW_MOCK === "1";
 }
 

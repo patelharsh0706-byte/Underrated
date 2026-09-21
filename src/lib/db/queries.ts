@@ -609,7 +609,13 @@ export async function getRecentJoins(limit = 5): Promise<RecentJoin[]> {
 }
 
 /** A picker's public identity. Null until they have signed in at least once. */
-export async function getProfileByUserId(userId: string) {
+// Explicit return type: without noUncheckedIndexedAccess, TS types `row` from
+// `const [row] = await db.select()...` as non-nullable, so `row ?? null`
+// silently loses `| null` from the inferred return — correct at runtime
+// (an empty result still yields null), wrong in the type. Left inferred, this
+// makes `vi.mocked(getProfileByUserId).mockResolvedValue(null)` a type error
+// in tests, and hides the null case from every caller's type checking.
+export async function getProfileByUserId(userId: string): Promise<typeof profiles.$inferSelect | null> {
   const [row] = await db.select().from(profiles).where(eq(profiles.id, userId)).limit(1);
   return row ?? null;
 }
@@ -671,7 +677,7 @@ export async function ensureProfile(input: {
   email: string;
   displayName: string | null;
   avatarUrl: string | null;
-}) {
+}): Promise<typeof profiles.$inferSelect | null> {
   const existing = await getProfileByUserId(input.userId);
   if (existing) return existing;
 
@@ -690,7 +696,13 @@ export async function ensureProfile(input: {
       // Empty means the provider gave none; store null, not "".
       email: input.email || null,
     })
-    .onConflictDoNothing()
+    // Target id only: a bare ON CONFLICT DO NOTHING also swallows a
+    // username-unique violation for a DIFFERENT user, which would make the
+    // readback below (keyed to this user's id) return null even though this
+    // user is genuinely signed in. If resolveUsername still raced on the
+    // username and this throws, the caller's try/catch logs it and the user
+    // self-heals via getOrCreateProfile on their next request.
+    .onConflictDoNothing({ target: profiles.id })
     .returning();
 
   // A concurrent sign-in won the insert — read back whatever landed.
