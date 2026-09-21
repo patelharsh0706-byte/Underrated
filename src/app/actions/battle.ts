@@ -4,6 +4,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { db } from "@/lib/db";
+import { isMockMode, mockPickResult, mockRandomPair } from "@/lib/db/mock-data";
 import { battles, creators } from "@/lib/db/schema";
 import { getRandomPair, type PublicCreator } from "@/lib/db/queries";
 import { computeEloUpdate } from "@/lib/ranking/elo";
@@ -11,6 +12,8 @@ import { claimVoterSession } from "@/lib/receipts/claim-session";
 import { getOrCreateVoterSession, readVoterSession } from "@/lib/session";
 
 export async function nextBattle(): Promise<[PublicCreator, PublicCreator]> {
+  // PREVIEW_MOCK=1 — see src/lib/db/mock-data.ts.
+  if (isMockMode()) return mockRandomPair();
   // Read, don't create: the cookie is minted on the first actual pick.
   return getRandomPair(await readVoterSession());
 }
@@ -56,6 +59,8 @@ export interface PickResult {
  * writing anything — the voter keeps playing, the ranking ignores it.
  */
 export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promise<PickResult> {
+  // PREVIEW_MOCK=1 — before the parse: fixture ids are "mock-N", not UUIDs.
+  if (isMockMode()) return mockPickResult(input.winnerId, input.loserId);
   const { winnerId, loserId } = pickWinnerInput.parse(input);
   const voterSession = await getOrCreateVoterSession();
 

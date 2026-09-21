@@ -5,10 +5,17 @@
  * hitting Supabase, for viewing the V2 frontend while the database is slow
  * or unreachable. Gated behind PREVIEW_MOCK=1 (see isMockMode below) — off
  * by default, never touches production. Safe to delete this file and its
- * three call sites (src/app/page.tsx, src/app/leaderboard/page.tsx,
- * src/app/c/[username]/page.tsx) once it's no longer needed; nothing else
- * in the app imports it.
+ * call sites once it's no longer needed; nothing else in the app imports it:
+ *   pages    — src/app/page.tsx, src/app/leaderboard/page.tsx,
+ *              src/app/c/[username]/page.tsx, src/app/submit/success/page.tsx
+ *   actions  — src/app/actions/battle.ts (nextBattle, pickWinner),
+ *              src/app/actions/stats.ts (pingVisitor), src/app/actions/spot.ts
+ * The actions are gated too because the battle loop and the 45 s heartbeat
+ * fire on every click; without those gates a mock page still hangs on the
+ * real database the moment you pick someone.
  */
+import type { PickResult } from "@/app/actions/battle";
+import { computeEloUpdate } from "@/lib/ranking/elo";
 import type {
   ActiveSponsorship,
   CreatorProfile,
@@ -199,7 +206,35 @@ function toPublic(seed: Seed, id: number): PublicCreator {
 const CREATORS: PublicCreator[] = SEEDS.map(toPublic);
 
 export function mockRandomPair(): [PublicCreator, PublicCreator] {
-  return [CREATORS[0], CREATORS[1]];
+  // Two distinct creators, drawn fresh each time — a fixed pair made every
+  // "next battle" the same two faces, which hid the loop's own behaviour.
+  const a = Math.floor(Math.random() * CREATORS.length);
+  let b = Math.floor(Math.random() * (CREATORS.length - 1));
+  if (b >= a) b += 1;
+  return [CREATORS[a], CREATORS[b]];
+}
+
+/**
+ * A pick against the fixtures. Runs the real Elo on the mock Aura so the
+ * delta badge and count-up look like production; nothing is stored, so a
+ * repeat pick "counts" again and Aura never persists between battles.
+ */
+export function mockPickResult(winnerId: string, loserId: string): PickResult {
+  const winner = CREATORS.find((c) => c.id === winnerId);
+  const loser = CREATORS.find((c) => c.id === loserId);
+  if (!winner || !loser) {
+    throw new Error("Mock pick for a creator that is not in the fixtures");
+  }
+  const { delta, winnerAfter, loserAfter } = computeEloUpdate(winner.aura, loser.aura);
+  return {
+    winnerId,
+    loserId,
+    winnerAura: winnerAfter,
+    loserAura: loserAfter,
+    delta,
+    counted: true,
+    battlesToday: mockHomeStats().battlesToday + 1,
+  };
 }
 
 export function mockLeaderboard(limit = 50): LeaderboardEntry[] {

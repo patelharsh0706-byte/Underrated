@@ -3,6 +3,7 @@
 import { sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
+import { isMockMode, mockHomeStats } from "@/lib/db/mock-data";
 import { visitorPings } from "@/lib/db/schema";
 import { getHomeStats, type HomeStats } from "@/lib/db/queries";
 import { getOrCreateVoterSession } from "@/lib/session";
@@ -18,6 +19,8 @@ import { getOrCreateVoterSession } from "@/lib/session";
  * client calls this every 45s while the tab is visible.
  */
 export async function pingVisitor(): Promise<HomeStats> {
+  // PREVIEW_MOCK=1 — see src/lib/db/mock-data.ts. No heartbeat is written.
+  if (isMockMode()) return mockHomeStats();
   const voterSession = await getOrCreateVoterSession();
 
   await db
