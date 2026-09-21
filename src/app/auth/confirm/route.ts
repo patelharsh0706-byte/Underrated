@@ -1,31 +1,23 @@
 import { type EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
-import { ensureProfile, linkPickerSession } from "@/lib/db/queries";
-import { profileInputFromUser } from "@/lib/receipts/profile";
-import { getOrCreateVoterSession } from "@/lib/session";
+import { finishSignIn } from "@/lib/receipts/profile";
+import { safeNextPath } from "@/lib/supabase/callback-url";
 import { createClient } from "@/lib/supabase/server";
 
 /**
  * Email OTP / magic-link sign-in.
  *
  * The OAuth callback next door handles the PKCE `code` exchange; email links
- * arrive as a `token_hash` + `type` instead and need `verifyOtp`. Same work
- * afterwards — create the profile, claim the browser's voter session, land on
- * their receipts — so the two routes stay deliberately symmetrical, including
- * how they treat a failure after the session is already set.
+ * arrive as a `token_hash` + `type` instead and need `verifyOtp`. Everything
+ * after that — profile, voter session, where to land, how a late failure is
+ * treated — is finishSignIn, shared with the callback so the two routes stay
+ * deliberately symmetrical.
  */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const tokenHash = searchParams.get("token_hash");
   const type = searchParams.get("type") as EmailOtpType | null;
-  const requestedNext = searchParams.get("next");
-
-  const next =
-    requestedNext && requestedNext.startsWith("/") && !requestedNext.startsWith("//")
-      ? requestedNext
-      : null;
-
   if (!tokenHash || !type) return NextResponse.redirect(`${origin}/sign-in?error=auth`);
 
   const supabase = await createClient();
@@ -35,24 +27,6 @@ export async function GET(request: Request) {
     return NextResponse.redirect(`${origin}/sign-in?error=auth`);
   }
 
-  // Signed in from here on — see the same note in auth/callback/route.ts.
-  let destination = next ?? "/receipts";
-  try {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (user) {
-      const profile = await ensureProfile(profileInputFromUser(user));
-
-      const voterSession = await getOrCreateVoterSession();
-      if (voterSession) await linkPickerSession(voterSession, user.id);
-
-      if (!next && profile) destination = `/${profile.username}/receipts`;
-    }
-  } catch (setupError) {
-    console.error("Auth confirm: profile setup failed after sign-in", setupError);
-  }
-
-  return NextResponse.redirect(`${origin}${destination}`);
+  const next = safeNextPath(searchParams.get("next"), "") || null;
+  return NextResponse.redirect(`${origin}${await finishSignIn(supabase, next)}`);
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { buildCallbackUrl } from "./callback-url";
+import { buildCallbackUrl, safeNextPath } from "./callback-url";
 
 // Regression guard for ISSUES.md § 2026-09-21 "Signing in through the Spot
 // prompt created no profile". Every sign-in entry point builds its OAuth
@@ -56,5 +56,15 @@ describe("buildCallbackUrl", () => {
     expect(buildCallbackUrl("https://underhyped-abc123-team.vercel.app", "/receipts", "/receipts")).toBe(
       "https://underhyped-abc123-team.vercel.app/auth/callback?next=%2Freceipts",
     );
+  });
+});
+
+describe("safeNextPath", () => {
+  it("is the guard the auth routes reuse when reading next back off the URL", () => {
+    expect(safeNextPath("/c/romg_dev", "/receipts")).toBe("/c/romg_dev");
+    expect(safeNextPath("//evil.com", "/receipts")).toBe("/receipts");
+    expect(safeNextPath(null, "/receipts")).toBe("/receipts");
+    // An empty fallback lets a route distinguish "no preference" from a value.
+    expect(safeNextPath(undefined, "")).toBe("");
   });
 });

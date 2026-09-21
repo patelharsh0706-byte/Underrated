@@ -27,13 +27,18 @@ export function buildCallbackUrl(
   next: string | null | undefined,
   fallback: string,
 ): string {
-  const path = isInAppPath(next) ? next : fallback;
-  return `${origin.replace(/\/+$/, "")}/auth/callback?next=${encodeURIComponent(path)}`;
+  return `${origin.replace(/\/+$/, "")}/auth/callback?next=${encodeURIComponent(safeNextPath(next, fallback))}`;
 }
 
-function isInAppPath(value: string | null | undefined): value is string {
-  if (!value || value[0] !== "/") return false;
+/**
+ * `next` if it is an in-app absolute path, else `fallback`. Shared by the
+ * builder above and by the two auth routes that read `next` back off the
+ * callback URL — one guard, so the client and server cannot disagree about
+ * what counts as safe.
+ */
+export function safeNextPath(value: string | null | undefined, fallback: string): string {
+  if (!value || value[0] !== "/") return fallback;
   // A second slash or a backslash right after the first would let a browser
   // read the rest as a host.
-  return value[1] !== "/" && value[1] !== "\\";
+  return value[1] !== "/" && value[1] !== "\\" ? value : fallback;
 }

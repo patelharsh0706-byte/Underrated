@@ -3,10 +3,52 @@ import "server-only";
 import type { User } from "@supabase/supabase-js";
 
 import { ensureProfile, getProfileByUserId, linkPickerSession } from "@/lib/db/queries";
-import { readVoterSession } from "@/lib/session";
+import { getOrCreateVoterSession, readVoterSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getProfileByUserId>>>;
+type ServerClient = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * Everything that happens after a sign-in has succeeded, shared by the OAuth
+ * callback and the email-confirm route so they cannot drift: create the
+ * profile, claim the browser's voter session, and return where to land.
+ *
+ * Runs with the session cookies already set. Whatever fails in here, the user
+ * IS signed in and must not be told otherwise — one catch around the whole
+ * route used to send them to /sign-in?error=auth after a successful
+ * exchange. A failure is logged with the user id and the redirect goes ahead;
+ * getOrCreateProfile below heals it on arrival.
+ *
+ * Returns the in-app path to redirect to: `next` when the caller was sent
+ * somewhere specific, otherwise the user's own receipts page, or /receipts
+ * when no profile could be resolved.
+ */
+export async function finishSignIn(supabase: ServerClient, next: string | null): Promise<string> {
+  let destination = next ?? "/receipts";
+  let userId: string | undefined;
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return destination;
+    userId = user.id;
+
+    // The picker's public handle, derived from their email the first time
+    // they sign in. Everything after this can address them by it.
+    const profile = await ensureProfile(profileInputFromUser(user));
+
+    // Everything this browser has already picked becomes theirs.
+    // First link wins — a session never changes hands.
+    const voterSession = await getOrCreateVoterSession();
+    if (voterSession) await linkPickerSession(voterSession, user.id);
+
+    if (!next && profile) destination = `/${profile.username}/receipts`;
+  } catch (error) {
+    console.error("Profile setup failed after sign-in", { userId }, error);
+  }
+  return destination;
+}
 
 /**
  * The fields a profile is created from, read off the Supabase user. One
