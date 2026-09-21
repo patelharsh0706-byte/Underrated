@@ -311,21 +311,29 @@ Agents: check `docs/references/` before designing a screen.
 
 ### Spot button
 
-Location: Top-left of battle card portrait — `👁 SPOT` from `sm` up, eye first, then the word in the Micro scale (uppercase, tracked); icon-only below `sm` — and next to share button on profiles (pill or icon).
+Location: Top-left of battle card portrait, mirroring the Aura badge's
+top-right corner — same card treatment, stacked eye icon + `spot` caption,
+same as Aura's number + `aura` caption — and next to share button on
+profiles (pill or icon).
 
-> **Changed 2026-09-21.** The battle-card variant was a 36px circle with the
-> eye alone. It read as decoration rather than an action, and it sat under
-> the 44px hit area below. The pill is 44px, top-left, matching the Aura
-> badge's top-right — but the two battle cards stay side by side on phones
-> (§ Principles 4), which leaves each portrait too narrow for a labelled pill
-> and the badge to share the top edge (measured 7px overlap at 390px, 42px at
-> 320px). Below `sm` the pill drops its label and stays icon-only, still
-> 44px; the label returns from `sm` up. The label does not change when
-> spotted; the lime fill and `aria-pressed` carry that.
+> **Changed 2026-09-21.** The battle-card variant went through three shapes
+> in one pass. It started as a 36px circle with the eye alone — decoration,
+> not an action, and under the 44px hit area below. It became a labelled
+> pill (`👁 SPOT`) on the ground fill, first top-left then moved to
+> bottom-left because a phone-width labelled pill collided with the Aura
+> badge sharing the same corner (measured 7–42px overlap). Back at top-left,
+> it now uses the **exact recipe the Aura badge already uses** — `bg-card`,
+> the same shadow, the same `rounded-[10px]`, the same stacked
+> number-line-then-caption shape — instead of a flat ground-fill pill, which
+> read as visually lighter than Aura next to it even at an equal or larger
+> footprint. The two now read as a matched pair. Base padding is 2px tighter
+> than Aura's (`px-2` vs `px-2.5`) purely to clear the corner at 320px, the
+> narrowest supported width (1px clearance measured); `sm:px-2.5` matches
+> Aura's padding exactly from `sm` up, where there is no collision risk.
 
 Styling:
-- **Idle:** Ground fill (`#F7F7F2`), hairline border, dark ink eye icon, label from `sm` up
-- **Spotted:** Lime fill (`#D8FF3E`), dark ink eye icon, label from `sm` up
+- **Idle:** `bg-card` (white) with Aura's drop shadow, dark ink eye icon, `spot` caption
+- **Spotted:** Lime fill (`#D8FF3E`), same shadow, same icon and caption
 - **Hover:** Slightly darker (lime hover / ground hover)
 - **Aria labels:** `aria-label="Spot {firstName}"`, `aria-pressed={true|false}`
 - **Hit area:** ≥ 44px (touch-safe)
