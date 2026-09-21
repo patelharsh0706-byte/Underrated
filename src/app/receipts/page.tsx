@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { SignInButton } from "@/components/receipts/sign-in-button";
 import { MarkerSwipe } from "@/components/marker-swipe";
 import { getUserId } from "@/lib/auth";
-import { getProfileByUserId } from "@/lib/db/queries";
+import { ReceiptsSetupFallback } from "@/components/receipts/setup-fallback";
+import { getOrCreateProfile } from "@/lib/receipts/profile";
 
 // The nav's "Receipts" link points here because it has to work before anyone
 // knows their handle. Signed in, it forwards to the real page at
@@ -19,8 +20,11 @@ export default async function ReceiptsPage() {
   const userId = await getUserId();
 
   if (userId) {
-    const profile = await getProfileByUserId(userId);
+    // Create the profile here if the callback never did — a signed-in user
+    // must never be shown the pitch below and told to sign in.
+    const profile = await getOrCreateProfile(userId);
     if (profile) redirect(`/${profile.username}/receipts`);
+    return <ReceiptsSetupFallback />;
   }
 
   return (

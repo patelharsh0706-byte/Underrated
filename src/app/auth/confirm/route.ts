@@ -2,6 +2,7 @@ import { type EmailOtpType } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 import { ensureProfile, linkPickerSession } from "@/lib/db/queries";
+import { profileInputFromUser } from "@/lib/receipts/profile";
 import { getOrCreateVoterSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -11,7 +12,8 @@ import { createClient } from "@/lib/supabase/server";
  * The OAuth callback next door handles the PKCE `code` exchange; email links
  * arrive as a `token_hash` + `type` instead and need `verifyOtp`. Same work
  * afterwards — create the profile, claim the browser's voter session, land on
- * their receipts — so the two routes stay deliberately symmetrical.
+ * their receipts — so the two routes stay deliberately symmetrical, including
+ * how they treat a failure after the session is already set.
  */
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -24,41 +26,33 @@ export async function GET(request: Request) {
       ? requestedNext
       : null;
 
-  if (tokenHash && type) {
-    try {
-      const supabase = await createClient();
-      const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
+  if (!tokenHash || !type) return NextResponse.redirect(`${origin}/sign-in?error=auth`);
 
-      if (!error) {
-        const voterSession = await getOrCreateVoterSession();
-        const {
-          data: { user },
-        } = await supabase.auth.getUser();
-
-        if (user) {
-          const profile = await ensureProfile({
-            userId: user.id,
-            email: user.email ?? "",
-            displayName:
-              (user.user_metadata?.full_name as string | undefined) ??
-              (user.user_metadata?.name as string | undefined) ??
-              null,
-            avatarUrl: (user.user_metadata?.avatar_url as string | undefined) ?? null,
-          });
-
-          if (voterSession) await linkPickerSession(voterSession, user.id);
-
-          return NextResponse.redirect(
-            `${origin}${next ?? (profile ? `/${profile.username}/receipts` : "/receipts")}`,
-          );
-        }
-
-        return NextResponse.redirect(`${origin}${next ?? "/receipts"}`);
-      }
-    } catch (error) {
-      console.error("Auth confirm error:", error);
-    }
+  const supabase = await createClient();
+  const { error } = await supabase.auth.verifyOtp({ type, token_hash: tokenHash });
+  if (error) {
+    console.error("Auth confirm: OTP verification failed", error);
+    return NextResponse.redirect(`${origin}/sign-in?error=auth`);
   }
 
-  return NextResponse.redirect(`${origin}/sign-in?error=auth`);
+  // Signed in from here on — see the same note in auth/callback/route.ts.
+  let destination = next ?? "/receipts";
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      const profile = await ensureProfile(profileInputFromUser(user));
+
+      const voterSession = await getOrCreateVoterSession();
+      if (voterSession) await linkPickerSession(voterSession, user.id);
+
+      if (!next && profile) destination = `/${profile.username}/receipts`;
+    }
+  } catch (setupError) {
+    console.error("Auth confirm: profile setup failed after sign-in", setupError);
+  }
+
+  return NextResponse.redirect(`${origin}${destination}`);
 }

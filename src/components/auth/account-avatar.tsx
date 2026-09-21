@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { getUserId, hasAuthCookie } from "@/lib/auth";
-import { getProfileByUserId } from "@/lib/db/queries";
+import { getOrCreateProfile } from "@/lib/receipts/profile";
 
 /** First letters of a name, or of a handle when there is no name. */
 function initialsOf(label: string): string {
@@ -20,6 +20,8 @@ function initialsOf(label: string): string {
  * Renders nothing at all when signed out, so an anonymous visitor sees exactly
  * the header they see today and pays no query for it (hasAuthCookie is a
  * cookie read; the profile lookup is by primary key and only runs past it).
+ * Signed in without a profile is the one case that costs more — one create,
+ * once — see lib/receipts/profile.ts.
  */
 export async function AccountAvatar() {
   if (!(await hasAuthCookie())) return null;
@@ -27,7 +29,9 @@ export async function AccountAvatar() {
   const userId = await getUserId();
   if (!userId) return null;
 
-  const profile = await getProfileByUserId(userId);
+  // Self-heals a missing profile; renders nothing rather than throwing if
+  // that fails, because this is on every page.
+  const profile = await getOrCreateProfile(userId);
   if (!profile) return null;
 
   const label = profile.displayName ?? profile.username;

@@ -17,6 +17,75 @@ Status: **FIXED** (shipped and verified) · **OPEN** (known, not yet fixed).
 
 ---
 
+## 2026-09-21 — Signing in through the Spot prompt created no profile · FIXED
+
+**Symptom.** A second Google account (`killer.master`) signed in through the
+Spot prompt ended up in `auth.users` with **no `profiles` row** — no handle,
+no receipts page, and no email visible against the account in the dashboard.
+Reported as "it does not pick up the right username in Supabase, and it does
+not link to the email IDs".
+
+**Cause.** Two of the three sign-in entry points — the Spot/nudge prompt and
+the receipts pitch button, both via `startGoogleSignIn` in
+`src/lib/supabase/oauth.ts` — built their OAuth `redirectTo` from
+`NEXT_PUBLIC_SITE_URL`. That variable was in `.env.local` but in neither
+`.env.example` nor the env schema, so it was unset on Vercel. The third entry
+point, the `/sign-in` page's button, built the URL from `window.location.origin`
+and never had the bug — which is why the owner's account (signed in via
+`/sign-in`) had a profile and `killer.master` (signed in via the prompt) did
+not.
+
+Two mechanisms produce the observed state, and the fix covers both:
+1. *Callback never runs.* Supabase rejects the malformed `redirectTo` against
+   its allow-list and falls back to the dashboard Site URL. The `auth.users`
+   row already exists by then. The PKCE code arrives on that URL unexchanged —
+   no browser Supabase client is constructed on the homepage, and `proxy.ts`
+   only refreshes sessions — so `/auth/callback`, the only place a profile was
+   created, never runs.
+2. *Callback runs, then throws.* One `try/catch` around the whole route
+   redirected to `/sign-in?error=auth` even after `exchangeCodeForSession`
+   had set the session cookies — signed in, no profile, told sign-in failed.
+
+Either way the consequence was worse than a missing row: `/account` redirected
+a profile-less signed-in user to `/receipts`, which showed the signed-out pitch
+— told to sign in while signed in, with no way out.
+
+**Fix.**
+- One pure builder, `src/lib/supabase/callback-url.ts`, makes every entry
+  point's callback URL from the page's own origin. Tested, including the
+  `next` guard; the `/sign-in` page keeps `/submit` as its fallback.
+- `getOrCreateProfile` in `src/lib/receipts/profile.ts` creates the profile
+  wherever a signed-in user needs one (`/receipts`, `/account`, the header
+  avatar) — and links their voter session, the callback's second job — so a
+  missed callback heals on the next request. It fails closed to `null`; the
+  pages render a signed-in fallback, never the pitch, never a 500.
+- Both auth routes separate exchange failure from post-exchange failure: a
+  profile or session-link error is logged with the user id and the redirect
+  goes ahead, because the user is signed in.
+- The login email is stored on `profiles` (see the migration in
+  `drizzle/0010_profiles_email.sql`), reachable only through the owner-only
+  full-row getters — the public receipts route reads a column-restricted
+  selector.
+
+**Prevention.** Same class as § 2026-09-05 below, and its Prevention line was
+right: *a deploy-time env var that duplicates something the request already
+knows will eventually disagree with it.* It happened again because the second
+copy of the pattern was written from an env var while the first used the
+origin, and nothing tied them together. Now there is one builder, with tests,
+and no `NEXT_PUBLIC_*_URL` is read anywhere in the sign-in flow. The self-heal
+means the callback is no longer a single point of failure for identity.
+**Class of bug:** a config value that fails silently — the fourth entry in
+this file of that shape. Any `process.env.NEXT_PUBLIC_*` read that builds a
+URL should be treated as a smell in review.
+
+**Reproduction to run on a preview** (which mechanism hit is not settled from
+the repo alone): record Vercel's value for `NEXT_PUBLIC_SITE_URL` and the
+Supabase Auth Site URL + redirect allow-list; pull Vercel function logs for
+`Auth callback` around the affected sign-in; with a fresh Google account, sign
+in through the prompt and note the URL the browser lands on with `?code=`.
+
+---
+
 ## 2026-09-12 — The homepage fails roughly half the time in production · OPEN
 
 **Symptom.** `underhyped.wtf` intermittently does not load. Reported as "out of

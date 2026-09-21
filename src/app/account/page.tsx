@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 import { signOut } from "@/app/actions/auth";
 import { ShareButton } from "@/components/profile/share-button";
 import { getAppOrigin } from "@/lib/app-url";
+import { ReceiptsSetupFallback } from "@/components/receipts/setup-fallback";
 import { getUserId } from "@/lib/auth";
-import { getProfileByUserId } from "@/lib/db/queries";
+import { getOrCreateProfile } from "@/lib/receipts/profile";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +20,10 @@ export default async function AccountPage() {
   // /receipts is already the signed-out pitch — no second sign-in screen.
   if (!userId) redirect("/receipts");
 
-  const profile = await getProfileByUserId(userId);
-  if (!profile) redirect("/receipts");
+  // Signed in but no profile: create it, and if that fails show a signed-in
+  // fallback — redirecting to /receipts sent them to the signed-out pitch.
+  const profile = await getOrCreateProfile(userId);
+  if (!profile) return <ReceiptsSetupFallback />;
 
   const origin = await getAppOrigin();
   const receiptsPath = `/${profile.username}/receipts`;
