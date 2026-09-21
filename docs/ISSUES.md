@@ -17,6 +17,47 @@ Status: **FIXED** (shipped and verified) · **OPEN** (known, not yet fixed).
 
 ---
 
+## 2026-09-21 — Signed-in user asked to sign in again on Spot · FIXED
+
+**Symptom.** After signing in successfully (profile created, avatar visible),
+tapping the Spot button still opened the "Sign in and we'll keep the
+receipt" prompt — as if signed out.
+
+**Cause.** `getUserId()` (`src/lib/auth.ts`) called `client.auth.getClaims()`.
+On this project (asymmetric ES256 signing keys — confirmed via
+`/.well-known/jwks.json`), `getClaims()` verifies the JWT locally, but that
+requires fetching the project's JWKS and caching it **on the client
+instance**. `createClient()` builds a brand-new Supabase client on every
+single call — there is no reuse — so the cache never warms, and every
+`getUserId()` call forces a fresh JWKS fetch. A transient failure fetching
+it is not always a typed Supabase `AuthError`, so it can re-throw out of
+`getClaims()` entirely; `getUserId()`'s `catch` swallowed that silently and
+returned `null` — signed *out*, even with a perfectly valid session.
+
+Confirmed indirectly: Supabase auth logs showed the `/user` endpoint (what
+`getUser()` calls, used successfully by `proxy.ts` and `profile.ts`
+elsewhere in this codebase) returning 200 continuously throughout the
+session, so the session itself was never the problem — only this one read
+path.
+
+**Fix.** `getUserId()` now calls `supabase.auth.getUser()` directly, the
+same call already proven reliable elsewhere in this codebase. One network
+call, no JWKS dependency, no per-call cache that can never warm. The catch
+now logs instead of swallowing silently.
+
+**Prevention.** `getClaims()`'s local-verification path is only actually
+faster than `getUser()` when the same client instance persists across
+calls; a fresh client per call gets the fetch cost of `getClaims()` with
+none of its caching benefit, plus a new failure mode `getUser()` doesn't
+have. Prefer `getUser()` unless a Supabase client is genuinely reused
+across requests. **Class of bug:** a silent catch with no logging — the
+fourth entry in this file of that shape ("it looked right in the source").
+Never swallow an unexpected auth-read error without at least a
+`console.error`; a signed-in user silently treated as signed-out has no
+error to report unless someone thinks to add one.
+
+---
+
 ## 2026-09-21 — Signing in through the Spot prompt created no profile · FIXED
 
 **Symptom.** A second Google account (`killer.master`) signed in through the
