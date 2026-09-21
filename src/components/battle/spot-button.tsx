@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+
 import { spotCreator } from "@/app/actions/spot";
+import { cn } from "@/lib/utils";
 
 interface SpotButtonProps {
   creatorId: string;
@@ -50,20 +52,33 @@ export function SpotButton({
   };
 
   return (
+    // A pill, not a bare icon: the eye alone read as decoration, and a 36px
+    // circle sat under the 44px hit area DESIGN.md § Spot button requires.
+    // Bottom-left of the portrait, not top-left: on a phone each battle card
+    // is roughly half the viewport, and top-left put the pill into the Aura
+    // badge (overlapping by 7px at 390px, 42px at 320px). The label stays
+    // "Spot" in both states — spotted is the lime fill plus aria-pressed, and
+    // changing the word would shift the pill's width mid-tap.
     <button
       type="button"
       onClick={handleClick}
       disabled={isPending}
       aria-pressed={isSpotted}
       aria-label={`Spot ${firstName}`}
-      className={`absolute top-2.5 left-2.5 w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+      className={cn(
+        "absolute bottom-2.5 left-2.5 inline-flex h-11 items-center gap-1.5 rounded-full border px-3 transition-colors disabled:opacity-50",
         isSpotted
-          ? "bg-lime-400 text-gray-900"
-          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-      } disabled:opacity-50`}
+          ? "border-transparent bg-lime text-foreground"
+          : "border-hairline bg-background text-foreground hover:bg-muted",
+      )}
       title={`Spot ${firstName}`}
     >
-      <span className="text-base">👁</span>
+      <span className="text-base leading-none" aria-hidden="true">
+        👁
+      </span>
+      <span className="font-display text-[11px] leading-none font-bold tracking-[0.1em] uppercase">
+        Spot
+      </span>
     </button>
   );
 }
