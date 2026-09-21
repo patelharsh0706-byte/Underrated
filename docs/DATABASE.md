@@ -293,6 +293,49 @@ INDEX (creator_id)
 history is attributed via `battles.voter_session → picker_sessions.user_id` join.
 This keeps identity structurally separate from Aura/ranking queries.
 
+### profiles
+
+Receipts: a picker's public identity, keyed by `auth.users.id`. This is the
+`public.profiles` table the note above prescribes instead of extending
+`auth.users`.
+
+```
+id                uuid pk, fk → auth.users.id, on delete cascade
+username          text            derived from the email on first sign-in
+display_name      text null       Google name, if any
+avatar_url        text null
+email             text null       the login email; server-only, see below
+created_at        timestamptz
+
+UNIQUE (lower(username))
+```
+
+**Invariants:**
+- `username` is unique case-insensitively and is what `/[username]/receipts`
+  resolves against. Reserved route names are blocked at the write path
+  (`src/lib/receipts/username.ts`).
+- Created by `ensureProfile` — from the auth callback and confirm routes, and
+  by `getOrCreateProfile` (`src/lib/receipts/profile.ts`) on any page that
+  needs a profile for a signed-in user, so a missed callback self-heals.
+- `email` is written once at creation and backfilled from `auth.users` in
+  migration `0010`. It is nullable because a provider can omit it, and it is a
+  snapshot: a user who changes their Google email keeps the original here.
+  It exists so the owner can see which login each profile belongs to in the
+  dashboard without a join.
+- **`email` never reaches a page.** The public receipts route
+  (`/[username]/receipts` and its OG image) reads through
+  `getPublicProfileByUsername`, which selects an explicit column list without
+  it. Only the owner-only full-row getters return it, and nothing renders it.
+  The `creators` table uses the same curated-projection pattern
+  (`creatorSelection`) for the same reason.
+- RLS enabled, no policies (server-only via service role, like `visitor_pings`).
+
+**Migrations:** `0008`, `0009` and `0010` are hand-written and registered in
+`drizzle/meta/_journal.json` by hand; the snapshots in `drizzle/meta/` stop at
+`0007`. Do not run `drizzle-kit generate` — it would diff against the stale
+snapshot and re-emit `spots` and `profiles`. Apply a new migration the same way
+the previous one was and record the path here when it is settled.
+
 ### picker_sessions
 
 Receipts: Session-to-identity linker. One row per voter session linked to a user.

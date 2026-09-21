@@ -6,7 +6,7 @@ import { Scribble } from "@/components/scribble";
 import { ReceiptsShareButton } from "@/components/receipts/share-button";
 import { getAppOrigin } from "@/lib/app-url";
 import { getUserId } from "@/lib/auth";
-import { getProfileByUsername, getReceipts } from "@/lib/db/queries";
+import { getPublicProfileByUsername, getReceipts } from "@/lib/db/queries";
 import { pickBestSpot } from "@/lib/receipts/best-spot";
 
 // Public page — anyone can read someone's receipts, which is the point: the
@@ -19,7 +19,7 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { username } = await params;
-  const profile = await getProfileByUsername(username);
+  const profile = await getPublicProfileByUsername(username);
   if (!profile) return { title: "Receipts — Underhyped" };
 
   const who = profile.displayName ?? `@${profile.username}`;
@@ -40,7 +40,7 @@ function firstName(name: string): string {
 
 export default async function PublicReceiptsPage({ params }: PageProps) {
   const { username } = await params;
-  const profile = await getProfileByUsername(username);
+  const profile = await getPublicProfileByUsername(username);
   if (!profile) notFound();
 
   const [receipts, viewerId, origin] = await Promise.all([

@@ -614,10 +614,45 @@ export async function getProfileByUserId(userId: string) {
   return row ?? null;
 }
 
-/** Resolve a public receipts URL back to the picker who owns it. */
+/**
+ * The full profile row, including `email`. Owner-only: reached from
+ * getOrCreateProfile, /account and the header avatar for the signed-in user
+ * themselves. Public routes must use getPublicProfileByUsername.
+ */
 export async function getProfileByUsername(username: string) {
   const [row] = await db
     .select()
+    .from(profiles)
+    .where(sql`lower(${profiles.username}) = lower(${username})`)
+    .limit(1);
+  return row ?? null;
+}
+
+/**
+ * What a public page may know about a picker. An explicit column list, so
+ * `email` cannot ride along into the unauthenticated receipts route or its
+ * OG image — the same curated-projection idea as creatorSelection above. A
+ * grep for `profile.email` would not catch a future `{...profile}` spread
+ * into a client prop; the selector makes the exclusion structural.
+ */
+const publicProfileSelection = {
+  id: profiles.id,
+  username: profiles.username,
+  displayName: profiles.displayName,
+  avatarUrl: profiles.avatarUrl,
+};
+
+export type PublicProfile = {
+  id: string;
+  username: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+};
+
+/** Resolve a public receipts URL back to the picker who owns it — public fields only. */
+export async function getPublicProfileByUsername(username: string): Promise<PublicProfile | null> {
+  const [row] = await db
+    .select(publicProfileSelection)
     .from(profiles)
     .where(sql`lower(${profiles.username}) = lower(${username})`)
     .limit(1);
@@ -652,6 +687,8 @@ export async function ensureProfile(input: {
       username,
       displayName: input.displayName,
       avatarUrl: input.avatarUrl,
+      // Empty means the provider gave none; store null, not "".
+      email: input.email || null,
     })
     .onConflictDoNothing()
     .returning();

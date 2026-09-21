@@ -1,6 +1,6 @@
 import { ImageResponse } from "next/og";
 
-import { getProfileByUsername, getReceipts } from "@/lib/db/queries";
+import { getPublicProfileByUsername, getReceipts } from "@/lib/db/queries";
 import { pickBestSpot } from "@/lib/receipts/best-spot";
 
 export const runtime = "nodejs";
@@ -23,7 +23,7 @@ interface Props {
 
 export default async function Image({ params }: Props) {
   const { username } = await params;
-  const profile = await getProfileByUsername(username);
+  const profile = await getPublicProfileByUsername(username);
   const receipts = profile ? await getReceipts(profile.id) : null;
   const best = receipts ? pickBestSpot(receipts.spots) : undefined;
   const who = profile?.displayName ?? `@${profile?.username ?? username}`;

@@ -159,6 +159,11 @@ export const profiles = pgTable(
     username: text("username").notNull(),
     displayName: text("display_name"),
     avatarUrl: text("avatar_url"),
+    // The login email, so the owner can see which account a profile belongs
+    // to in the dashboard. Written once, backfilled by 0010, never rendered:
+    // the public receipts route reads a projection without it — see
+    // getPublicProfileByUsername and DATABASE.md § profiles.
+    email: text("email"),
     createdAt: timestamptz("created_at").notNull().defaultNow(),
   },
   (table) => [uniqueIndex("profiles_username_key").on(table.username)],
