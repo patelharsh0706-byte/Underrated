@@ -104,7 +104,7 @@ a profile-less signed-in user to `/receipts`, which showed the signed-out pitch
   profile or session-link error is logged with the user id and the redirect
   goes ahead, because the user is signed in.
 - The login email is stored on `profiles` (see the migration in
-  `drizzle/0010_profiles_email.sql`), reachable only through the owner-only
+  `drizzle/0011_profiles_email.sql`), reachable only through the owner-only
   full-row getters — the public receipts route reads a column-restricted
   selector.
 

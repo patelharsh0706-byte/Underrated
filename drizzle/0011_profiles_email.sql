@@ -7,7 +7,7 @@
 ALTER TABLE "profiles" ADD COLUMN IF NOT EXISTS "email" text;
 --> statement-breakpoint
 -- Link every profile that already exists. Same role and privilege the FK to
--- auth.users in 0009 relied on.
+-- auth.users in 0010 relied on.
 UPDATE "profiles" p
 SET "email" = u."email"
 FROM "auth"."users" u
