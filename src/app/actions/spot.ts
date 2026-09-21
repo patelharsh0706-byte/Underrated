@@ -32,9 +32,9 @@ export async function spotCreator(input: SpotCreatorInput): Promise<SpotResult> 
     // Validate input
     const { creatorId } = SpotCreatorInput.parse(input);
 
-    // Mock mode
+    // Mock mode — nothing to persist, but the tap should stick like a real one.
     if (isMockMode()) {
-      return { ok: false, reason: "unavailable" };
+      return { ok: true, rankAtSpot: null, alreadySpotted: false };
     }
 
     // Get user ID

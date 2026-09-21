@@ -36,7 +36,10 @@ export const dynamic = "force-dynamic";
 export default async function HomePage() {
   // Drives the alternating placement slot — see RANKING.md § Pairing.
   const voterSession = await readVoterSession();
-  const userId = isMockMode() ? null : await getUserId();
+  // Not mock-gated: getUserId() only talks to Supabase Auth, never the
+  // database, and gating it hard-coded every mock-mode visitor as signed out —
+  // so Spot asked a signed-in user to sign in (ISSUES.md § 2026-09-21).
+  const userId = await getUserId();
 
   // PREVIEW_MOCK=1 — see src/lib/db/mock-data.ts. Temporary, for viewing
   // the frontend without a live database.
@@ -58,9 +61,10 @@ export default async function HomePage() {
         getRecentBattleResults(),
       ]);
 
-  const initialSpottedIds = userId
-    ? Array.from(await getSpottedIds(userId, [pair[0].id, pair[1].id]))
-    : [];
+  const initialSpottedIds =
+    userId && !isMockMode()
+      ? Array.from(await getSpottedIds(userId, [pair[0].id, pair[1].id]))
+      : [];
 
   // Nobody's hit the 5-battles-today floor yet — fall back to all-time Aura
   // so the panel is never empty. See RANKING.md.

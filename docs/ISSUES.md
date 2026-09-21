@@ -23,38 +23,38 @@ Status: **FIXED** (shipped and verified) · **OPEN** (known, not yet fixed).
 tapping the Spot button still opened the "Sign in and we'll keep the
 receipt" prompt — as if signed out.
 
-**Cause.** `getUserId()` (`src/lib/auth.ts`) called `client.auth.getClaims()`.
-On this project (asymmetric ES256 signing keys — confirmed via
-`/.well-known/jwks.json`), `getClaims()` verifies the JWT locally, but that
-requires fetching the project's JWKS and caching it **on the client
-instance**. `createClient()` builds a brand-new Supabase client on every
-single call — there is no reuse — so the cache never warms, and every
-`getUserId()` call forces a fresh JWKS fetch. A transient failure fetching
-it is not always a typed Supabase `AuthError`, so it can re-throw out of
-`getClaims()` entirely; `getUserId()`'s `catch` swallowed that silently and
-returned `null` — signed *out*, even with a perfectly valid session.
+**Cause.** The homepage read the signed-in state as
+`isMockMode() ? null : await getUserId()`. The tester was on the
+`PREVIEW_MOCK=1` dev server (the one handed out for "just show mock data"),
+so every visitor was hard-coded as signed out — the session was valid, the
+header avatar even rendered, but the Spot button never got `isSignedIn`.
+Nothing about Supabase Auth was broken.
 
-Confirmed indirectly: Supabase auth logs showed the `/user` endpoint (what
-`getUser()` calls, used successfully by `proxy.ts` and `profile.ts`
-elsewhere in this codebase) returning 200 continuously throughout the
-session, so the session itself was never the problem — only this one read
-path.
+A first diagnosis blamed `getClaims()` in `getUserId()` (fresh client per
+call → JWKS cache never warms → a re-thrown fetch error swallowed by the
+`catch`). That was a plausible read of the source, but it was never
+reproduced — and swapping to `getUser()` changed nothing for the user.
+The real cause only surfaced by asking *which server* the tap happened on:
+production had no battle-card Spot button at all (the branch was never
+pushed), which left only localhost, and only the mock server has that gate.
 
-**Fix.** `getUserId()` now calls `supabase.auth.getUser()` directly, the
-same call already proven reliable elsewhere in this codebase. One network
-call, no JWKS dependency, no per-call cache that can never warm. The catch
-now logs instead of swallowing silently.
+**Fix.** `getUserId()` is no longer mock-gated — it only talks to Supabase
+Auth, never the database, so it is safe without a DB. Only the DB-backed
+`getSpottedIds` lookup stays behind `isMockMode()`, and `spotCreator`'s
+mock branch now returns success so the tap sticks visually. Verified with a
+real magic-link session on the mock server: tap Spot → no prompt,
+`aria-pressed=true`. The `getClaims()` → `getUser()` swap stays as
+hardening (one direct call, no per-call JWKS fetch, `catch` now logs).
 
-**Prevention.** `getClaims()`'s local-verification path is only actually
-faster than `getUser()` when the same client instance persists across
-calls; a fresh client per call gets the fetch cost of `getClaims()` with
-none of its caching benefit, plus a new failure mode `getUser()` doesn't
-have. Prefer `getUser()` unless a Supabase client is genuinely reused
-across requests. **Class of bug:** a silent catch with no logging — the
-fourth entry in this file of that shape ("it looked right in the source").
-Never swallow an unexpected auth-read error without at least a
-`console.error`; a signed-in user silently treated as signed-out has no
-error to report unless someone thinks to add one.
+**Prevention.** A mock gate must only replace what actually needs the
+mocked dependency. `isMockMode()` exists to stand in for the *database*;
+gating anything else behind it (auth, cookies, session) silently changes
+behaviour the tester believes they are testing. Before blaming a library,
+first confirm the bug reproduces on the exact server the reporter used —
+here one question ("which URL?") would have beaten a day of JWT theory.
+**Class of bug:** "it looked right in the source" — the fifth entry of that
+shape, and the second where the environment, not the code path, was the
+difference.
 
 ---
 

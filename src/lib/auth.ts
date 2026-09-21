@@ -26,19 +26,14 @@ export async function hasAuthCookie(): Promise<boolean> {
 /**
  * Get the current user ID (Supabase Auth). Returns null if not authenticated.
  *
- * Uses getUser() rather than getClaims(): getClaims() verifies the JWT
- * locally against the project's JWKS (`/.well-known/jwks.json`), caching that
- * key set on the client instance — but `createClient()` above builds a fresh
- * client on every call, so the cache never warms and every call re-fetches
- * the JWKS. A transient failure fetching it (this project has already hit
- * region/connectivity issues elsewhere, see ISSUES.md) is not always a typed
- * Supabase AuthError, so it can re-throw out of getClaims() entirely and
- * land in this function's catch — silently signing out a user whose session
- * was perfectly valid. getUser() makes one direct call to the Auth server
- * with no such dependency, and is what proxy.ts and profile.ts already use
- * successfully. See ISSUES.md § 2026-09-21 "Signed-in user asked to sign in
- * again on Spot".
+ * Uses getUser() rather than getClaims(): `createClient()` builds a fresh
+ * client per call, so getClaims()'s JWKS cache never warms and every call
+ * would re-fetch the key set anyway. getUser() is one direct call, the same
+ * one proxy.ts and profile.ts already rely on. The catch logs rather than
+ * swallowing — a signed-in user silently treated as signed-out is otherwise
+ * invisible (ISSUES.md § 2026-09-21).
  *
+ * Talks only to Supabase Auth, never the database — safe under PREVIEW_MOCK.
  * Never call this in ISR paths (profile pages must stay cookie-free).
  */
 export async function getUserId(): Promise<string | null> {
