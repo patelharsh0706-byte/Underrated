@@ -16,7 +16,7 @@ export function SiteFooter() {
         </p>
       </div>
 
-      <div className="flex gap-[22px] text-sm">
+      <div className="flex flex-wrap gap-x-[22px] gap-y-2 text-sm">
         <Link href="/about" className="text-ink-soft hover:text-foreground hover:underline">
           About
         </Link>
@@ -25,6 +25,15 @@ export function SiteFooter() {
         </Link>
         <Link href="/leaderboard" className="text-ink-soft hover:text-foreground hover:underline">
           Leaderboard
+        </Link>
+        <Link href="/terms" className="text-ink-faint hover:text-foreground hover:underline">
+          Terms
+        </Link>
+        <Link href="/privacy" className="text-ink-faint hover:text-foreground hover:underline">
+          Privacy
+        </Link>
+        <Link href="/refunds" className="text-ink-faint hover:text-foreground hover:underline">
+          Refunds
         </Link>
       </div>
 

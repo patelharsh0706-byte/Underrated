@@ -13,6 +13,7 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
+    "creator:add": "tsx --conditions=react-server scripts/add-creator.ts",
     "test": "vitest run"
   },
   "dependencies": {

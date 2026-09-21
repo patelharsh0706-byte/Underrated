@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import {
   battles,
   creators,
+  payments,
   pickerSessions,
   profiles,
   sponsorships,
@@ -286,6 +287,51 @@ export async function insertCreator(
     .returning({ username: creators.username });
 
   return row ?? null;
+}
+
+/**
+ * The ledger of money received — one row per successful Dodo payment,
+ * written before any attempt to turn it into a creator. Idempotent on
+ * dodo_payment_id: Dodo retries webhooks on any non-2xx, and Vercel cold
+ * starts cause exactly that. See DATABASE.md § payments.
+ */
+export async function recordPayment(input: {
+  dodoPaymentId: string;
+  amountCents: number;
+  currency: string;
+  customerEmail: string | null;
+  customerName: string | null;
+  xProfileUrl: string | null;
+  workUrl: string | null;
+  metadata: unknown;
+}): Promise<void> {
+  await db
+    .insert(payments)
+    .values({
+      dodoPaymentId: input.dodoPaymentId,
+      amountCents: input.amountCents,
+      currency: input.currency,
+      customerEmail: input.customerEmail,
+      customerName: input.customerName,
+      xProfileUrl: input.xProfileUrl,
+      workUrl: input.workUrl,
+      metadata: input.metadata ?? null,
+    })
+    .onConflictDoNothing({ target: payments.dodoPaymentId });
+}
+
+/**
+ * Ties a ledger row to its creator once one exists. Both tables carry the
+ * same dodo_payment_id, so this is a join, not a second lookup — and it's
+ * safe to call when no creator was created (it simply sets nothing).
+ */
+export async function linkPaymentToCreator(dodoPaymentId: string): Promise<void> {
+  await db
+    .update(payments)
+    .set({
+      creatorId: sql`(select ${creators.id} from ${creators} where ${creators.dodoPaymentId} = ${dodoPaymentId})`,
+    })
+    .where(eq(payments.dodoPaymentId, dodoPaymentId));
 }
 
 /** Kept for a future claim/manage-profile flow — see DECISIONS.md 2026-09-05. */

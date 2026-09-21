@@ -61,22 +61,29 @@
     {
       "idx": 8,
       "version": "7",
-      "when": 1788404060039,
-      "tag": "0008_spots_receipts",
+      "when": 1789891396093,
+      "tag": "0008_add_payments",
       "breakpoints": true
     },
     {
       "idx": 9,
       "version": "7",
-      "when": 1788404061039,
-      "tag": "0009_picker_profiles",
+      "when": 1789891396094,
+      "tag": "0009_spots_receipts",
       "breakpoints": true
     },
     {
       "idx": 10,
       "version": "7",
+      "when": 1789891396095,
+      "tag": "0010_picker_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
       "when": 1789972332684,
-      "tag": "0010_profiles_email",
+      "tag": "0011_profiles_email",
       "breakpoints": true
     }
   ]
