@@ -311,19 +311,21 @@ Agents: check `docs/references/` before designing a screen.
 
 ### Spot button
 
-Location: Bottom-left of battle card portrait, as a pill — `👁 SPOT`, eye first, then the word in the Micro scale (uppercase, tracked) — and next to share button on profiles (pill or icon).
+Location: Top-left of battle card portrait — `👁 SPOT` from `sm` up, eye first, then the word in the Micro scale (uppercase, tracked); icon-only below `sm` — and next to share button on profiles (pill or icon).
 
 > **Changed 2026-09-21.** The battle-card variant was a 36px circle with the
-> eye alone at the top-left. It read as decoration rather than an action, and
-> it sat under the 44px hit area below. The pill is 44px tall and moved to the
-> bottom-left: the two battle cards stay side by side on phones (§ Principles
-> 4), which leaves each portrait too narrow for a labelled pill and the Aura
-> badge to share the top edge — they overlapped by 7px at 390px. The label
-> does not change when spotted; the lime fill and `aria-pressed` carry that.
+> eye alone. It read as decoration rather than an action, and it sat under
+> the 44px hit area below. The pill is 44px, top-left, matching the Aura
+> badge's top-right — but the two battle cards stay side by side on phones
+> (§ Principles 4), which leaves each portrait too narrow for a labelled pill
+> and the badge to share the top edge (measured 7px overlap at 390px, 42px at
+> 320px). Below `sm` the pill drops its label and stays icon-only, still
+> 44px; the label returns from `sm` up. The label does not change when
+> spotted; the lime fill and `aria-pressed` carry that.
 
 Styling:
-- **Idle:** Ground fill (`#F7F7F2`), hairline border, dark ink eye icon and label
-- **Spotted:** Lime fill (`#D8FF3E`), dark ink eye icon and label
+- **Idle:** Ground fill (`#F7F7F2`), hairline border, dark ink eye icon, label from `sm` up
+- **Spotted:** Lime fill (`#D8FF3E`), dark ink eye icon, label from `sm` up
 - **Hover:** Slightly darker (lime hover / ground hover)
 - **Aria labels:** `aria-label="Spot {firstName}"`, `aria-pressed={true|false}`
 - **Hit area:** ≥ 44px (touch-safe)

@@ -54,11 +54,14 @@ export function SpotButton({
   return (
     // A pill, not a bare icon: the eye alone read as decoration, and a 36px
     // circle sat under the 44px hit area DESIGN.md § Spot button requires.
-    // Bottom-left of the portrait, not top-left: on a phone each battle card
-    // is roughly half the viewport, and top-left put the pill into the Aura
-    // badge (overlapping by 7px at 390px, 42px at 320px). The label stays
-    // "Spot" in both states — spotted is the lime fill plus aria-pressed, and
-    // changing the word would shift the pill's width mid-tap.
+    // Top-left of the portrait, matching the Aura badge's top-right — but on
+    // a phone each battle card is roughly half the viewport, so the full
+    // labelled pill collides with that badge (measured 7px overlap at 390px,
+    // 42px at 320px). Below `sm` it collapses to the eye alone, still 44px;
+    // the label returns from `sm` up where there's room for both. The label
+    // stays "Spot" in both states — spotted is the lime fill plus
+    // aria-pressed, and changing the word would shift the pill's width
+    // mid-tap.
     <button
       type="button"
       onClick={handleClick}
@@ -66,7 +69,7 @@ export function SpotButton({
       aria-pressed={isSpotted}
       aria-label={`Spot ${firstName}`}
       className={cn(
-        "absolute bottom-2.5 left-2.5 inline-flex h-11 items-center gap-1.5 rounded-full border px-3 transition-colors disabled:opacity-50",
+        "absolute top-2.5 left-2.5 inline-flex size-11 items-center justify-center gap-1.5 rounded-full border transition-colors disabled:opacity-50 sm:w-auto sm:justify-start sm:px-3",
         isSpotted
           ? "border-transparent bg-lime text-foreground"
           : "border-hairline bg-background text-foreground hover:bg-muted",
@@ -76,7 +79,7 @@ export function SpotButton({
       <span className="text-base leading-none" aria-hidden="true">
         👁
       </span>
-      <span className="font-display text-[11px] leading-none font-bold tracking-[0.1em] uppercase">
+      <span className="hidden font-display text-[11px] leading-none font-bold tracking-[0.1em] uppercase sm:inline">
         Spot
       </span>
     </button>
