@@ -3,6 +3,7 @@ import Image from "next/image";
 import { notFound } from "next/navigation";
 
 import { PlacementProgress } from "@/components/profile/placement-progress";
+import { ProfileSpotButton } from "@/components/profile/spot-button";
 import { ShareButton } from "@/components/profile/share-button";
 import { getAppOrigin } from "@/lib/app-url";
 import { getCreatorByUsername } from "@/lib/db/queries";
@@ -154,7 +155,10 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
         </div>
       </div>
 
-      <ShareButton url={profileUrl} />
+      <div className="flex items-center gap-2">
+        <ShareButton url={profileUrl} />
+        <ProfileSpotButton creatorId={creator.id} creatorName={creator.name} />
+      </div>
     </main>
   );
 }
