@@ -1,8 +1,13 @@
+import { buildCallbackUrl } from "./callback-url";
 import { createClient } from "./client";
 
 /**
  * Start Google OAuth sign-in flow.
  * Redirects to Supabase Google auth provider.
+ *
+ * Runs in the browser (it assigns window.location), so the callback URL is
+ * built from the page's own origin — see callback-url.ts for why it must
+ * never come from an env var.
  *
  * @param next - Redirect path after auth callback (must start with /).
  *               Defaults to /receipts if not provided or invalid.
@@ -10,16 +15,10 @@ import { createClient } from "./client";
 export async function startGoogleSignIn(next?: string): Promise<void> {
   const client = createClient();
 
-  // Guard next parameter: must be absolute path, not protocol-relative
-  let redirectTo = "/receipts";
-  if (next && typeof next === "string" && next.startsWith("/") && !next.startsWith("//")) {
-    redirectTo = next;
-  }
-
   const { data, error } = await client.auth.signInWithOAuth({
     provider: "google",
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback?next=${encodeURIComponent(redirectTo)}`,
+      redirectTo: buildCallbackUrl(window.location.origin, next, "/receipts"),
     },
   });
 

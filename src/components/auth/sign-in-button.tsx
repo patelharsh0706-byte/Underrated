@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { GoogleIcon } from "@/components/auth/google-icon";
+import { buildCallbackUrl } from "@/lib/supabase/callback-url";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -16,13 +17,14 @@ export function SignInButton() {
     setLoading(true);
     setError(null);
 
-    const next = searchParams.get("next") ?? "/submit";
     const supabase = createClient();
 
+    // Same builder every sign-in entry point uses; this page keeps /submit as
+    // its landing so creators arriving from the submit flow end up there.
     const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        redirectTo: buildCallbackUrl(window.location.origin, searchParams.get("next"), "/submit"),
       },
     });
 
