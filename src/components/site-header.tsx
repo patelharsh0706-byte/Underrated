@@ -6,10 +6,6 @@ import { MobileNav, type NavLink } from "@/components/mobile-nav";
 // (V2 visual direction). Ported from the design mockup's .masthead: Archivo
 // wordmark + tagline lockup, a plain nav row, and the lime-era pill CTA.
 //
-// The mockup's nav also carries a "Nominate" link. Nominations are recorded
-// as NOT V1 in MVP.md and DECISIONS.md — that entry was written this same
-// session — so it's intentionally left out here rather than ported.
-//
 // Below `sm` the nav collapses into <MobileNav>, the header's only client
 // island (DECISIONS.md § 2026-09-11). It carries the active-route highlight;
 // the desktop nav still doesn't, because that would need the pathname and
@@ -17,6 +13,7 @@ import { MobileNav, type NavLink } from "@/components/mobile-nav";
 const NAV_LINKS: NavLink[] = [
   { href: "/", label: "Arena" },
   { href: "/leaderboard", label: "Leaderboard" },
+  { href: "/nominate", label: "Nominate" },
   { href: "/about", label: "About" },
   { href: "/rules", label: "Rules" },
 ];

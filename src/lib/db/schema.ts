@@ -129,6 +129,24 @@ export const payments = pgTable(
   ],
 );
 
+// Pure lead capture — a stranger pointing at an X profile they think belongs
+// in the Arena. Nothing here writes to `creators`, Aura, or a battle; a
+// nomination becomes a creator only through the normal paid /submit flow,
+// after the operator has contacted them on X. See DATABASE.md § nominate and
+// DECISIONS.md § 2026-09-22.
+export const nominate = pgTable(
+  "nominate",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    xProfileUrl: text("x_profile_url").notNull(),
+    handle: text("handle").notNull(),
+    note: text("note"),
+    voterSession: text("voter_session").notNull(),
+    createdAt: timestamptz("created_at").notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("nominate_voter_session_key").on(table.voterSession)],
+);
+
 export const sponsorships = pgTable(
   "sponsorships",
   {

@@ -26,6 +26,14 @@ Anything that gets cut or deferred goes to [ROADMAP.md](ROADMAP.md).
   and one reserved slot), and a "Just happened" activity ticker. Supersedes the
   V1 stats bar and the `ArenaStatsBar` component. See
   [DECISIONS.md](DECISIONS.md) § 2026-09-10.
+- **Nominate** — a one-field form to point at an X profile someone thinks
+  belongs in the Arena, with an optional 140-character note. Pure lead
+  capture into the `nominate` table: no payment, no auto-entry, no
+  notification. One nomination per anonymous session. Reviewed manually by
+  the operator, who contacts the nominee on X and only submits them through
+  the normal paid `/submit` flow if they agree. See
+  [DECISIONS.md](DECISIONS.md) § 2026-09-22, which reverses the 2026-09-10
+  "Nominations are not V1" decision.
 
 ## NICE TO HAVE
 
@@ -46,9 +54,6 @@ Do not build these. Not partially. Not "just the schema for it".
 - DMs
 - Jobs
 - Recruiters
-- Nominations — putting someone *else* into the Arena. Keeps resurfacing in
-  design review; settled as out of scope in [DECISIONS.md](DECISIONS.md)
-  § 2026-09-10. Every creator enters by paying for themselves.
 - Rank movement arrows / "climbed to #4" — needs the `rank_snapshots` table,
   which is specced in [DATABASE.md](DATABASE.md) but deliberately unbuilt
 - Scout Score

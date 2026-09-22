@@ -6,10 +6,13 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { battles, creators } from "@/lib/db/schema";
 import { getRandomPair, type PublicCreator } from "@/lib/db/queries";
+import { isMockMode, mockAnyPair, mockCreatorById, mockHomeStats } from "@/lib/db/mock-data";
 import { computeEloUpdate } from "@/lib/ranking/elo";
 import { getOrCreateVoterSession, readVoterSession } from "@/lib/session";
 
 export async function nextBattle(): Promise<[PublicCreator, PublicCreator]> {
+  // PREVIEW_MOCK=1 — see src/lib/db/mock-data.ts. No database round trip.
+  if (isMockMode()) return mockAnyPair();
   // Read, don't create: the cookie is minted on the first actual pick.
   return getRandomPair(await readVoterSession());
 }
@@ -56,6 +59,28 @@ export interface PickResult {
  */
 export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promise<PickResult> {
   const { winnerId, loserId } = pickWinnerInput.parse(input);
+
+  // PREVIEW_MOCK=1 — see src/lib/db/mock-data.ts. Computes a real Elo delta
+  // from the mock creators' fixed Aura, but never writes anything: there's
+  // no database to write to, and nothing here needs to persist for a preview.
+  if (isMockMode()) {
+    const winner = mockCreatorById(winnerId);
+    const loser = mockCreatorById(loserId);
+    if (!winner || !loser) {
+      throw new Error("One of the creators in this battle no longer exists");
+    }
+    const { delta, winnerAfter, loserAfter } = computeEloUpdate(winner.aura, loser.aura);
+    return {
+      winnerId,
+      loserId,
+      winnerAura: winnerAfter,
+      loserAura: loserAfter,
+      delta,
+      counted: true,
+      battlesToday: mockHomeStats().battlesToday,
+    };
+  }
+
   const voterSession = await getOrCreateVoterSession();
 
   return db.transaction(async (tx) => {

@@ -64,6 +64,13 @@
       "when": 1789891396093,
       "tag": "0008_add_payments",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1790072099706,
+      "tag": "0009_add_nominate",
+      "breakpoints": true
     }
   ]
 }

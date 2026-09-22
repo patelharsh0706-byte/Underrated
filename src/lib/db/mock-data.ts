@@ -202,6 +202,21 @@ export function mockRandomPair(): [PublicCreator, PublicCreator] {
   return [CREATORS[0], CREATORS[1]];
 }
 
+/** Two distinct creators at random — used by the mock nextBattle()/pickWinner()
+ * in actions/battle.ts so clicking through the loop works with no database. */
+export function mockAnyPair(): [PublicCreator, PublicCreator] {
+  const i = Math.floor(Math.random() * CREATORS.length);
+  let j = Math.floor(Math.random() * (CREATORS.length - 1));
+  if (j >= i) j += 1;
+  return [CREATORS[i], CREATORS[j]];
+}
+
+/** Looked up by id from a mock pair so pickWinner() can compute a real Elo
+ * delta without a database round trip. */
+export function mockCreatorById(id: string): PublicCreator | null {
+  return CREATORS.find((c) => c.id === id) ?? null;
+}
+
 export function mockLeaderboard(limit = 50): LeaderboardEntry[] {
   return [...CREATORS]
     .sort((a, b) => b.aura - a.aura)

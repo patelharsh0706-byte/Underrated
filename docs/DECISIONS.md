@@ -404,6 +404,8 @@ moment anyone compares the two cards.
 
 ## 2026-09-10 — Nominations are not V1
 
+SUPERSEDED by 2026-09-22 — Nominate, as lead capture only.
+
 Decision:
 Nominations — one person putting another creator into the Arena — are not in
 V1. No table, no route, no UI. The idea moves to [ROADMAP.md](ROADMAP.md), and

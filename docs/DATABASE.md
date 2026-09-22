@@ -14,6 +14,7 @@ creators
 battles
 sponsorships
 visitor_pings
+nominate
 rank_snapshots   designed, not built — see below
 ```
 
@@ -184,6 +185,32 @@ when a ping arrives more than 30 minutes after that visitor's previous
 `last_seen_at`. This is decided entirely server-side from timestamps already
 on the row — no session flag is tracked on the client.
 
+### nominate
+
+One row per nomination — a stranger pointing at an X profile they think
+belongs in the Arena. Pure lead capture: nothing here writes to `creators`,
+touches Aura, or enters anyone into a battle. Reviewed manually; the operator
+contacts the nominee on X and only submits them (through the normal paid
+`/submit` flow, like anyone else) if they agree. See
+[DECISIONS.md](DECISIONS.md) § 2026-09-22.
+
+```
+id             uuid pk
+x_profile_url  text not null    normalized full URL, e.g. https://x.com/handle
+handle         text not null    parsed handle — checked against creators.username
+                                 so nominating someone already in the Arena is
+                                 answered, not silently stored
+note           text             optional, "why are they underhyped", <=140 chars
+voter_session  text unique      same anonymous identity as battles/visitor_pings —
+                                 the unique constraint is the one-nomination-per-
+                                 session cap, enforced at the database level
+created_at     timestamptz
+```
+
+Nothing promotes a row from here into `creators` automatically — there is no
+"confirm" mechanism, no notification, no auto-entry. A nomination becomes a
+creator only through the existing paid submit flow, same as anyone else.
+
 ### rank_snapshots
 
 **Designed, not built.** Specced here because rank movement keeps being asked
@@ -298,6 +325,10 @@ Per table:
 - `visitor_pings` — no client read, no client write. Only the server reads it,
   to compute the aggregate numbers shown on the stats bar; no policy is
   granted to the anon or authenticated roles at all.
+- `nominate` — no client read, no client write. Writes go through the
+  `submitNomination` Server Action under the service role; nobody but the
+  operator reads the table (directly, via Drizzle Studio or a query), so no
+  anon/authenticated policy is granted at all.
 - `rank_snapshots` — when built: no client read, no client write. Written only
   by the scheduled capture job under the service role; the trend arrow is
   served from a server query like every other derived number.
@@ -314,6 +345,7 @@ battles(voter_session)         "people deciding" distinct count
 sponsorships(start_at, end_at)
 visitor_pings(voter_session)   upsert target, one row per visitor
 visitor_pings(last_seen_at)    "N here now" / online count
+nominate(voter_session)        unique — one nomination per session
 
 rank_snapshots(creator_id, captured_on) unique   when built — one per day
 rank_snapshots(captured_on)                      when built — day lookup
