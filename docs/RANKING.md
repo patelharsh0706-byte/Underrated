@@ -136,6 +136,26 @@ at most `n - 1` battles for any one creator, instead of an unlimited number.
   and serves a repeat, which scoring then declines. The voter keeps playing;
   nothing counts until the pool grows.
 
+- **No creator appears in two battles in a row** while any alternative
+  exists. The client sends the ids of the pair it just showed, and every pair
+  containing either of them is ranked after every pair that doesn't. It is a
+  sort key, not a filter: with too few creators to avoid them, they are
+  still served rather than returning nothing.
+
+  It outranks placement priority. A newcomer still gets the placement slot,
+  just never two battles running. Ordered the other way, placement would
+  override it and bring back the streak it exists to prevent.
+
+  Why: "unjudged pairs first" plus a small pool means a new creator's pairs
+  are often the *only* unjudged ones a session has left, so she appeared in
+  every battle until each was used — 8 in a row with 9 creators, since the
+  run length is always the number of other active creators. See
+  [DECISIONS.md](DECISIONS.md) § 2026-09-24.
+
+  The previous pair comes from the client, not the battle log: a repeat pick
+  writes nothing, so the last recorded battle is not necessarily the last one
+  shown.
+
 - Nothing about pairing can be bought. Sponsors never enter the pool.
 
 ## Main Character

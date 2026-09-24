@@ -10,11 +10,19 @@ import { isMockMode, mockAnyPair, mockCreatorById, mockHomeStats } from "@/lib/d
 import { computeEloUpdate } from "@/lib/ranking/elo";
 import { getOrCreateVoterSession, readVoterSession } from "@/lib/session";
 
-export async function nextBattle(): Promise<[PublicCreator, PublicCreator]> {
+// The pair the client just showed, so it isn't served again back to back —
+// see RANKING.md § Pairing. Client-supplied: it can steer which pair comes
+// next, but not how many picks count. See DECISIONS.md § 2026-09-24.
+const excludeIdsSchema = z.array(z.uuid()).max(2);
+
+export async function nextBattle(
+  excludeIds: string[] = [],
+): Promise<[PublicCreator, PublicCreator]> {
   // PREVIEW_MOCK=1 — see src/lib/db/mock-data.ts. No database round trip.
-  if (isMockMode()) return mockAnyPair();
+  // Mock ids aren't UUIDs, so they skip the schema.
+  if (isMockMode()) return mockAnyPair(excludeIds.slice(0, 2));
   // Read, don't create: the cookie is minted on the first actual pick.
-  return getRandomPair(await readVoterSession());
+  return getRandomPair(await readVoterSession(), excludeIdsSchema.parse(excludeIds));
 }
 
 const pickWinnerInput = z

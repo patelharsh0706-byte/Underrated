@@ -90,7 +90,23 @@ function toPublicCreator(row: CreatorRow): PublicCreator {
  */
 export async function getRandomPair(
   voterSession?: string | null,
+  excludeIds: string[] = [],
 ): Promise<[PublicCreator, PublicCreator]> {
+  // No creator in two battles in a row, while any alternative exists — see
+  // RANKING.md § Pairing. A leading sort key rather than a WHERE filter, so a
+  // pool too small to avoid them still returns a pair. The empty case must be
+  // an expression: a bare `0` in ORDER BY is read as a column position.
+  const excluded = sql.join(
+    excludeIds.map((id) => sql`${id}::uuid`),
+    sql`, `,
+  );
+  const pairHasExcluded = excludeIds.length
+    ? sql`(p.a_id in (${excluded}) or p.b_id in (${excluded}))`
+    : sql`false`;
+  const creatorIsExcluded = excludeIds.length
+    ? sql`${creators.id} in (${excluded})`
+    : sql`false`;
+
   // Alternate the placement slot on the voter's own battle count. With a small
   // pool the unranked set is often one person, so an unconditional guarantee
   // put that creator in every single battle. See RANKING.md § Pairing.
@@ -129,6 +145,7 @@ export async function getRandomPair(
         )
     ) p
     order by
+      case when ${pairHasExcluded} then 1 else 0 end,
       case when ${placementTurn} and p.has_unranked then 0 else 1 end,
       p.base + random() * 50
     limit 1
@@ -145,7 +162,7 @@ export async function getRandomPair(
           .select({ id: creators.id })
           .from(creators)
           .where(eq(creators.isActive, true))
-          .orderBy(sql`random()`)
+          .orderBy(sql`case when ${creatorIsExcluded} then 1 else 0 end`, sql`random()`)
           .limit(2)
       ).map((r) => r.id);
 

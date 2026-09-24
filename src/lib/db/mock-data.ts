@@ -203,12 +203,16 @@ export function mockRandomPair(): [PublicCreator, PublicCreator] {
 }
 
 /** Two distinct creators at random — used by the mock nextBattle()/pickWinner()
- * in actions/battle.ts so clicking through the loop works with no database. */
-export function mockAnyPair(): [PublicCreator, PublicCreator] {
-  const i = Math.floor(Math.random() * CREATORS.length);
-  let j = Math.floor(Math.random() * (CREATORS.length - 1));
+ * in actions/battle.ts so clicking through the loop works with no database.
+ * Honours the same no-back-to-back rule as getRandomPair (RANKING.md §
+ * Pairing): excluded creators are avoided whenever two others remain. */
+export function mockAnyPair(excludeIds: string[] = []): [PublicCreator, PublicCreator] {
+  const others = CREATORS.filter((c) => !excludeIds.includes(c.id));
+  const pool = others.length >= 2 ? others : CREATORS;
+  const i = Math.floor(Math.random() * pool.length);
+  let j = Math.floor(Math.random() * (pool.length - 1));
   if (j >= i) j += 1;
-  return [CREATORS[i], CREATORS[j]];
+  return [pool[i], pool[j]];
 }
 
 /** Looked up by id from a mock pair so pickWinner() can compute a real Elo

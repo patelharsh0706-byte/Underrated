@@ -1098,3 +1098,89 @@ Every future schema change must go through `drizzle-kit generate` so the
 snapshot stays honest — and never `db:push`, which diffs against the live
 database and would drop `picker_sessions`, `profiles` and `spots`, three
 tables that exist in production but not in `schema.ts`.
+
+## 2026-09-22 — Nominate, as lead capture only
+
+Decision:
+Ship `/nominate`: paste an X profile, optionally say why they're underhyped
+(140 characters), and it lands in a new `nominate` table. That is all it does.
+Nothing writes to `creators`, touches Aura, or enters anyone into a battle.
+The operator reviews the table, contacts the nominee on X, and only if they
+agree do they enter — through the normal paid `/submit` flow, like anyone
+else. Moves Nominate from NOT V1 to MUST HAVE in [MVP.md](MVP.md).
+
+Supersedes 2026-09-10 "Nominations are not V1".
+
+Why:
+That entry rejected a minimal version because three questions would have to
+be answered anyway. This design answers each:
+
+- **Does a nomination skip the fee?** No. A nomination is not an entry. The
+  nominee still pays through `/submit` if they choose to join.
+- **Can someone refuse?** Yes, by default. Nothing happens without the
+  operator asking them directly and them saying yes.
+- **What stops a mass-nomination farm?** One nomination per anonymous
+  `voter_session`, enforced by a unique index on `nominate.voter_session`,
+  not only by a pre-insert check. Clearing cookies gets around it; that's
+  accepted, because the output is a list a human reads, not an action the
+  system takes.
+
+Nominating someone already in the Arena stores nothing and points to their
+profile instead.
+
+Nominate submissions always hit the real database, even under
+`PREVIEW_MOCK=1`. The mock mode exists to browse the UI without a database;
+a nomination is a real lead, and silently dropping one in preview would
+defeat the only thing the page is for.
+
+Rejected:
+Auto-entering nominees into the Arena unclaimed — skips the fee, has no
+consent, and brings back every concern the 2026-09-10 entry raised.
+
+A "confirm" step for the nominee — there is no way to reach them from the
+form (it collects no contact details), and notifications are NOT V1.
+
+## 2026-09-24 — No creator in two battles in a row
+
+Decision:
+`getRandomPair` takes the ids of the pair the client just showed and ranks
+every pair containing either of them after every pair that doesn't. It is a
+leading sort key, not a filter, so a pool too small to avoid them still gets
+a battle. It applies to both the unjudged-pair query and the all-judged
+fallback, and it outranks placement priority. The "Skip this battle" link is
+removed in the same change.
+
+Why:
+On 2026-09-22 one session saw The Cozy Dev in 8 consecutive battles, once
+against each of the other 8 active creators, 11:44 to 11:48. Nothing was
+wrong with the randomness — both pairing paths measured uniform, about 23%
+each, over 40 draws. She had joined on 2026-09-20, after that session had
+judged every pair among the other eight, so every pair it had left contained
+her. "Unjudged pairs first" worked as designed and produced a streak of
+length n−1 for every new creator and every established voter.
+
+Placement priority is ordered below it on purpose: a newcomer keeps the
+placement slot, just not two battles running. The other order lets placement
+bring back the streak.
+
+The previous pair has to come from the client. A repeat pick writes nothing,
+so the latest battle row for a session is not the last battle it was shown.
+
+Skip is removed at the user's request. Every battle is now either picked or
+abandoned by leaving.
+
+Security:
+`excludeIds` is client-supplied, so a crafted client can steer which pair it
+is served. Zod caps it at two UUIDs. It cannot move Aura: scoring still
+allows one counted pick per pair per session, so steering chooses the order
+of a session's picks, not how many count. Accepted.
+
+Rejected:
+Reading the previous pair from the battle log — wrong whenever the last
+shown battle was a repeat pick.
+
+A hard `WHERE` exclusion — returns nothing when two creators are active.
+
+Occasionally serving an already-judged pair to dilute a newcomer's run —
+fills battles with picks that cannot count, which the pairing rules exist to
+prevent.

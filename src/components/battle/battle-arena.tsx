@@ -13,6 +13,8 @@ import { cn } from "@/lib/utils";
 
 type Pair = [PublicCreator, PublicCreator];
 
+const idsOf = (pair: Pair) => [pair[0].id, pair[1].id];
+
 const RESULT_DISPLAY_MS = 700;
 // A pick that didn't score needs long enough to read the reason.
 const REPEAT_DISPLAY_MS = 1400;
@@ -54,12 +56,16 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
   // truth, never a client-side calculation. See freshestAura in ./aura.
   const [knownAura, setKnownAura] = useState<Record<string, number>>({});
 
-  const prefetchNext = useCallback(async (force = false) => {
+  // `shown` is the pair on screen when the fetch starts, passed explicitly so
+  // the server can keep both of them out of the next battle — see RANKING.md
+  // § Pairing. Not read from `current`: after advance() calls setCurrent, the
+  // state hasn't updated yet and would name the pair just replaced.
+  const prefetchNext = useCallback(async (shown: Pair, force = false) => {
     if (prefetchInFlight.current && !force) return;
     prefetchInFlight.current = true;
     const epoch = pickEpoch.current;
     try {
-      const pair = await nextBattle();
+      const pair = await nextBattle(idsOf(shown));
       // A pick landed while this was in flight: these rows predate it.
       if (epoch === pickEpoch.current) nextPairRef.current = pair;
     } catch {
@@ -70,27 +76,28 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
   }, []);
 
   useEffect(() => {
-    void prefetchNext();
-  }, [prefetchNext]);
+    void prefetchNext(initialPair);
+  }, [prefetchNext, initialPair]);
 
   const advance = useCallback(async () => {
     setResult(null);
     setPhase("idle");
 
-    if (nextPairRef.current) {
-      setCurrent(nextPairRef.current);
+    const queued = nextPairRef.current;
+    if (queued) {
+      setCurrent(queued);
       nextPairRef.current = null;
-      void prefetchNext();
+      void prefetchNext(queued);
       return;
     }
 
     try {
-      const pair = await nextBattle();
+      const pair = await nextBattle(idsOf(current));
       setCurrent(pair);
     } catch {
       // Nothing we can do without active creators — leave the current pair on screen.
     }
-  }, [prefetchNext]);
+  }, [current, prefetchNext]);
 
   const handlePick = useCallback(
     async (winnerId: string, loserId: string) => {
@@ -115,7 +122,7 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
           }));
           pickEpoch.current += 1;
           nextPairRef.current = null;
-          void prefetchNext(true);
+          void prefetchNext(current, true);
         }
 
         setTimeout(
@@ -124,11 +131,11 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
         );
       } catch {
         // The pair is likely stale (a creator went inactive mid-battle).
-        // Skip it rather than leaving the user stuck.
+        // Move past it rather than leaving the user stuck.
         void advance();
       }
     },
-    [phase, advance, prefetchNext, publishPicksToday],
+    [phase, current, advance, prefetchNext, publishPicksToday],
   );
 
   const [a, b] = current;
@@ -245,15 +252,6 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
         <span className="font-display font-extrabold tracking-tight tabular-nums text-foreground">
           {picksToday.toLocaleString()} picks today
         </span>
-
-        <button
-          type="button"
-          onClick={() => void advance()}
-          disabled={phase !== "idle"}
-          className="text-ink-soft transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
-        >
-          Skip this battle →
-        </button>
       </div>
     </div>
   );
