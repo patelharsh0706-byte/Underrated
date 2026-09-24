@@ -5,6 +5,7 @@ import { sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { visitorPings } from "@/lib/db/schema";
 import { getHomeStats, type HomeStats } from "@/lib/db/queries";
+import { isMockMode, mockHomeStats } from "@/lib/db/mock-data";
 import { getOrCreateVoterSession } from "@/lib/session";
 
 /**
@@ -18,6 +19,11 @@ import { getOrCreateVoterSession } from "@/lib/session";
  * client calls this every 45s while the tab is visible.
  */
 export async function pingVisitor(): Promise<HomeStats> {
+  // PREVIEW_MOCK=1 — see src/lib/db/mock-data.ts. Must not touch the
+  // database: the browser runs server actions one at a time, so a hung ping
+  // here stalls every action queued behind it, including the pick.
+  if (isMockMode()) return mockHomeStats();
+
   const voterSession = await getOrCreateVoterSession();
 
   await db

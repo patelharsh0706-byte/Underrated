@@ -34,6 +34,10 @@ const pickWinnerInput = z
     message: "A creator cannot battle themselves",
   });
 
+const mockPickInput = z
+  .object({ winnerId: z.string().min(1), loserId: z.string().min(1) })
+  .refine((data) => data.winnerId !== data.loserId);
+
 export interface PickResult {
   winnerId: string;
   loserId: string;
@@ -66,12 +70,13 @@ export interface PickResult {
  * writing anything — the voter keeps playing, the ranking ignores it.
  */
 export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promise<PickResult> {
-  const { winnerId, loserId } = pickWinnerInput.parse(input);
-
   // PREVIEW_MOCK=1 — see src/lib/db/mock-data.ts. Computes a real Elo delta
   // from the mock creators' fixed Aura, but never writes anything: there's
   // no database to write to, and nothing here needs to persist for a preview.
+  // Checked before the UUID schema below, because mock ids ("mock-3") aren't
+  // UUIDs and would fail it.
   if (isMockMode()) {
+    const { winnerId, loserId } = mockPickInput.parse(input);
     const winner = mockCreatorById(winnerId);
     const loser = mockCreatorById(loserId);
     if (!winner || !loser) {
@@ -89,6 +94,7 @@ export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promis
     };
   }
 
+  const { winnerId, loserId } = pickWinnerInput.parse(input);
   const voterSession = await getOrCreateVoterSession();
 
   return db.transaction(async (tx) => {
