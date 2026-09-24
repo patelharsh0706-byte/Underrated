@@ -19,7 +19,7 @@ If a decision here needs to change, change it here first and log it in
 | Auth          | Supabase Auth           |
 | Payments      | Dodo Payments           |
 | Image storage | Vercel Blob             |
-| Analytics     | DataFast                |
+| Analytics     | Vercel Web Analytics    |
 | Email         | Resend                  |
 | Hosting       | Vercel                  |
 

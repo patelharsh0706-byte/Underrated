@@ -76,7 +76,7 @@ export default function PrivacyPage() {
           body: (
             <>
               <p>
-                We use DataFast for page-view analytics. It is cookieless and doesn&apos;t
+                We use Vercel Web Analytics for page-view analytics. It is cookieless and doesn&apos;t
                 track you across other sites. It tells us things like which pages are
                 visited and where visitors come from, in aggregate.
               </p>
@@ -88,7 +88,7 @@ export default function PrivacyPage() {
           body: (
             <>
               <p>
-                We fetch your profile picture from Twitter. DataFast handles analytics.
+                We fetch your profile picture from Twitter. Vercel handles analytics.
                 Dodo Payments handles money.
               </p>
               <p>We don&apos;t sell your data to anyone. Ever.</p>

@@ -269,6 +269,8 @@ actually completes quickly as the pool grows, which was the point.
 
 ## 2026-09-07 — Analytics provider: DataFast, not PostHog
 
+SUPERSEDED by 2026-09-24 — Analytics provider: Vercel Web Analytics, not DataFast.
+
 Decision:
 Use DataFast for web analytics. A single `<Script>` in the root layout
 (`src/app/layout.tsx`) with `strategy="afterInteractive"`, carrying the
@@ -1184,3 +1186,33 @@ A hard `WHERE` exclusion — returns nothing when two creators are active.
 Occasionally serving an already-judged pair to dilute a newcomer's run —
 fills battles with picks that cannot count, which the pairing rules exist to
 prevent.
+
+## 2026-09-24 — Analytics provider: Vercel Web Analytics, not DataFast
+
+Decision:
+Replace DataFast with Vercel Web Analytics. `<Analytics />` from
+`@vercel/analytics/next` in the root layout, in place of the DataFast
+`<Script>`. ARCHITECTURE.md's service table and the Privacy page are updated
+to match. Collection only starts once Web Analytics is enabled on the
+`underrated` project in the Vercel dashboard.
+
+Why:
+Requested by the operator. Two concrete gains over DataFast: the script and
+its beacon are served from our own domain (`/_vercel/insights/*`), so ad
+blockers that match third-party analytics hosts drop less of it; and the
+numbers sit in the Vercel dashboard next to deployments rather than in a
+separate account. Like DataFast it is cookieless and aggregate, so the
+privacy posture — and the "no cookie banner" consequence — is unchanged.
+
+It needs no key and no env var: the component posts to the same deployment
+that served the page. Nothing new goes through `.env.example`.
+
+Consequences:
+DataFast's history stays in its own dashboard and stops growing on the day
+this deploys. There is no import path between the two, so traffic before
+and after this date lives in different tools.
+
+Rejected:
+Running both — two analytics scripts on every page for a site whose only
+question is "who is visiting", and two dashboards that will disagree
+because they sample ad-blocked traffic differently.
