@@ -1225,6 +1225,70 @@ Rejected:
 Running both — two analytics scripts on every page for a site whose only
 question is "who is visiting", and two dashboards that will disagree
 because they sample ad-blocked traffic differently.
+
+## 2026-09-24 — Creator avatars are stored in Vercel Blob
+
+Decision:
+A creator's photo is fetched **once**, when the creator is added, and stored
+in a **public** Vercel Blob store. `avatar_url` holds the Blob URL, and every
+page view loads the image from Blob's CDN — unavatar is contacted once per
+creator, never per view.
+
+`storeCreatorAvatar(primaryLink, username)` (`lib/avatar-store.ts`,
+server-only) runs inside `insertCreator()`, so the paid webhook and
+`npm run creator:add` both use it. It fetches `unavatar.io/{platform}/{handle}`
+with `fallback=false`, a 5 s timeout and an image-type and size check, and
+uploads the result under `avatars/{username}-{random}`. When there is no
+photo, unavatar refuses (429), or the fetch times out, it stores the Dicebear
+PNG URL instead. It never throws: a paid signup must not fail over an avatar.
+
+Existing creators are converted by `npm run avatars:backfill`, run from the
+operator's machine. It skips rows already on Blob, so it is safe to re-run,
+and `--username` refreshes one creator — for a changed X photo, or to upgrade
+a Dicebear fallback once a fetch succeeds.
+
+Supersedes the "always renders, no onError needed" reasoning in
+ARCHITECTURE.md § Creator avatars.
+
+Why:
+unavatar's anonymous tier is 25 requests per IP per day and refuses outright
+once spent — the `fallback=` param only covers "no photo", not "refused". With
+every avatar loaded from unavatar in the browser, the homepage cost about 15
+requests and a leaderboard view up to 50, so active visitors saw blank faces.
+See ISSUES.md § 2026-09-24. Serving our own copy removes the per-view limit
+entirely and also gives the OG image a stable, server-reachable source.
+
+**Public, not private.** The first store created was private. Private blobs
+have no direct URL; each view must go through a server route with caching
+off, which is the per-view cost this exists to remove. Profile photos are
+already public on X, so there is nothing to protect.
+
+Consequences:
+The fetch now happens server-side. The webhook runs on Vercel, whose outbound
+IPs are shared with other customers, so its unavatar quota may already be
+spent — ARCHITECTURE.md fetches sponsor logos in the browser for this reason.
+New paid creators can therefore land on the Dicebear fallback until the
+backfill is run from the operator's machine. An unavatar API key would make
+the server-side fetch reliable; deferred until that fallback rate is a
+problem.
+
+A stored photo does not follow a creator's later X photo change until
+refreshed with `avatars:backfill --username`.
+
+Project logos on the battle card's work link still load from unavatar per
+view. They already fall back to a colour mark client-side, and moving
+avatars off unavatar frees visitors' quota for them.
+
+Rejected:
+Storing the image bytes in Postgres (`bytea`) — bloats the database and
+routes every image through our own server.
+
+A private Blob store with a proxy route — see above.
+
+Only adding a client-side `onError` swap to Dicebear — hides the symptom but
+still spends every visitor's quota on every view, and never shows real photos
+to anyone who has exhausted it.
+
 ## 2026-09-24 — The no-back-to-back rule outranks unjudged-first
 
 Decision:

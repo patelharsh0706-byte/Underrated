@@ -144,10 +144,29 @@ No image storage is needed for sponsor logos specifically — the `Image
 storage | Vercel Blob` row above stays reserved for any future
 creator-uploaded asset.
 
-**Creator avatars** — `/submit` uses the same link-first pattern, and
-`getCreatorAvatarUrl` (`lib/unavatar.ts`) derives the stored `avatar_url` from
-the creator's **primary social link**, server-side in the webhook, never from
-client input.
+**Creator avatars** — `/submit` uses the same link-first pattern: the photo
+comes from the creator's **primary social link**, server-side, never from
+client input. It is fetched **once**, when the creator is added, and served
+from our own public Vercel Blob store on every view after that.
+
+`storeCreatorAvatar()` (`lib/avatar-store.ts`, server-only) runs inside
+`insertCreator()`, so the paid webhook and `npm run creator:add` share it. It
+fetches `unavatar.io/{platform}/{handle}?fallback=false` (5 s timeout, image
+types only, size-capped), uploads the image to Blob under
+`avatars/{username}-{random}`, and returns the Blob URL. The random suffix
+makes a refreshed photo a new URL, so the CDN never serves the old one. If
+there's no photo, unavatar refuses, or the fetch times out, it returns the
+Dicebear PNG URL (`dicebearUrl()` in `lib/unavatar.ts`) instead — and it never
+throws, because a paid signup must not fail over an avatar.
+
+Existing creators, and any whose fetch fell back to Dicebear, are converted
+by `npm run avatars:backfill` run from the operator's machine: it skips rows
+already on Blob, and `--username` refreshes one. See DECISIONS.md §
+2026-09-24.
+
+The store is **public**. Private blobs have no direct URL and would need a
+serving route per image view, with caching off — the per-view cost this
+design removes. Profile photos are public on X already.
 
 **Project logos** — the same resolution runs on the creator's *work* link, via
 `getUnavatarUrl`, so a domain resolves to its real favicon/logo
@@ -159,13 +178,23 @@ existed rather than a broken image. Used on the `/submit` preview card and the
 battle card's work link. Nothing is stored: the logo URL is derived from
 `work_url` at render time, so it self-corrects when a site changes its icon.
 
-The difference from sponsors: creators pass the generated Dicebear
-illustration to unavatar as its own `fallback=` param rather than handling
-failure client-side. unavatar then serves that fallback itself when it can't
-find a real photo, so the one stored URL **always renders** — no `onError`
-island needed on the battle card, Top 10, leaderboard, profile, or OG image.
-The fallback must be Dicebear's `/png` endpoint, not `/svg`: Satori can't
+Why avatars are stored and logos aren't: an avatar renders on every battle
+card, facepile, Top 10 row and leaderboard row — up to 50 on one page — so
+loading it from unavatar per view spent a visitor's whole 25/day quota in a
+session. Once refused, unavatar returns a `429` body rather than the
+`fallback=` image, so the illustration never arrived and faces rendered blank
+(ISSUES.md § 2026-09-24). An earlier version of this section said the
+fallback param meant the URL "always renders"; it held for "no photo found",
+never for "refused". A logo is one image per card with its own colour-mark
+fallback, so it stays per-view for now.
+
+The Dicebear fallback must use the `/png` endpoint, not `/svg`: Satori can't
 rasterize SVG, the same trap `ogAvatarSrc()` works around.
+
+The trade-off is that the fetch is now server-side. The webhook runs on
+Vercel, whose outbound IPs are shared, so its unavatar quota may already be
+spent by other tenants — the reason sponsor logos are fetched in the browser.
+Such creators land on the Dicebear fallback until the backfill runs.
 
 Consequence to expect: real photos and generated illustrations sit side by
 side on battle cards, because the 20 seeded creators are fictional and have no

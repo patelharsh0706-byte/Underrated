@@ -143,7 +143,7 @@ export function resolveSponsorProfile(targetUrl: string): ResolvedSponsorProfile
  * Dicebear PNG (not SVG) — Satori can't rasterize SVG, so the OG image would
  * break on an SVG avatar. See ogAvatarSrc in c/[username]/opengraph-image.tsx.
  */
-function dicebearUrl(username: string): string {
+export function dicebearUrl(username: string): string {
   return `https://api.dicebear.com/9.x/notionists/png?seed=${encodeURIComponent(username)}`;
 }
 

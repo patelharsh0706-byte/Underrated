@@ -71,13 +71,17 @@ user_id                     uuid fk → auth.users.id  null — always null for
                                        stays for a future claim/edit flow.
 username                    text unique
 name            text
-avatar_url      text            derived server-side in the payment webhook from
-                                 the creator's primary social link via
-                                 `getCreatorAvatarUrl` — never accepted from the
-                                 client. It's an unavatar URL carrying a Dicebear
-                                 PNG as its own `fallback=` param, so the stored
-                                 URL always renders even when no real photo
-                                 exists. See ARCHITECTURE.md § Creator avatars.
+avatar_url      text            set server-side by `insertCreator()` from the
+                                 creator's primary social link via
+                                 `storeCreatorAvatar` — never accepted from the
+                                 client. Normally a public Vercel Blob URL: the
+                                 photo is fetched from unavatar once and stored.
+                                 Falls back to a Dicebear PNG URL when there is
+                                 no photo or the fetch is refused; the backfill
+                                 script upgrades those later. Null only for rows
+                                 added outside `insertCreator()` (e.g. the table
+                                 editor), which render with no photo. See
+                                 ARCHITECTURE.md § Creator avatars.
 bio             text            one line
 category        text
 work_url        text            the strongest single piece of evidence —

@@ -15,7 +15,7 @@ import {
   PLACEMENT_BATTLES_REQUIRED,
   PLACEMENT_VOTERS_REQUIRED,
 } from "@/lib/ranking/placement";
-import { getCreatorAvatarUrl } from "@/lib/unavatar";
+import { storeCreatorAvatar } from "@/lib/avatar-store";
 
 export interface PublicCreator {
   id: string;
@@ -259,7 +259,9 @@ export async function insertCreator(
   payment: { entryFeeCents: number | null; dodoPaymentId: string | null },
 ): Promise<{ username: string } | null> {
   const primaryLink = data.socials[data.primarySocial as keyof typeof data.socials] ?? null;
-  const avatarUrl = getCreatorAvatarUrl(primaryLink, data.username);
+  // Fetched once and stored in Blob; falls back to Dicebear on any failure
+  // and never throws. See ARCHITECTURE.md § Creator avatars.
+  const { url: avatarUrl } = await storeCreatorAvatar(primaryLink, data.username);
 
   const [row] = await db
     .insert(creators)

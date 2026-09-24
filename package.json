@@ -14,12 +14,14 @@
     "db:studio": "drizzle-kit studio",
     "db:seed": "tsx scripts/seed.ts",
     "creator:add": "tsx --conditions=react-server scripts/add-creator.ts",
+    "avatars:backfill": "tsx --conditions=react-server scripts/backfill-avatars.ts",
     "test": "vitest run"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.5",
     "@supabase/supabase-js": "^2.112.4",
     "@vercel/analytics": "^2.0.1",
+    "@vercel/blob": "^2.8.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dodopayments": "^2.48.0",

@@ -51,6 +51,46 @@ set it sorted.
 
 ---
 
+## 2026-09-24 — Avatars rendered blank once unavatar rate-limited the viewer · OPEN
+
+**Symptom.** A newly added creator (Ronak Daga) showed no photo. Once the
+operator's IP had used its quota, *no* creator avatar rendered for them —
+broken or empty images instead of either the X photo or the Dicebear
+illustration.
+
+**Cause.** Two separate things.
+
+1. His row was typed into the Supabase table editor, which runs no app code,
+   so `avatar_url` was null. `getCreatorAvatarUrl` only runs inside
+   `insertCreator()` — the webhook and `npm run creator:add`.
+2. Every avatar is an `unavatar.io` URL loaded in the visitor's browser, and
+   unavatar's anonymous tier allows **25 requests per IP per day**
+   (`x-rate-limit-limit: 25`). Once spent it returns `429` with a JSON body.
+   The Dicebear drawing is passed as unavatar's own `fallback=` param, but
+   unavatar only serves the fallback when it *can't find* a photo — a
+   rate-limited request is refused outright, so the fallback never arrives.
+   The homepage costs roughly 15 avatar requests and a leaderboard view up to
+   50, so an active visitor exhausts the quota in one session.
+
+ARCHITECTURE.md § Creator avatars had stated the stored URL "always renders —
+no `onError` island needed". That held for "no photo found" and was never
+true for "refused".
+
+**Fix.** Stopgap: Ronak's `avatar_url` set by hand to the Dicebear PNG. Real
+fix, planned: fetch each photo once when the creator is added, store it in a
+public Vercel Blob store, and serve every view from Blob — see
+[DECISIONS.md](DECISIONS.md) § 2026-09-24 "Creator avatars are stored in
+Vercel Blob". Existing creators are converted by a backfill script.
+
+**Prevention.** A fallback that lives inside a third-party response only
+covers the failures that third party chooses to handle. Anything rendered on
+every page view must either be served by us or fail to something we control.
+This is the _"it looked right in the source"_ shape: the `fallback=` param read
+as a guarantee. Rows added outside `insertCreator()` skip every derived
+column — use `npm run creator:add`, not the table editor.
+
+---
+
 ## 2026-09-12 — The homepage fails roughly half the time in production · OPEN
 
 **Symptom.** `underhyped.wtf` intermittently does not load. Reported as "out of
