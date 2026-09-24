@@ -81,30 +81,29 @@ function toPublicCreator(row: CreatorRow): PublicCreator {
 }
 
 /**
- * Picks two distinct active creators for a battle. Whenever any active
- * creator is still in placement (fewer than PLACEMENT_BATTLES_REQUIRED
- * battles), one slot is guaranteed to go to one of them — weighted random,
- * favoring fewest battles — so placement reliably completes instead of
- * stalling as the pool grows. The other slot is drawn from the full active
- * pool with the existing mild bias toward fewer battles. See RANKING.md.
+ * Picks two distinct active creators for a battle: one ordered pass over every
+ * active pair — see RANKING.md § Pairing.
+ *   1. pairs containing a creator from the battle just shown go last,
+ *   2. pairs this session already judged come after unjudged ones,
+ *   3. on a placement turn, pairs with an unranked creator come first,
+ *   4. then the capped battle-count bias plus randomness.
+ * The order is the point. No-back-to-back outranks unjudged-first, so a voter
+ * who has judged everything but a newcomer's pairs alternates the newcomer
+ * with repeats instead of seeing them every battle (ISSUES.md § 2026-09-24).
  */
 export async function getRandomPair(
   voterSession?: string | null,
   excludeIds: string[] = [],
 ): Promise<[PublicCreator, PublicCreator]> {
-  // No creator in two battles in a row, while any alternative exists — see
-  // RANKING.md § Pairing. A leading sort key rather than a WHERE filter, so a
-  // pool too small to avoid them still returns a pair. The empty case must be
-  // an expression: a bare `0` in ORDER BY is read as a column position.
+  // Sort keys, not filters, so even a two-creator pool returns a pair. The
+  // empty case must be an expression: a bare `0` in ORDER BY is read as a
+  // column position.
   const excluded = sql.join(
     excludeIds.map((id) => sql`${id}::uuid`),
     sql`, `,
   );
   const pairHasExcluded = excludeIds.length
     ? sql`(p.a_id in (${excluded}) or p.b_id in (${excluded}))`
-    : sql`false`;
-  const creatorIsExcluded = excludeIds.length
-    ? sql`${creators.id} in (${excluded})`
     : sql`false`;
 
   // Alternate the placement slot on the voter's own battle count. With a small
@@ -120,10 +119,10 @@ export async function getRandomPair(
   }
 
   // Choose the unordered pair directly rather than two creators independently:
-  // "has this session already judged A vs B" is a property of the pair, and
-  // picking sides separately can only reject a repeat after the fact. Derived
-  // every request — a new creator instantly revives an exhausted session.
-  // See RANKING.md § Pairing.
+  // "has this session already judged A vs B" is a property of the pair.
+  // Derived every request — a new creator instantly revives an exhausted
+  // session. A session that has judged every pair is not a special case: key
+  // 2 is simply 1 everywhere, and scoring declines the repeat.
   const chosen = await db.execute(sql`
     select p.a_id, p.b_id
     from (
@@ -132,48 +131,35 @@ export async function getRandomPair(
              least(a.battles_count, ${PLACEMENT_BATTLES_REQUIRED})
                + least(b.battles_count, ${PLACEMENT_BATTLES_REQUIRED}) as base,
              (a.battles_count < ${PLACEMENT_BATTLES_REQUIRED}
-               or b.battles_count < ${PLACEMENT_BATTLES_REQUIRED}) as has_unranked
+               or b.battles_count < ${PLACEMENT_BATTLES_REQUIRED}) as has_unranked,
+             exists (
+               select 1 from ${battles} x
+               where x.voter_session = ${voterSession ?? null}
+                 and least(x.creator_a_id, x.creator_b_id) = a.id
+                 and greatest(x.creator_a_id, x.creator_b_id) = b.id
+             ) as judged
       from ${creators} a
       join ${creators} b on a.id < b.id
       where a.is_active = true
         and b.is_active = true
-        and not exists (
-          select 1 from ${battles} x
-          where x.voter_session = ${voterSession ?? null}
-            and least(x.creator_a_id, x.creator_b_id) = a.id
-            and greatest(x.creator_a_id, x.creator_b_id) = b.id
-        )
     ) p
     order by
       case when ${pairHasExcluded} then 1 else 0 end,
+      case when p.judged then 1 else 0 end,
       case when ${placementTurn} and p.has_unranked then 0 else 1 end,
       p.base + random() * 50
     limit 1
   `);
 
   const [pair] = Array.from(chosen as unknown as { a_id: string; b_id: string }[]);
-
-  // Every pair judged. Fall back to the plain draw so the voter keeps playing;
-  // scoring declines the repeat. Resolves itself when the pool grows.
-  const ids = pair
-    ? [pair.a_id, pair.b_id]
-    : (
-        await db
-          .select({ id: creators.id })
-          .from(creators)
-          .where(eq(creators.isActive, true))
-          .orderBy(sql`case when ${creatorIsExcluded} then 1 else 0 end`, sql`random()`)
-          .limit(2)
-      ).map((r) => r.id);
-
-  if (ids.length < 2) {
+  if (!pair) {
     throw new Error("Not enough active creators for a battle");
   }
 
   const rows = await db
     .select(creatorSelection)
     .from(creators)
-    .where(inArray(creators.id, ids));
+    .where(inArray(creators.id, [pair.a_id, pair.b_id]));
 
   if (rows.length < 2) {
     throw new Error("Not enough active creators for a battle");

@@ -17,6 +17,40 @@ Status: **FIXED** (shipped and verified) · **OPEN** (known, not yet fixed).
 
 ---
 
+## 2026-09-24 — A newcomer still streaked after the no-back-to-back fix · OPEN
+
+**Symptom.** Hours after shipping "no creator in two battles in a row", a
+voter saw Ronak Daga three times running — 10:17:32, :35, :42 in session
+`089bc804` — against three different opponents.
+
+**Cause.** The rule was built on top of "unjudged pairs first" instead of
+ahead of it: it filtered to the session's unjudged pairs, then pushed back
+last battle's creators. That session had judged every pair among the other
+nine creators, so its unjudged set was 9 pairs, all containing Ronak (6 still
+queued, 0 without him). There was nothing to reorder toward. The original
+Cozy Dev streak had exactly this shape, so the fix could never have fixed the
+case it was written for.
+
+It shipped as "verified" because the tests used stand-ins for that case: a
+fresh visitor (every pair unjudged, alternatives everywhere) and a fully
+exhausted session (the random fallback). Neither is "exhausted except a
+newcomer", and both passed 40/40.
+
+**Fix.** One query over every active pair, ordered: contains last battle's
+creators → already judged → placement → bias + random. Back-to-back now
+outranks "unjudged first", so that voter alternates the newcomer with
+non-scoring repeats. See DECISIONS.md § 2026-09-24 "The no-back-to-back rule
+outranks unjudged-first".
+
+**Prevention.** Verify a fix against the scenario that produced the bug, not
+a nearby one that is easier to set up — here, the reporting session's own
+judged set, replayed across several consecutive battles. A test that passes
+on both extremes can still miss the middle. This is the _"it looked right in
+the source"_ shape: the sort key read as a guarantee without checking what
+set it sorted.
+
+---
+
 ## 2026-09-12 — The homepage fails roughly half the time in production · OPEN
 
 **Symptom.** `underhyped.wtf` intermittently does not load. Reported as "out of

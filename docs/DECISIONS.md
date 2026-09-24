@@ -1144,6 +1144,15 @@ form (it collects no contact details), and notifications are NOT V1.
 
 ## 2026-09-24 — No creator in two battles in a row
 
+> **Corrected later on 2026-09-24.** As first shipped, this rule only
+> reordered pairs *within* the session's unjudged set, so it could not help in
+> the one case it was written for — when every unjudged pair contains the
+> newcomer. A voter saw Ronak Daga three times running the same day. The
+> exclusion now outranks "unjudged first" too, and the "occasionally serve an
+> already-judged pair" option rejected below is what it now does, but only
+> when that is the only way to avoid a back-to-back. See the entry "The
+> no-back-to-back rule outranks unjudged-first" below.
+
 Decision:
 `getRandomPair` takes the ids of the pair the client just showed and ranks
 every pair containing either of them after every pair that doesn't. It is a
@@ -1216,3 +1225,36 @@ Rejected:
 Running both — two analytics scripts on every page for a site whose only
 question is "who is visiting", and two dashboards that will disagree
 because they sample ad-blocked traffic differently.
+## 2026-09-24 — The no-back-to-back rule outranks unjudged-first
+
+Decision:
+`getRandomPair` is now one query over every active pair, ordered by:
+
+1. contains a creator from the battle the client just showed (last),
+2. already judged by this session (after unjudged),
+3. placement turn and an unranked creator in the pair (first),
+4. the capped battle-count bias plus randomness.
+
+The separate "every pair is judged" fallback is gone — it is the same query,
+where key 2 is simply 1 for every pair.
+
+Why:
+The first version filtered to unjudged pairs and only then pushed back last
+battle's creators, so it could only choose among unjudged pairs. For a voter
+who has judged every other pair, all remaining unjudged pairs contain the
+newcomer, so there was nothing to choose between: session `089bc804` saw
+Ronak Daga at 10:17:32, :35 and :42 with 6 more of his pairs still queued and
+0 without him. With back-to-back ranked first, that voter now alternates:
+a newcomer battle that scores, then an already-judged repeat that doesn't,
+then the next newcomer battle. Every one of the newcomer's battles still
+happens and counts.
+
+Consequences:
+Heavy voters who have exhausted everything but a newcomer's pairs see every
+other battle as a non-scoring repeat, marked "You've already called this
+one — Aura unchanged." Nothing changes for a voter with unjudged pairs that
+don't include last battle's creator, which is every newer visitor.
+
+Rejected:
+Keeping the streak so every pick counts — the operator chose alternation
+after seeing the streak twice.

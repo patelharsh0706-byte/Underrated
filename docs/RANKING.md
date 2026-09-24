@@ -120,10 +120,10 @@ at most `n - 1` battles for any one creator, instead of an unlimited number.
   calibrated, so further battles must not keep buying them exposure — without
   the cap, the gap between a 15-battle creator and a 35-battle one dominated
   the draw and the same opponent surfaced ~60% of the time.
-- **Pairs a session has already judged are not served again** while any
-  unjudged pair remains. Scoring is one pick per pair per session (§ Scoring),
-  so re-serving a settled matchup offers a battle that cannot count. Pairing
-  and scoring must agree about what is still live.
+- **Pairs a session has already judged come after unjudged ones** — with one
+  exception, below. Scoring is one pick per pair per session (§ Scoring), so
+  re-serving a settled matchup offers a battle that cannot count. Pairing and
+  scoring must agree about what is still live.
 
   The available set is derived per request, never stored. There is no
   "exhausted" flag on a session — the moment a new creator joins, every
@@ -136,21 +136,28 @@ at most `n - 1` battles for any one creator, instead of an unlimited number.
   and serves a repeat, which scoring then declines. The voter keeps playing;
   nothing counts until the pool grows.
 
-- **No creator appears in two battles in a row** while any alternative
-  exists. The client sends the ids of the pair it just showed, and every pair
-  containing either of them is ranked after every pair that doesn't. It is a
-  sort key, not a filter: with too few creators to avoid them, they are
-  still served rather than returning nothing.
+- **No creator appears in two battles in a row** while any other pair
+  exists — judged or not. The client sends the ids of the pair it just
+  showed, and every pair containing either of them is ranked after every pair
+  that doesn't. It is a sort key, not a filter: with too few creators to
+  avoid them, they are still served rather than returning nothing.
 
-  It outranks placement priority. A newcomer still gets the placement slot,
-  just never two battles running. Ordered the other way, placement would
-  override it and bring back the streak it exists to prevent.
+  It outranks **both** "unjudged first" and placement priority. This is the
+  exception to the rule above: when the only unjudged pairs all contain last
+  battle's creator, the next battle is an already-judged pair — a repeat that
+  won't score — rather than the same face again. A newcomer therefore
+  alternates with repeats for a voter who has judged everything else: every
+  one of the newcomer's battles still happens and counts, just not
+  back-to-back. Placement is outranked for the same reason: it keeps its slot,
+  never two battles running.
 
   Why: "unjudged pairs first" plus a small pool means a new creator's pairs
   are often the *only* unjudged ones a session has left, so she appeared in
   every battle until each was used — 8 in a row with 9 creators, since the
-  run length is always the number of other active creators. See
-  [DECISIONS.md](DECISIONS.md) § 2026-09-24.
+  run length is always the number of other active creators. The first
+  version of this rule only reordered *within* unjudged pairs, so it could
+  never help in exactly that case. See [DECISIONS.md](DECISIONS.md) §
+  2026-09-24 and [ISSUES.md](ISSUES.md) § 2026-09-24.
 
   The previous pair comes from the client, not the battle log: a repeat pick
   writes nothing, so the last recorded battle is not necessarily the last one
