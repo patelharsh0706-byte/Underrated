@@ -163,17 +163,22 @@
   color: #111111;
 }
 
+/* max-width: none — Tailwind's preflight gives every img max-width: 100%,
+   which let a facepile collapse to nothing and slide under the text beside
+   it (the CTA card's "N creators have joined"). */
 .face {
   border-radius: 50%;
   object-fit: cover;
   display: block;
   background: #D9DDD3;
   flex: none;
+  max-width: none;
 }
 
 .pile {
   display: flex;
   align-items: center;
+  flex: none;
 }
 
 .pile .face {
