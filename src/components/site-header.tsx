@@ -1,52 +1,34 @@
 import Link from "next/link";
 
-import { MobileNav, type NavLink } from "@/components/mobile-nav";
+import { NavLinks } from "@/components/shell/nav-links";
+import styles from "@/components/shell/shell.module.css";
+import { ThemeToggle } from "@/components/shell/theme-toggle";
 
-// V2 shell — see DESIGN.md § Page Inventory and DECISIONS.md § 2026-09-10
-// (V2 visual direction). Ported from the design mockup's .masthead: Archivo
-// wordmark + tagline lockup, a plain nav row, and the lime-era pill CTA.
-//
-// Below `sm` the nav collapses into <MobileNav>, the header's only client
-// island (DECISIONS.md § 2026-09-11). It carries the active-route highlight;
-// the desktop nav still doesn't, because that would need the pathname and
-// make this whole component a Client Component on every page in the tree.
-const NAV_LINKS: NavLink[] = [
-  { href: "/", label: "Arena" },
-  { href: "/leaderboard", label: "Leaderboard" },
-  { href: "/nominate", label: "Nominate" },
-  { href: "/about", label: "About" },
-  { href: "/rules", label: "Rules" },
-];
-
+// V3 shell — DESIGN.md § Header (V3). Same on every route (root layout).
+// Server Component; the only client islands are the nav links (active-route
+// pill) and the theme toggle. The reference mock's search box is not
+// rendered until search exists (UX rule 10).
 export function SiteHeader() {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4 pb-3 sm:gap-6 sm:px-8 sm:pt-[22px] sm:pb-[18px]">
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-none">
-        <Link href="/" className="font-display text-xl font-extrabold tracking-tight">
-          underhyped<span className="text-aura">.wtf</span>
-        </Link>
-        <p className="font-display text-[8px] leading-tight font-semibold tracking-[0.1em] text-ink-faint uppercase sm:text-[9.5px] sm:tracking-[0.13em] sm:whitespace-nowrap">
-          Talented people deserve more hype.
-        </p>
-      </div>
-
-      <nav className="hidden items-center gap-6 text-[14.5px] font-medium sm:flex">
-        {NAV_LINKS.map(({ href, label }) => (
-          <Link key={href} href={href} className="text-ink-soft transition-colors hover:text-foreground">
-            {label}
+    <div className={styles.wrap}>
+      <header className={styles.topbar}>
+        <div className={styles.brand}>
+          <Link href="/" className={styles.logo}>
+            underhyped<span>.wtf</span>
           </Link>
-        ))}
-      </nav>
-
-      {/* On mobile the lockup is flex-1 so the pill hugs the hamburger; the
-          panel that MobileNav renders wraps under the row via `order-3 w-full`. */}
-      <Link
-        href="/submit"
-        className="inline-block shrink-0 rounded-full bg-primary px-2.5 py-2 font-display text-[10.5px] font-bold tracking-[0.07em] whitespace-nowrap text-primary-foreground uppercase transition-transform hover:-translate-y-0.5 sm:px-[18px] sm:py-[11px] sm:text-xs"
-      >
-        Enter the arena
-      </Link>
-      <MobileNav links={NAV_LINKS} />
-    </header>
+          <p>Talented people deserve more hype.</p>
+        </div>
+        <NavLinks />
+        <div className={styles.tools}>
+          <ThemeToggle />
+          <Link href="/submit" className={styles.enter}>
+            Enter the Arena
+            <svg className={styles.arrow} viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </Link>
+        </div>
+      </header>
+    </div>
   );
 }

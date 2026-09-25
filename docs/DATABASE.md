@@ -15,6 +15,7 @@ battles
 sponsorships
 visitor_pings
 nominate
+email_signups
 rank_snapshots   designed, not built — see below
 ```
 
@@ -215,6 +216,30 @@ Nothing promotes a row from here into `creators` automatically — there is no
 "confirm" mechanism, no notification, no auto-entry. A nomination becomes a
 creator only through the existing paid submit flow, same as anyone else.
 
+### email_signups
+
+One row per email address someone typed into the weekly-drop banner on Home
+or the footer's "Get the latest" box. Capture only: nothing sends mail yet —
+the weekly drop goes out through Resend in a later change. See
+[DECISIONS.md](DECISIONS.md) § 2026-09-24.
+
+```
+id             uuid pk
+email          text not null unique   trimmed + lower-cased by the server before
+                                       insert, so "A@x.com" and "a@x.com" are one row
+source         text not null          'drop' | 'footer' — which box it came from
+voter_session  text                   same anonymous identity as battles/nominate;
+                                       used only for the per-session rate limit
+created_at     timestamptz
+```
+
+Signing up twice with the same address is a success, not an error — the
+second insert does nothing (`on conflict (email) do nothing`), and the visitor
+sees the same confirmation. Rate limit: at most 5 new rows per voter session
+per UTC day, checked in the Server Action.
+
+Nothing links this table to `creators`, Aura, or the game loop.
+
 ### rank_snapshots
 
 **Designed, not built.** Specced here because rank movement keeps being asked
@@ -333,6 +358,9 @@ Per table:
   `submitNomination` Server Action under the service role; nobody but the
   operator reads the table (directly, via Drizzle Studio or a query), so no
   anon/authenticated policy is granted at all.
+- `email_signups` — no client read, no client write. Writes go through the
+  `subscribeEmail` Server Action under the service role; only the operator
+  reads it. No anon/authenticated policy is granted.
 - `rank_snapshots` — when built: no client read, no client write. Written only
   by the scheduled capture job under the service role; the trend arrow is
   served from a server query like every other derived number.
@@ -350,6 +378,8 @@ sponsorships(start_at, end_at)
 visitor_pings(voter_session)   upsert target, one row per visitor
 visitor_pings(last_seen_at)    "N here now" / online count
 nominate(voter_session)        unique — one nomination per session
+email_signups(email)           unique — one row per address
+email_signups(voter_session, created_at)   per-session daily rate limit
 
 rank_snapshots(creator_id, captured_on) unique   when built — one per day
 rank_snapshots(captured_on)                      when built — day lookup

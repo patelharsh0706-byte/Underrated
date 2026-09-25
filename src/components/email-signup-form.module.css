@@ -1,0 +1,164 @@
+/* Ported from the V3 reference mock: .h-drop-form (drop) and .uf-form (footer). */
+
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 999px;
+  padding: 5px 5px 5px 20px;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.form input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: none;
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+.bad {
+  border-color: #dc3b40 !important;
+  box-shadow: 0 0 0 3px rgb(220 59 64 / 16%);
+}
+
+.arrow {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+/* ---------- drop banner: white pill on lime, both themes ------------- */
+
+.drop .form {
+  background: #ffffff;
+  border: 1px solid rgb(17 17 17 / 8%);
+  box-shadow: 0 8px 22px -16px rgb(17 17 17 / 50%);
+}
+.drop .form:focus-within {
+  border-color: #111111;
+}
+.drop input {
+  font-size: 15px;
+  color: #111111;
+  padding-block: 12px;
+}
+.drop input::placeholder {
+  color: #8a8d85;
+}
+.dropBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-sans);
+  font-size: 14.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: #ffffff;
+  background: #111111;
+  border: 0;
+  border-radius: 999px;
+  padding: 14px 20px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.dropBtn:hover {
+  background: #262626;
+  transform: translateY(-1px);
+}
+.drop.msg,
+.drop .msg {
+  color: #111111;
+}
+
+/* ---------- footer: card pill, round lime button --------------------- */
+
+.footer .form {
+  margin-top: 22px;
+  background: var(--card);
+  border: 1px solid var(--card-line);
+}
+.footer .form:focus-within {
+  border-color: var(--hairline-2);
+  box-shadow: 0 0 0 3px rgb(216 255 62 / 30%);
+}
+.footer input {
+  font-size: 14.5px;
+  color: var(--foreground);
+  padding-block: 11px;
+}
+.footer input::placeholder {
+  color: var(--ink-faint);
+}
+.roundBtn {
+  width: 44px;
+  height: 44px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #d8ff3e;
+  color: #111111;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.roundBtn:hover {
+  background: #c4ee1f;
+}
+.roundBtn svg {
+  width: 17px;
+  height: 17px;
+}
+
+.dropBtn:disabled,
+.roundBtn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+/* ---------- messages ------------------------------------------------- */
+
+.msg {
+  margin: 8px 0 0 20px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--foreground);
+}
+.footer.msg {
+  margin: 22px 0 0 4px;
+}
+.msgBad {
+  color: #b3242a;
+}
+.footer .msgBad {
+  color: #dc3b40;
+}
+
+@media (max-width: 430px) {
+  .drop .form {
+    flex-direction: column;
+    align-items: stretch;
+    border-radius: 18px;
+    padding: 6px;
+  }
+  .drop input {
+    padding: 12px;
+  }
+  .dropBtn {
+    justify-content: center;
+    width: 100%;
+  }
+  .msg {
+    margin-left: 4px;
+  }
+}

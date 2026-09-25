@@ -228,7 +228,7 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
               <Link
                 key={face.username}
                 href={`/c/${face.username}`}
-                title={`${face.name} — picked today`}
+                title={`${face.name} — hyped today`}
                 className={cn(
                   "relative block h-8 w-8 overflow-hidden rounded-full border-2 border-background bg-muted transition-transform hover:z-10 hover:-translate-y-0.5",
                   i > 0 && "-ml-2.5",
@@ -250,7 +250,7 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
         ) : null}
 
         <span className="font-display font-extrabold tracking-tight tabular-nums text-foreground">
-          {picksToday.toLocaleString()} picks today
+          {picksToday.toLocaleString()} {picksToday === 1 ? "hype" : "hypes"} today
         </span>
       </div>
     </div>

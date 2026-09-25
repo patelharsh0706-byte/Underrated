@@ -12,7 +12,7 @@ export function SponsorBanner({ sponsorship }: SponsorBannerProps) {
     return (
       <Link
         href="/sponsor"
-        className="flex w-full max-w-3xl flex-col items-center gap-2 rounded-card border border-dashed border-hairline-2 px-6 py-8 text-center transition-colors hover:border-foreground/40"
+        className="flex w-full max-w-[1012px] flex-col items-center gap-2 rounded-card border border-dashed border-hairline-2 px-6 py-8 text-center transition-colors hover:border-foreground/40"
       >
         <span className="font-display text-lg font-extrabold tracking-tight sm:text-xl">
           Feeling your startup is underhyped too?
@@ -33,7 +33,7 @@ export function SponsorBanner({ sponsorship }: SponsorBannerProps) {
       href={sponsorship.targetUrl}
       target="_blank"
       rel="noopener noreferrer sponsored"
-      className="flex w-full max-w-3xl items-center gap-4 rounded-card border border-hairline bg-card px-5 py-4 shadow-card transition-transform hover:-translate-y-0.5"
+      className="flex w-full max-w-[1012px] items-center gap-4 rounded-card border border-hairline bg-card px-5 py-4 shadow-card transition-transform hover:-translate-y-0.5"
     >
       <span className="rounded-full bg-aura px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-primary-foreground">
         Sponsored

@@ -27,7 +27,7 @@ export function EnterArenaCta() {
       </p>
 
       <p className="mt-3 font-display text-[11.5px] font-semibold tracking-[0.2em] text-ink-faint uppercase">
-        Discover · Pick · Boost · Repeat
+        Discover · Hype · Boost · Repeat
       </p>
     </section>
   );

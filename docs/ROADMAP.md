@@ -45,6 +45,21 @@ Nothing in this file may be built without moving it into [MVP.md](MVP.md) first.
   Known gap even once built: it's per-IP not per-person, so shared IPs
   (office wifi, a household) share the cap, and a determined attacker can
   still cycle IPs — raises the cost of self-boosting, doesn't eliminate it.
+- **GitHub Scout** — an operator-only scanner that finds underhyped builders
+  on GitHub and drops them into the same manual review queue Nominate feeds.
+  It never adds anyone to the Arena: the operator still invites, and the
+  builder still enters through the paid `/submit` flow, so "every creator paid
+  to be there" and consent both hold. The signal is the *gap*, not raw stars —
+  stars measure hype, the opposite of underhyped. Examples: a repo gaining
+  stars fast while its owner has few followers, merged PRs into respected
+  projects from an unknown account, sustained output nobody has noticed.
+  Source is public data (GitHub API, GH Archive) — the same data the
+  $99+/month recruiter tools resell; what they actually charge for is contact
+  enrichment, which this must never do. Open questions: which gap metric
+  predicts a good battle card, how often it runs, and whether scanned leads
+  should carry a note explaining why they were flagged. Motivated by the thin
+  Arena (9 active creators on 2026-09-22). Not a recruiter tool — those stay
+  in V3/V4.
 
 ## V3
 

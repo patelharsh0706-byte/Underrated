@@ -3,7 +3,8 @@ import "server-only";
 import { and, desc, eq, getTableColumns, gt, inArray, lte, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { battles, creators, payments, sponsorships, visitorPings } from "@/lib/db/schema";
+import { battles, creators, nominate, payments, sponsorships, visitorPings } from "@/lib/db/schema";
+import type { HomeLiveCounts } from "@/lib/home-live";
 import type { CreatorFields } from "@/lib/creator-schema";
 import {
   DAILY_HEAT_BATTLES_REQUIRED,
@@ -26,6 +27,8 @@ export interface PublicCreator {
   category: string | null;
   aura: number;
   battlesCount: number;
+  /** Battles won. Shown as the creator's Hype (⚡) — PRODUCT.md § Terminology. */
+  winsCount: number;
   /** Distinct voter sessions that judged this creator — see RANKING.md § Placement. */
   voterCount: number;
   workUrl: string | null;
@@ -72,6 +75,7 @@ function toPublicCreator(row: CreatorRow): PublicCreator {
     category: row.category,
     aura: row.aura,
     battlesCount: row.battlesCount,
+    winsCount: row.winsCount,
     voterCount: row.voterCount,
     workUrl: row.workUrl,
     socials: row.socials as Record<string, string> | null,
@@ -368,6 +372,7 @@ interface DailyHeatRow {
   primary_social: string | null;
   follower_count: number | null;
   voter_count: number;
+  wins_count: number;
   wins_today: number;
   losses_today: number;
   battles_today: number;
@@ -390,6 +395,7 @@ export async function getTop24h(limit = 10): Promise<DailyHeatEntry[]> {
       c.category,
       c.aura,
       c.battles_count,
+      c.wins_count,
       c.work_url,
       c.socials,
       c.primary_social,
@@ -414,7 +420,7 @@ export async function getTop24h(limit = 10): Promise<DailyHeatEntry[]> {
     where c.is_active = true
       and b.created_at >= date_trunc('day', now() at time zone 'utc')
     group by c.id, c.username, c.name, c.avatar_url, c.bio, c.category, c.aura,
-      c.battles_count, c.work_url, c.socials, c.primary_social, c.follower_count
+      c.battles_count, c.wins_count, c.work_url, c.socials, c.primary_social, c.follower_count
     having count(*) >= ${DAILY_HEAT_BATTLES_REQUIRED}
       and count(distinct b.voter_session) >= ${DAILY_HEAT_VOTERS_REQUIRED}
     order by
@@ -434,6 +440,7 @@ export async function getTop24h(limit = 10): Promise<DailyHeatEntry[]> {
     category: row.category,
     aura: row.aura,
     battlesCount: row.battles_count,
+    winsCount: row.wins_count,
     voterCount: row.voter_count,
     workUrl: row.work_url,
     socials: row.socials,
@@ -443,6 +450,45 @@ export async function getTop24h(limit = 10): Promise<DailyHeatEntry[]> {
     dailyHeat: row.wins_today - row.losses_today,
     battlesToday: row.battles_today,
     auraChangeToday: row.aura_change_today,
+  }));
+}
+
+export interface TopWeekEntry extends PublicCreator {
+  rank: number;
+  /** Sum of this creator's Aura deltas over the last 7 × 24h. */
+  auraChangeWeek: number;
+}
+
+/** Aura moved over the rolling 7-day window, correlated on `creators.id` —
+ * written `${creators}.id` for the same reason as `voterCountSql`. */
+const auraChangeWeekSql = sql<number>`coalesce((
+  select sum(
+    case when b.creator_a_id = ${creators}.id then b.aura_a_after - b.aura_a_before
+         else b.aura_b_after - b.aura_b_before end
+  )
+  from ${battles} b
+  where (b.creator_a_id = ${creators}.id or b.creator_b_id = ${creators}.id)
+    and b.created_at >= now() - interval '7 days'
+), 0)::int`;
+
+/**
+ * Home's "Top 10 This Week" — RANKING.md § Top 10 This Week. Ranked creators
+ * only, ordered by Aura gained this week, then current Aura, then battles.
+ * A ranked creator with no battles this week has a change of 0, so a quiet
+ * week still fills the list, ordered by Aura. Row 1 is Home's #1 card.
+ */
+export async function getTopWeek(limit = 10): Promise<TopWeekEntry[]> {
+  const rows = await db
+    .select({ ...creatorSelection, auraChangeWeek: auraChangeWeekSql })
+    .from(creators)
+    .where(and(eq(creators.isActive, true), isRankedSql))
+    .orderBy(desc(auraChangeWeekSql), desc(creators.aura), desc(creators.battlesCount))
+    .limit(limit);
+
+  return rows.map((row, index) => ({
+    ...toPublicCreator(row),
+    rank: index + 1,
+    auraChangeWeek: row.auraChangeWeek,
   }));
 }
 
@@ -555,9 +601,58 @@ export async function getHomeStats(): Promise<HomeStats> {
   };
 }
 
+/**
+ * Every number Home's "Live on Underhyped" tabs need, in one round trip —
+ * the tab switch is client-side over these (src/lib/home-live.ts). UTC day
+ * boundary, same as Daily Heat; "week" is a rolling 7 × 24h.
+ */
+export async function getHomeLive(): Promise<HomeLiveCounts> {
+  const today = sql`date_trunc('day', now() at time zone 'utc') at time zone 'utc'`;
+  const result = await db.execute(sql`
+    select
+      (select count(*) from ${battles} where created_at >= ${today})::int as battles_today,
+      (select count(*) from ${battles} where created_at >= ${today} - interval '1 day' and created_at < ${today})::int as battles_yesterday,
+      (select count(*) from ${battles} where created_at >= now() - interval '7 days')::int as battles_week,
+      (select count(*) from ${battles} where created_at >= now() - interval '14 days' and created_at < now() - interval '7 days')::int as battles_prev_week,
+      (select count(*) from ${battles})::int as battles_all,
+      (select count(distinct voter_session) from ${battles} where created_at >= ${today})::int as people_today,
+      (select count(distinct voter_session) from ${battles} where created_at >= ${today} - interval '1 day' and created_at < ${today})::int as people_yesterday,
+      (select count(distinct voter_session) from ${battles} where created_at >= now() - interval '7 days')::int as people_week,
+      (select count(distinct voter_session) from ${battles} where created_at >= now() - interval '14 days' and created_at < now() - interval '7 days')::int as people_prev_week,
+      (select count(distinct voter_session) from ${battles})::int as people_all,
+      (select count(*) from ${creators} where is_active = true)::int as creators_total,
+      (select count(*) from ${creators} where is_active = true and created_at >= ${today})::int as creators_new_today,
+      (select count(*) from ${creators} where is_active = true and created_at >= now() - interval '7 days')::int as creators_new_week,
+      (select count(*) from ${nominate} where created_at >= ${today})::int as noms_today,
+      (select count(*) from ${nominate} where created_at >= now() - interval '7 days')::int as noms_week,
+      (select count(*) from ${nominate})::int as noms_all
+  `);
+  const [r] = Array.from(result as unknown as Record<string, number>[]);
+  return {
+    battles: {
+      today: r.battles_today,
+      yesterday: r.battles_yesterday,
+      week: r.battles_week,
+      prevWeek: r.battles_prev_week,
+      all: r.battles_all,
+    },
+    people: {
+      today: r.people_today,
+      yesterday: r.people_yesterday,
+      week: r.people_week,
+      prevWeek: r.people_prev_week,
+      all: r.people_all,
+    },
+    creators: { total: r.creators_total, newToday: r.creators_new_today, newWeek: r.creators_new_week },
+    nominations: { today: r.noms_today, week: r.noms_week, all: r.noms_all },
+  };
+}
+
 export interface RecentBattleResult {
   winnerName: string;
   winnerUsername: string;
+  /** For Home's Live Feed, which shows the winner's face. */
+  winnerAvatarUrl: string | null;
   loserName: string;
   loserUsername: string;
   createdAt: Date;
@@ -603,7 +698,7 @@ export async function getRecentBattleResults(limit = 5): Promise<RecentBattleRes
 
   const ids = [...new Set(rows.flatMap((row) => [row.creatorAId, row.creatorBId]))];
   const found = await db
-    .select({ id: creators.id, name: creators.name, username: creators.username })
+    .select({ id: creators.id, name: creators.name, username: creators.username, avatarUrl: creators.avatarUrl })
     .from(creators)
     .where(inArray(creators.id, ids));
   const byId = new Map(found.map((row) => [row.id, row]));
@@ -617,6 +712,7 @@ export async function getRecentBattleResults(limit = 5): Promise<RecentBattleRes
     return {
       winnerName: winner?.name ?? "Someone",
       winnerUsername: winner?.username ?? "",
+      winnerAvatarUrl: winner?.avatarUrl ?? null,
       loserName: loser?.name ?? "someone",
       loserUsername: loser?.username ?? "",
       createdAt: row.createdAt,
@@ -631,6 +727,7 @@ export async function getRecentBattleResults(limit = 5): Promise<RecentBattleRes
 export interface RecentJoin {
   username: string;
   name: string;
+  avatarUrl: string | null;
   entryFeeCents: number | null;
   createdAt: Date;
 }
@@ -641,6 +738,7 @@ export async function getRecentJoins(limit = 5): Promise<RecentJoin[]> {
     .select({
       username: creators.username,
       name: creators.name,
+      avatarUrl: creators.avatarUrl,
       entryFeeCents: creators.entryFeeCents,
       createdAt: creators.createdAt,
     })

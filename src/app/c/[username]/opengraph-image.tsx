@@ -13,7 +13,7 @@ const RANK_BADGES: Record<number, { label: string; color: string }> = {
   3: { label: "PLOT TWIST", color: "#C026D3" },
 };
 
-const NEW_CHALLENGER_BADGE = { label: "🔥 NEW CHALLENGER", color: "#FF5A1F" };
+const NEW_CHALLENGER_BADGE = { label: "NEW CHALLENGER", color: "#FF5A1F" };
 
 function getRankBadge(rank: number | null): { label: string; color: string } | null {
   if (rank === null) return NEW_CHALLENGER_BADGE;

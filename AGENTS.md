@@ -73,12 +73,16 @@ Never mix the two vocabularies in one layer.
 | Daily #1          | Main Character            |
 | Leaderboard #2/#3 | Side Character / Plot Twist |
 | Advertising       | Spotlight / Underhyped Spot |
-| Vote              | Pick                      |
+| Vote              | Hype                      |
 | Rank              | Rank                      |
 | Pool              | Arena                     |
 | Distinct voters   | People deciding           |
 
 Full definitions: [docs/PRODUCT.md](docs/PRODUCT.md).
+
+Hype (changed 2026-09-24, was "Pick"): choosing a creator in a battle is
+hyping them, and a creator's Hype count is their wins. Aura is always shown
+as 🔥 + number, Hype as ⚡ + number.
 
 Never write "votes cast" as a number. One battle row is one pick, so it would
 render the same figure as "battles fought" — use "people deciding" (distinct
@@ -123,9 +127,9 @@ Paid sponsorship must never influence creator ranking.
 - Schema changes go in [docs/DATABASE.md](docs/DATABASE.md) first, then the code.
 - Ranking math changes go in [docs/RANKING.md](docs/RANKING.md) first, then the code.
 - Visual decisions come from [docs/DESIGN.md](docs/DESIGN.md). Do not invent brand.
-  DESIGN.md is at **version 2**; where it marks a rule as "Changed in V2", the
-  V2 rule is current and the V1 line is kept only so the change reads as
-  deliberate. Do not "restore" it.
+  DESIGN.md is at **version 3**; where it marks a rule as "Changed in V2" or
+  "Changed in V3", the newest rule is current and the older line is kept only
+  so the change reads as deliberate. Do not "restore" it.
 - Architectural choices get logged in [docs/DECISIONS.md](docs/DECISIONS.md).
 - Any bug that reached a user gets an entry in [docs/ISSUES.md](docs/ISSUES.md):
   symptom, real cause, fix, and a Prevention line. Read that file before

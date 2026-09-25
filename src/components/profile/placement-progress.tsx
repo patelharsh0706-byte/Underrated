@@ -23,7 +23,7 @@ export function PlacementProgress({ battlesCount, voterCount }: PlacementProgres
   return (
     <div className="flex flex-col items-center gap-1.5">
       <span className="rounded-full bg-aura/12 px-3 py-1 text-[11px] font-bold tracking-wide text-aura uppercase">
-        🔥 New challenger
+        New challenger
       </span>
       <span className="font-display text-sm font-bold tabular-nums text-foreground">
         {current}/{required} {label}

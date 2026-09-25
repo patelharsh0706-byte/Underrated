@@ -5,20 +5,10 @@ import { useEffect, useState } from "react";
 
 import { pingVisitor } from "@/app/actions/stats";
 import type { HomeStats, RecentBattleResult, RecentJoin } from "@/lib/db/queries";
+import { formatTimeAgo } from "@/lib/time-ago";
 
 const PING_INTERVAL_MS = 45_000;
 const FEED_LIMIT = 6;
-
-function formatTimeAgo(date: Date): string {
-  const seconds = Math.max(0, (Date.now() - date.getTime()) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.round(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  const days = Math.round(hours / 24);
-  return `${days}d ago`;
-}
 
 interface StatTile {
   label: string;
@@ -38,9 +28,9 @@ interface StatTile {
 function tilesFor(stats: HomeStats): StatTile[] {
   return [
     { icon: "⚔️", label: "battles fought", value: stats.battlesSoFar.toLocaleString() },
-    { icon: "🔥", label: "creators in the Arena", value: stats.creatorsInArena.toLocaleString() },
+    { icon: "👥", label: "creators in the Arena", value: stats.creatorsInArena.toLocaleString() },
     { icon: "🗳️", label: "people deciding", value: stats.peopleDeciding.toLocaleString() },
-    { icon: "↑", label: "picks today", value: stats.battlesToday.toLocaleString() },
+    { icon: "⚡", label: "hypes today", value: stats.battlesToday.toLocaleString() },
   ];
 }
 
@@ -73,7 +63,7 @@ function FeedRow({ item }: { item: FeedItem }) {
     return (
       <>
         <span className="w-6 shrink-0 text-center text-[17px]" aria-hidden="true">
-          🔥
+          👋
         </span>
         <span className="min-w-0 flex-1 truncate">
           <CreatorName name={item.join.name} username={item.join.username} />{" "}
@@ -91,7 +81,7 @@ function FeedRow({ item }: { item: FeedItem }) {
     return (
       <>
         <span className="w-6 shrink-0 text-center text-[17px]" aria-hidden="true">
-          ⚡
+          🔥
         </span>
         <span className="min-w-0 flex-1 truncate">
           <CreatorName name={battle.winnerName} username={battle.winnerUsername} />{" "}
@@ -153,7 +143,7 @@ export function StatsPanel({ initialStats, recentJoins, recentBattles }: StatsPa
   const feed = mergeFeed(recentJoins, recentBattles);
 
   return (
-    <section className="flex w-full max-w-3xl flex-col gap-6 rounded-card border border-hairline bg-card px-5 py-6 shadow-card sm:px-8 sm:py-7">
+    <section className="flex w-full max-w-[1012px] flex-col gap-6 rounded-card border border-hairline bg-card px-5 py-6 shadow-card sm:px-8 sm:py-7">
       <div className="flex items-center justify-between gap-4 border-b border-hairline pb-4">
         <h2 className="font-display text-[13px] font-bold tracking-[0.16em] uppercase">
           Live on Underhyped

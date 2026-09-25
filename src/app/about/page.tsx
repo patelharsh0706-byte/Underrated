@@ -21,7 +21,7 @@ export default function AboutPage() {
         </p>
         <h1 className="mx-auto max-w-[14ch] text-[clamp(32px,5.4vw,60px)] leading-[0.95] font-black tracking-[-0.045em] text-balance">
           WTF is{" "}
-          <span className="relative inline-block px-1.5 before:absolute before:inset-[12%_-10px_6%_-8px] before:-z-10 before:rotate-[-1.1deg] before:bg-lime before:[clip-path:polygon(1%_8%,99%_0%,100%_88%,98%_100%,2%_96%,0%_14%)]">
+          <span className="relative inline-block px-1.5 text-[#111] before:absolute before:inset-[12%_-10px_6%_-8px] before:-z-10 before:rotate-[-1.1deg] before:bg-lime before:[clip-path:polygon(1%_8%,99%_0%,100%_88%,98%_100%,2%_96%,0%_14%)]">
             Underhyped?
           </span>
         </h1>

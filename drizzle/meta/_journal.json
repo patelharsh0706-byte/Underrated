@@ -71,6 +71,13 @@
       "when": 1790072099706,
       "tag": "0009_add_nominate",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790247920739,
+      "tag": "0010_add_email_signups",
+      "breakpoints": true
     }
   ]
 }

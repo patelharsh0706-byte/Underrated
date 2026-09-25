@@ -179,7 +179,7 @@ export function NominateFlow() {
         <section>
           <div className="px-0 pt-10 pb-[30px] text-center">
             <p className="font-display text-[11.5px] font-semibold tracking-[0.22em] text-ink-soft uppercase">
-              Nominate someone 🔥
+              Nominate someone
             </p>
             <h1 className="mx-auto mt-3 max-w-[13ch] font-display text-[clamp(32px,7vw,48px)] leading-[0.98] font-black tracking-[-0.04em]">
               Who is the internet <MarkerSwipe>sleeping on?</MarkerSwipe>
@@ -251,7 +251,7 @@ export function NominateFlow() {
               <p className="mt-[18px] flex items-baseline gap-2.5 border-t border-hairline pt-[15px] text-sm leading-[1.45] text-ink-soft">
                 <b className="flex-none text-aura">🔥</b>
                 <span>
-                  Already in the Arena. Go pick them in a battle instead.
+                  Already in the Arena. Go hype them in a battle instead.
                 </span>
               </p>
             ) : (
@@ -294,7 +294,7 @@ export function NominateFlow() {
             </Link>
           ) : (
             <BigButton onClick={handleSend} disabled={isPending}>
-              Nominate 🔥
+              Nominate
             </BigButton>
           )}
           <GhostButton onClick={restart}>Not them — try another link</GhostButton>
@@ -310,7 +310,7 @@ export function NominateFlow() {
           </div>
           <div className="rounded-card bg-lime px-7 py-[34px] text-center">
             <h2 className="mb-2 font-display text-[26px] font-extrabold tracking-[-0.035em]">
-              @{found?.handle} has been nominated 🔥
+              @{found?.handle} has been nominated
             </h2>
             <p className="text-[15px] text-foreground/70">
               We&rsquo;ll reach out to them on X. If they&rsquo;re in, they&rsquo;ll enter the

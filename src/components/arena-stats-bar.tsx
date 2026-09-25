@@ -13,7 +13,7 @@ export function ArenaStatsBar({ battlesToday, creatorsInArena }: ArenaStatsBarPr
   const picksToday = usePicksToday(battlesToday);
 
   return (
-    <section className="flex w-full max-w-3xl flex-col items-center gap-3 sm:flex-row sm:justify-between sm:gap-6">
+    <section className="flex w-full max-w-[1012px] flex-col items-center gap-3 sm:flex-row sm:justify-between sm:gap-6">
       <div className="flex flex-col items-center gap-0.5">
         <span className="font-display text-lg font-extrabold tracking-tight tabular-nums sm:text-2xl">
           {picksToday.toLocaleString()}

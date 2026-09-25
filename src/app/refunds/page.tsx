@@ -21,7 +21,7 @@ export default function RefundsPage() {
             <>
               <p>
                 Every payment on Underhyped is a one-time fee for a digital placement:
-                a creator profile in the arena, or a sponsor spot on the homepage. Once
+                a creator profile in the arena, or a sponsor spot in the Arena. Once
                 you pay, the sale is final.
               </p>
               <p>

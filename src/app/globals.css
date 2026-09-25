@@ -2,7 +2,10 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
+/* Night theme is driven by tokens, not by `dark:` utilities — see the
+   :root / [data-theme] blocks below and DESIGN.md § Night theme. The variant
+   only matches an explicit toggle, so prefer tokens in components. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
 @theme inline {
   --color-background: var(--background);
@@ -78,7 +81,7 @@
 
 :root {
   /* Underhyped brand tokens — see docs/DESIGN.md */
-  --background: oklch(0.97 0.005 100); /* #F7F7F2 */
+  --background: #f3f5f1; /* V3 day ground */
   --foreground: oklch(0.18 0 0); /* #111111 */
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.18 0 0);
@@ -89,7 +92,7 @@
   --secondary: oklch(0.97 0.005 100);
   --secondary-foreground: oklch(0.18 0 0);
   --muted: oklch(0.94 0.005 100);
-  --muted-foreground: oklch(0.48 0 0); /* #6B6B66-ish */
+  --muted-foreground: #62665e;
   --accent: oklch(0.94 0.005 100);
   --accent-foreground: oklch(0.18 0 0);
   --destructive: oklch(0.577 0.245 27.325);
@@ -110,14 +113,14 @@
   --lime-deep: #c4ee1f; /* hover only */
   --down: #dc3b40; /* negative rank movement — distinct from --loser,
                        which means "lost a battle", not "rank fell" */
-  --ink-soft: #6b6b66; /* body meta, labels — same value as --muted-foreground,
+  --ink-soft: #62665e; /* body meta, labels — same value as --muted-foreground,
                            named separately because V2 components reference it
                            by this name directly, matching DESIGN.md's table */
-  --ink-faint: #a5a59d; /* timestamps, disabled, third tier — no V1 equivalent */
-  --hairline: rgb(17 17 17 / 10%); /* default divider / card edge */
-  --hairline-2: rgb(17 17 17 / 16%); /* table header rule, input border */
+  --ink-faint: #a3a79d; /* timestamps, disabled, third tier — no V1 equivalent */
+  --hairline: rgb(17 17 17 / 8%); /* default divider / card edge */
+  --hairline-2: rgb(17 17 17 / 14%); /* table header rule, input border */
   --shadow-card-raw:
-    0 1px 2px rgb(17 17 17 / 4%), 0 12px 28px -10px rgb(17 17 17 / 16%);
+    0 1px 2px rgb(17 17 17 / 3%), 0 10px 26px -14px rgb(17 17 17 / 14%);
   --shadow-lift-raw:
     0 2px 4px rgb(17 17 17 / 5%), 0 22px 42px -14px rgb(17 17 17 / 22%);
   --chart-1: oklch(0.87 0 0);
@@ -134,41 +137,145 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+
+  /* V3 tokens — the Home / Arena / shell surfaces from the reference mock.
+     Every one has a night value below; never define a colour only there. */
+  --ink: #111111;
+  --card-line: rgb(17 17 17 / 6%);
+  --accent-text: #5a9a16; /* second headline line on Home */
+  --seg-on-bg: #111111;
+  --seg-on-fg: #ffffff;
+  --row-hi: #f1fad6;
+  --row-hi-line: transparent;
+  --btn-line: rgb(17 17 17 / 12%);
+  --cta-bg: linear-gradient(160deg, #f2fbd9 0%, #e6f8b6 100%);
+  --banner-bg: linear-gradient(100deg, #eef9cc 0%, #e3f7ac 100%);
+  --banner-line: rgb(160 205 40 / 45%);
+  --banner-chip: #d8ff3e;
+  --feat-bg: linear-gradient(135deg, #f5f8f1 0%, #eef4e6 60%, #e8f3d8 100%);
+  --feat-photo: 0.22;
+  --feat-wash: linear-gradient(90deg, #f4f7f0 0%, rgb(244 247 240 / 70%) 38%, rgb(244 247 240 / 0%) 70%);
+  --feat-box: rgb(255 255 255 / 55%);
+  --feat-bar: #ffffff;
+  --one-wash: linear-gradient(180deg, rgb(190 220 235 / 25%) 0%, rgb(20 24 18 / 0%) 38%, rgb(12 14 10 / 88%) 80%);
+  --one-bg: #c9dccb;
+  --nav-here-bg: #f1fad6;
+  --nav-here-fg: #111111;
+  --nav-here-line: rgb(166 209 26 / 35%);
+  --wtf: #e3342b;
+  --icon-sun: none;
+  --icon-moon: block;
 }
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+/* Night palette. Two copies of the same values: the media query follows the
+   OS when the viewer hasn't chosen, the attribute wins once they have (the
+   inline script in layout.tsx stamps data-theme from localStorage). */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --background: #0c0e0b;
+    --foreground: #f2f4ee;
+    --card: #131612;
+    --card-foreground: #f2f4ee;
+    --popover: #161915;
+    --popover-foreground: #f2f4ee;
+    --primary: #f2f4ee;
+    --primary-foreground: #111111;
+    --secondary: #161915;
+    --secondary-foreground: #f2f4ee;
+    --muted: #1a1d18;
+    --muted-foreground: #a2a79b;
+    --accent: #1a1d18;
+    --accent-foreground: #f2f4ee;
+    --border: #f2f4ee;
+    --input: #f2f4ee;
+    --ring: #f2f4ee;
+    --ink-soft: #a2a79b;
+    --ink-faint: #6d7268;
+    --hairline: rgb(255 255 255 / 8%);
+    --hairline-2: rgb(255 255 255 / 14%);
+    --shadow-card-raw: 0 1px 2px rgb(0 0 0 / 40%), 0 12px 28px -12px rgb(0 0 0 / 70%);
+    --shadow-lift-raw: 0 2px 4px rgb(0 0 0 / 40%), 0 22px 42px -14px rgb(0 0 0 / 80%);
+    --ink: #f2f4ee;
+    --card-line: rgb(255 255 255 / 7%);
+    --accent-text: #d8ff3e;
+    --seg-on-bg: #d8ff3e;
+    --seg-on-fg: #111111;
+    --row-hi: rgb(216 255 62 / 9%);
+    --row-hi-line: rgb(216 255 62 / 14%);
+    --btn-line: rgb(255 255 255 / 12%);
+    --cta-bg: #d8ff3e;
+    --banner-bg: #d8ff3e;
+    --banner-line: transparent;
+    --banner-chip: rgb(17 17 17 / 8%);
+    --feat-bg: radial-gradient(circle at 72% 30%, #2b4a12 0%, #111a0c 42%, #0d100b 75%);
+    --feat-photo: 0.62;
+    --feat-wash: linear-gradient(90deg, #0e120c 0%, rgb(14 18 12 / 75%) 36%, rgb(14 18 12 / 0%) 68%);
+    --feat-box: rgb(255 255 255 / 4%);
+    --feat-bar: #1a1d18;
+    --one-wash: linear-gradient(180deg, rgb(110 190 60 / 28%) 0%, rgb(20 30 14 / 0%) 40%, rgb(8 10 6 / 92%) 80%);
+    --one-bg: #1f3a14;
+    --nav-here-bg: rgb(216 255 62 / 14%);
+    --nav-here-fg: #d8ff3e;
+    --nav-here-line: rgb(216 255 62 / 35%);
+    --wtf: #ff4a3d;
+    --icon-sun: block;
+    --icon-moon: none;
+  }
 }
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0c0e0b;
+  --foreground: #f2f4ee;
+  --card: #131612;
+  --card-foreground: #f2f4ee;
+  --popover: #161915;
+  --popover-foreground: #f2f4ee;
+  --primary: #f2f4ee;
+  --primary-foreground: #111111;
+  --secondary: #161915;
+  --secondary-foreground: #f2f4ee;
+  --muted: #1a1d18;
+  --muted-foreground: #a2a79b;
+  --accent: #1a1d18;
+  --accent-foreground: #f2f4ee;
+  --border: #f2f4ee;
+  --input: #f2f4ee;
+  --ring: #f2f4ee;
+  --ink-soft: #a2a79b;
+  --ink-faint: #6d7268;
+  --hairline: rgb(255 255 255 / 8%);
+  --hairline-2: rgb(255 255 255 / 14%);
+  --shadow-card-raw: 0 1px 2px rgb(0 0 0 / 40%), 0 12px 28px -12px rgb(0 0 0 / 70%);
+  --shadow-lift-raw: 0 2px 4px rgb(0 0 0 / 40%), 0 22px 42px -14px rgb(0 0 0 / 80%);
+  --ink: #f2f4ee;
+  --card-line: rgb(255 255 255 / 7%);
+  --accent-text: #d8ff3e;
+  --seg-on-bg: #d8ff3e;
+  --seg-on-fg: #111111;
+  --row-hi: rgb(216 255 62 / 9%);
+  --row-hi-line: rgb(216 255 62 / 14%);
+  --btn-line: rgb(255 255 255 / 12%);
+  --cta-bg: #d8ff3e;
+  --banner-bg: #d8ff3e;
+  --banner-line: transparent;
+  --banner-chip: rgb(17 17 17 / 8%);
+  --feat-bg: radial-gradient(circle at 72% 30%, #2b4a12 0%, #111a0c 42%, #0d100b 75%);
+  --feat-photo: 0.62;
+  --feat-wash: linear-gradient(90deg, #0e120c 0%, rgb(14 18 12 / 75%) 36%, rgb(14 18 12 / 0%) 68%);
+  --feat-box: rgb(255 255 255 / 4%);
+  --feat-bar: #1a1d18;
+  --one-wash: linear-gradient(180deg, rgb(110 190 60 / 28%) 0%, rgb(20 30 14 / 0%) 40%, rgb(8 10 6 / 92%) 80%);
+  --one-bg: #1f3a14;
+  --nav-here-bg: rgb(216 255 62 / 14%);
+  --nav-here-fg: #d8ff3e;
+  --nav-here-line: rgb(216 255 62 / 35%);
+  --wtf: #ff4a3d;
+  --icon-sun: block;
+  --icon-moon: none;
+}
+
 
 @layer base {
   * {
@@ -176,6 +283,24 @@
   }
   body {
     @apply bg-background text-foreground;
+    transition: background-color 0.25s ease, color 0.25s ease;
+  }
+  /* Lime never flips, so anything painted lime keeps dark ink in both
+     themes (DESIGN.md § Night theme). Resetting the tokens — not just
+     `color` — makes token-coloured children follow too. */
+  .bg-lime,
+  .bg-lime-deep,
+  .on-lime {
+    --foreground: #111111;
+    --ink: #111111;
+    --ink-soft: rgb(17 17 17 / 64%);
+    --ink-faint: rgb(17 17 17 / 45%);
+    --muted-foreground: rgb(17 17 17 / 64%);
+    --hairline: rgb(17 17 17 / 10%);
+    --hairline-2: rgb(17 17 17 / 16%);
+    --border: #111111;
+    --card: #ffffff;
+    color: #111111;
   }
   html {
     @apply font-sans;

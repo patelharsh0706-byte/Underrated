@@ -161,7 +161,7 @@ export function CreatorCard({
             happened" feedback, not a restatement of this number. */}
         <div className="absolute top-2.5 right-2.5 rounded-[10px] bg-card px-2.5 py-1.5 text-center shadow-[0_4px_14px_-6px_rgba(17,17,17,0.35)]">
           <span className="block font-display text-sm leading-tight font-extrabold tracking-tight tabular-nums text-aura sm:text-[15px]">
-            {shownAura}🔥
+            🔥 {shownAura}
           </span>
           <span className="mt-px block text-[9px] leading-tight font-medium tracking-[0.1em] text-ink-soft uppercase sm:text-[9.5px]">
             aura
@@ -169,18 +169,19 @@ export function CreatorCard({
         </div>
       </div>
 
-      <div className="flex flex-1 flex-col items-center gap-2 p-3 sm:gap-3 sm:p-6">
-        <div className="flex flex-col items-center gap-1 text-center">
+      <div className="flex flex-1 flex-col gap-2 p-3 sm:gap-2.5 sm:p-4">
+        {/* Identity block reads left-aligned, as in the V3 reference mock. */}
+        <div className="flex flex-col items-start gap-1 text-left">
           <span className="font-display text-sm font-extrabold tracking-tight sm:text-xl">
             {creator.name}
           </span>
           <span className="hidden text-sm text-ink-soft sm:block">@{creator.username}</span>
 
           {needsPlacement || creator.category ? (
-            <div className="mt-1 flex flex-wrap items-center justify-center gap-1.5">
+            <div className="mt-1 flex flex-wrap items-center gap-1.5">
               {needsPlacement ? (
                 <span className="rounded-full bg-aura/12 px-1.5 py-0.5 text-[10px] font-bold tracking-wide text-aura uppercase sm:px-2 sm:text-xs">
-                  🔥 New challenger
+                  New challenger
                 </span>
               ) : null}
               {creator.category ? (
@@ -192,7 +193,7 @@ export function CreatorCard({
           ) : null}
 
           {creator.bio ? (
-            <p className="mt-2 line-clamp-2 max-w-[24ch] text-xs text-ink-soft sm:text-sm">
+            <p className="mt-1.5 line-clamp-2 text-xs leading-snug text-foreground sm:text-sm">
               {creator.bio}
             </p>
           ) : null}
@@ -275,14 +276,14 @@ export function CreatorCard({
           type="button"
           onClick={onPick}
           disabled={disabled}
-          aria-label={`Pick ${creator.name} as more underhyped`}
+          aria-label={`Hype ${creator.name} as more underhyped`}
           className={cn(
-            "mt-auto w-full rounded-lg bg-primary py-2 font-display text-xs font-bold uppercase tracking-wide text-primary-foreground transition-transform sm:py-3 sm:text-sm",
+            "mt-auto w-full rounded-[10px] bg-primary px-2 py-[11px] font-display text-[12.5px] font-bold tracking-[-0.01em] text-primary-foreground transition-transform sm:rounded-xl sm:px-3.5 sm:py-3 sm:text-sm",
             !disabled && "hover:-translate-y-0.5 active:translate-y-0 cursor-pointer",
             disabled && "cursor-default opacity-50",
           )}
         >
-          Pick {firstName} 🔥
+          Hype {firstName} ⚡
         </button>
       </div>
     </div>

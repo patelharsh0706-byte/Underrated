@@ -345,7 +345,7 @@ export function EnterArenaFlow() {
         <section>
           <div className="px-0 pt-10 pb-[30px] text-center">
             <p className="font-display text-[11.5px] font-semibold tracking-[0.22em] text-ink-soft uppercase">
-              🔥 Enter the arena
+              Enter the arena
             </p>
             <h1 className="mx-auto mt-3 max-w-[13ch] font-display text-[clamp(32px,7vw,48px)] leading-[0.98] font-black tracking-[-0.04em]">
               Put yourself on the <MarkerSwipe>radar.</MarkerSwipe>
@@ -419,7 +419,7 @@ export function EnterArenaFlow() {
 
       {step === "preview" && draft ? (
         <section>
-          <StepHead>Looking good? 🔥</StepHead>
+          <StepHead>Looking good?</StepHead>
 
           {problem ? (
             <p className="mb-4 rounded-[14px] border border-down bg-card px-4 py-3 text-sm text-down">
@@ -554,7 +554,7 @@ export function EnterArenaFlow() {
           </div>
           <div className="rounded-card bg-lime px-7 py-[34px] text-center">
             <h2 className="mb-2 font-display text-[26px] font-extrabold tracking-[-0.035em]">
-              Taking you to checkout 🔥
+              Taking you to checkout
             </h2>
             <p className="text-[15px] text-foreground/70">
               {FEE} one-time. Your first battle starts the moment it clears.

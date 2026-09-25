@@ -42,10 +42,10 @@ export default async function SponsorSuccessPage() {
       </div>
 
       <Link
-        href="/"
+        href="/arena"
         className="w-full rounded-xl border-2 border-foreground bg-primary py-3 text-sm font-bold uppercase tracking-wide text-primary-foreground transition-transform hover:-translate-y-0.5 active:translate-y-0"
       >
-        See it live on the homepage →
+        See it live in the Arena →
       </Link>
     </main>
   );

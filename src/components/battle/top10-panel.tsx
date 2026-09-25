@@ -62,12 +62,12 @@ function TrendCell({ change }: { change: number | undefined }) {
 
 export function Top10Panel({ entries, mode }: Top10PanelProps) {
   return (
-    <section className="flex w-full max-w-3xl flex-col gap-3">
+    <section className="flex w-full max-w-[1012px] flex-col gap-3">
       <div className="flex items-baseline justify-between">
         <h2 className="font-display text-lg font-extrabold tracking-tight sm:text-xl">
           {mode === "daily" ? "Hottest today" : "Top 10"}{" "}
           <span className="font-normal text-ink-soft">
-            · {mode === "daily" ? "last 24h" : "by Aura🔥"}
+            · {mode === "daily" ? "last 24h" : "by 🔥 Aura"}
           </span>
         </h2>
         <Link href="/leaderboard" className="text-sm font-medium text-ink-soft hover:underline">
@@ -77,7 +77,7 @@ export function Top10Panel({ entries, mode }: Top10PanelProps) {
 
       {entries.length === 0 ? (
         <div className="rounded-card border border-dashed border-hairline-2 px-6 py-8 text-center text-sm text-ink-soft">
-          Nobody&apos;s racked up enough picks today. Go make someone the Main Character.
+          Nobody&apos;s racked up enough hype today. Go make someone the Main Character.
         </div>
       ) : (
         <div className="overflow-x-auto">

@@ -68,8 +68,9 @@ to new talent.
 
 ### Voter (first visit)
 
-1. Lands on homepage — a battle is already on screen. No signup wall.
-2. Picks one of two creators.
+1. Lands on Home, taps "Start Hyping" — the Arena opens with a battle already
+   on screen. No signup wall.
+2. Hypes one of two creators.
 3. Sees Aura change, sees the winner's rank move.
 4. Gets the next battle immediately.
 5. After a few picks, taps a creator they liked → profile → external links.
@@ -93,7 +94,7 @@ to new talent.
 
 ### Sponsor
 
-1. Sees the Spotlight slot labeled on the homepage.
+1. Sees the Spotlight slot labeled on the Arena page.
 2. Buys 30 days for $30.
 3. Their slot appears for exactly that period. It never touches ranking.
 
@@ -111,7 +112,7 @@ says `competitions`.
 | Leaderboard #2    | Side Character              |
 | Leaderboard #3    | Plot Twist                  |
 | Advertising       | Spotlight / Underhyped Spot |
-| Vote              | Pick                        |
+| Vote              | Hype                        |
 | Rank              | Rank                        |
 | Pool              | Arena                       |
 | Distinct voters   | People deciding             |
@@ -127,6 +128,10 @@ Additional terms:
   three on the leaderboard. Main Character is the daily #1 by Daily Heat and is
   the only one of the three with ranking logic behind it; the other two are
   labels for positions 2 and 3.
+- **Hype** — the UI word for choosing a creator in a battle ("Hype Mira ⚡",
+  "Start Hyping"). A creator's Hype count is their wins (`creators.wins_count`),
+  always shown as ⚡ + number; Aura is always 🔥 + number. Replaced "Pick" on
+  2026-09-24 — see [DECISIONS.md](DECISIONS.md) § 2026-09-24.
 - **People deciding** — how many different people have judged battles, as
   distinct voter sessions. Not the same number as battles fought, and never
   described as "votes" — one battle row *is* one pick, so the two would be

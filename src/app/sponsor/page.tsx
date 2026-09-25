@@ -28,7 +28,7 @@ export default async function SponsorPage() {
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Sponsor Underhyped</h1>
         <p className="text-sm text-muted-foreground">
-          One slot. Homepage. 30 days. Clearly labeled &quot;Sponsored&quot; — it
+          One slot. The Arena. 30 days. Clearly labeled &quot;Sponsored&quot; — it
           never touches anyone&apos;s rank.
         </p>
       </div>

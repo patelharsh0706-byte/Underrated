@@ -28,8 +28,8 @@ export async function generateMetadata({ params }: ProfilePageProps): Promise<Me
   const title = `${creator.name} — Underhyped`;
   const description =
     creator.rank !== null
-      ? `#${creator.rank} on Underhyped with ${creator.aura}🔥 Aura.`
-      : `🔥 New challenger on Underhyped with ${creator.aura}🔥 Aura — still being placed.`;
+      ? `#${creator.rank} on Underhyped with 🔥 ${creator.aura} Aura.`
+      : `New challenger on Underhyped with 🔥 ${creator.aura} Aura — still being placed.`;
 
   return {
     title,
@@ -115,7 +115,7 @@ export default async function ProfilePage({ params }: ProfilePageProps) {
         <div className="mt-6 flex flex-wrap items-start justify-around gap-5 rounded-lg bg-foreground/[0.035] px-4 py-4 sm:px-6">
           <div className="flex flex-col items-center gap-1">
             <span className="font-display text-xl font-extrabold tracking-tight text-aura tabular-nums sm:text-2xl">
-              {creator.aura}🔥
+              🔥 {creator.aura}
             </span>
             <span className="text-[11px] font-bold tracking-wider text-ink-soft uppercase">Aura</span>
           </div>

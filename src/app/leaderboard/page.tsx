@@ -13,7 +13,7 @@ export const revalidate = 15;
 
 export const metadata: Metadata = {
   title: "Leaderboard — Underhyped",
-  description: "Creators ranked by Aura🔥.",
+  description: "Creators ranked by 🔥 Aura.",
 };
 
 export default async function LeaderboardPage() {
@@ -66,7 +66,7 @@ export default async function LeaderboardPage() {
           Underhyped <MarkerSwipe>creators.</MarkerSwipe>
         </h1>
         <p className="mt-3 text-[15px] text-ink-soft sm:text-base">
-          Ranked by Aura. Moved only by picks — never by money.
+          Ranked by Aura. Moved only by hype — never by money.
         </p>
       </section>
 

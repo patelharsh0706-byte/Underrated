@@ -8,7 +8,8 @@ import type { ReactNode } from "react";
  */
 export function MarkerSwipe({ children }: { children: ReactNode }) {
   return (
-    <span className="relative inline-block px-1 whitespace-nowrap">
+    // Dark ink in both themes — the word sits on lime, which never flips.
+    <span className="relative inline-block px-1 whitespace-nowrap text-[#111]">
       <span
         className="absolute inset-x-[-3px] top-[12%] bottom-[6%] -z-10 rotate-[-1deg] bg-lime [clip-path:polygon(1%_18%,100%_0%,99%_82%,0%_100%)]"
         aria-hidden="true"

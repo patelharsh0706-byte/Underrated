@@ -2,10 +2,14 @@
 
 The visual language and UX rules. Decided here, not invented per session.
 
-**Version 2.** The tokens, type, and components below describe the V2 direction
-agreed in the design mockup — see [DECISIONS.md](DECISIONS.md) § 2026-09-10.
-Where V2 changed a V1 rule, the old rule is marked rather than deleted, so a
-future session can see the change was deliberate and not drift.
+**Version 3.** The tokens, type, and components below describe the V2 direction
+agreed in the design mockup — see [DECISIONS.md](DECISIONS.md) § 2026-09-10 —
+plus the V3 changes agreed on 2026-09-24 (a separate Home page, the Arena on
+its own route, day/night themes, Hype vocabulary) — see DECISIONS.md
+§ 2026-09-24. Where a later version changed an earlier rule, the old rule is
+marked rather than deleted, so a future session can see the change was
+deliberate and not drift. The reference mock for V3 is the "Underhyped Arena"
+artifact (https://claude.ai/artifact/6MQooGNWix3zdPsQiVMLsX).
 
 ## Brand
 
@@ -22,10 +26,14 @@ Header lockup:
 > underhyped**.wtf** — "Talented people deserve more hype."
 
 Footer lockup:
-> underhyped**.wtf** — "Good people deserve more hype."
+> underhyped**.wtf** — "Talented people deserve more hype."
 
-The `.wtf` is always the Aura accent. The two taglines differ on purpose:
-the header speaks to creators arriving, the footer signs the page off.
+The `.wtf` is always red (`#E3342B` day, `#FF4A3D` night).
+
+> **Changed in V3.** V2 said the `.wtf` is always the Aura accent (orange) and
+> the footer lockup read "Good people deserve more hype." V3 makes the `.wtf`
+> red and uses one tagline — "Talented people deserve more hype." — in both the
+> header and the footer.
 
 ## Style
 
@@ -76,7 +84,25 @@ Radius pill       999px     chips, badges, avatars-as-circles
 Shell max-width   1060px
 ```
 
-Dark mode is not V1.
+**Night theme** — every token above has a night value, defined once in
+`globals.css`. The page follows the OS setting until the viewer uses the
+sun/moon toggle in the header; the choice is kept in `localStorage`
+(`uh-theme`) and applied before first paint, so there is no flash.
+
+```
+                  Day        Night
+Ground            #F3F5F1    #0C0E0B
+Card              #FFFFFF    #131612
+Ink               #111111    #F2F4EE
+Ink soft          #62665E    #A2A79B
+Ink faint         #A3A79D    #6D7268
+Hairline          ink 8%     white 8%
+Accent text       #5A9A16    #D8FF3E   the second headline line on Home
+```
+
+Lime never flips, and anything painted lime keeps dark ink in both themes.
+
+> **Changed in V3.** V1/V2 said "Dark mode is not V1."
 
 **Two accents, and they never mean the same thing.** Lime is celebration and
 action — the primary CTA, the #1 podium card, the marker swipe, the check
@@ -141,7 +167,7 @@ gradients, no blur.
 > black-on-white became the in-card Ink button.
 
 **Avatars** — circular in list and podium contexts (leaderboard rows, facepiles,
-podium cards); square with 12px radius in identity contexts (profile page, the
+podium cards, every Home card except the #1 portrait); square with 12px radius in identity contexts (profile page, the
 post-payment card). The rule is: a circle when the face is one of many in a
 row, a square when the face *is* the subject.
 
@@ -216,6 +242,33 @@ word the page is actually about.
 **Icon rings** — 54–60px circle, ground fill, hairline border, 22–25px icon at
 2.2 stroke. Used for step and feature rows.
 
+**Header (V3)** — one row: the wordmark lockup (tagline under the wordmark,
+never allowed to shrink into the nav), the nav **Home · Arena · Leaderboard ·
+Nominate** with the current route as a lime pill, the sun/moon theme toggle,
+and the lime "Enter the Arena ↗" pill (to `/submit`). About and Rules live in
+the footer. A search box appears in the reference mock but stays hidden until
+search exists (rule 10).
+
+> **Changed in V3.** V2's desktop nav was Arena / Leaderboard / About / Rules
+> with no active-route highlight. V3 adds Home, drops About/Rules to the footer,
+> and highlights the active route with a small client island.
+
+**Footer (V3)** — the same on every page: lockup + social icons + copyright on
+the left; link columns Explore (Arena, Leaderboard, Nominate, Discover),
+Learn (About, Arena Rules) and Legal (Privacy Policy, Terms of Service,
+Refunds, Community Guidelines); and "Get the latest" with an email box on the
+right. Social icons appear only for accounts that exist.
+
+**Aura and Hype icons (V3)** — Aura is always 🔥 followed by the number
+(`🔥 1555`); Hype is always ⚡ followed by the number. Neither emoji is used
+for anything else — the "reached N Aura" feed event takes 🔥, and the "new
+challenger" state carries no fire.
+
+> **Changed in V3.** The hamburger below is retired: under 960px the V3 nav
+> wraps onto its own full-width row under the lockup and scrolls sideways if it
+> must, so the four links are always visible. The old rule is kept for the
+> record.
+
 **Mobile nav** — below `sm` the header's four links (Arena / Leaderboard /
 About / Rules) collapse behind a 40px hamburger button at the right of the
 masthead row: wordmark lockup · Enter-the-arena pill · hamburger. The pill
@@ -245,7 +298,7 @@ loop. Everything animated respects `prefers-reduced-motion`.
 
 ## UX Rules
 
-1. **The battle is the first thing that matters.** The homepage headline is one
+1. **The battle is the first thing that matters.** The Arena page headline is one
    line and a subhead above the battle — enough to say what the page is, never a
    marketing hero. Anything longer belongs on About.
 
@@ -253,6 +306,10 @@ loop. Everything animated respects `prefers-reduced-motion`.
    > V2 permits a one-line headline plus subhead above the battle and nothing
    > more. If the battle stops being visible without scrolling on a normal
    > phone, the headline is too big — cut it, not the battle.
+
+   > **Changed in V3.** The battle moved from `/` to `/arena`. `/` is now Home:
+   > a static page that explains the product and sends people into the Arena
+   > ("Start Hyping"). The rule above now applies to `/arena`.
 
 2. **No signup wall.** Voting never asks for an account.
 3. **Two taps, no dead time.** Pick → feedback → next battle. Prefetch the next
@@ -278,7 +335,7 @@ loop. Everything animated respects `prefers-reduced-motion`.
     button until nominations ship, no rank-movement arrow until rank snapshots
     exist. A mockup may show them; production may not.
 
-## Page Inventory (V2)
+## Page Inventory (V3)
 
 The mockup covers these surfaces. Each is ported as its own change, on the
 shared foundation (fonts, tokens, primitives, header/footer) rather than
@@ -286,7 +343,8 @@ page-by-page reinvention.
 
 | Surface | Route | V2 state |
 | ------- | ----- | -------- |
-| Arena | `/` | headline, battle pair, pulse row, CTA, stats bar, three-up, sponsor, Hottest 10, Live on Underhyped |
+| Home | `/` | hero + #1 creator card + Top 10 This Week, weekly-drop email banner, Live on Underhyped (tabs) + Enter CTA, Live Feed + Featured battle, Nominate banner |
+| Arena | `/arena` | headline, battle pair, pulse row, CTA, stats bar, three-up, sponsor, Hottest 10, Live on Underhyped |
 | Leaderboard | `/leaderboard` | scope + category filters, top-3 podium, ranked table, load more |
 | Profile | `/c/[username]` | identity card, Aura / placement / wins stat row, links |
 | Enter the Arena | `/submit` | two-link form, preview, category pick, edit |

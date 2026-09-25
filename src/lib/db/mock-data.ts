@@ -18,7 +18,9 @@ import type {
   PublicCreator,
   RecentBattleResult,
   RecentJoin,
+  TopWeekEntry,
 } from "@/lib/db/queries";
+import type { HomeLiveCounts } from "@/lib/home-live";
 
 export function isMockMode(): boolean {
   return process.env.PREVIEW_MOCK === "1";
@@ -188,6 +190,7 @@ function toPublic(seed: Seed, id: number): PublicCreator {
     category: seed.category,
     aura: seed.aura,
     battlesCount: seed.battlesCount,
+    winsCount: seed.winsCount,
     voterCount: seed.voterCount,
     workUrl: seed.workUrl,
     socials: seed.socials,
@@ -247,6 +250,25 @@ export function mockTop24h(): DailyHeatEntry[] {
   }));
 }
 
+/** Home's Top 10 This Week — a different order again, so preview shows the
+ * week list and the leaderboard disagreeing, as they will for real. */
+export function mockTopWeek(limit = 10): TopWeekEntry[] {
+  const order = [1, 0, 3, 2, 4, 5, 6, 7, 8];
+  const change = [96, 71, 44, 30, 18, 0, -12, -25, -40];
+  return order
+    .map((idx, i) => ({ ...CREATORS[idx], rank: i + 1, auraChangeWeek: change[i] }))
+    .slice(0, limit);
+}
+
+export function mockHomeLive(): HomeLiveCounts {
+  return {
+    battles: { today: 47, yesterday: 42, week: 301, prevWeek: 262, all: 973 },
+    people: { today: 18, yesterday: 15, week: 96, prevWeek: 88, all: 214 },
+    creators: { total: CREATORS.length, newToday: 1, newWeek: 3 },
+    nominations: { today: 2, week: 7, all: 23 },
+  };
+}
+
 export function mockCreatorProfile(username: string): CreatorProfile | null {
   const seedIndex = SEEDS.findIndex((s) => s.username === username);
   if (seedIndex === -1) return null;
@@ -279,6 +301,7 @@ export function mockRecentJoins(): RecentJoin[] {
   return SEEDS.slice(0, 5).map((seed, i) => ({
     username: seed.username,
     name: seed.name,
+    avatarUrl: avatar(seed.username),
     entryFeeCents: 300,
     createdAt: new Date(now - (i + 1) * 1000 * 60 * 60 * 6),
   }));
@@ -293,12 +316,13 @@ export function mockRecentBattleResults(): RecentBattleResult[] {
     [6, 0],
     [7, 1],
   ];
-  // One milestone in the set, so the ⚡ row shows up in preview — real
+  // One milestone in the set, so the 🔥 row shows up in preview — real
   // milestones are rare, which is the point of calling them out.
   const milestones = [1600, null, null, null, null];
   return pairs.map(([winnerIdx, loserIdx], i) => ({
     winnerName: SEEDS[winnerIdx].name,
     winnerUsername: SEEDS[winnerIdx].username,
+    winnerAvatarUrl: avatar(SEEDS[winnerIdx].username),
     loserName: SEEDS[loserIdx].name,
     loserUsername: SEEDS[loserIdx].username,
     createdAt: new Date(now - (i + 1) * 1000 * 60 * 20),

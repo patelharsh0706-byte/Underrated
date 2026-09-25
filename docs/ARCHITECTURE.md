@@ -274,7 +274,8 @@ nicety.
 
 ```
 app/                Next.js App Router routes
-  page.tsx          homepage — the battle
+  page.tsx          Home — static explainer, real data, links into the Arena
+  arena/page.tsx    the Arena — the battle
   leaderboard/
   discover/
   c/[username]/     creator profile

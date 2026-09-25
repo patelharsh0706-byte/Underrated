@@ -68,7 +68,7 @@ export default function TermsPage() {
           body: (
             <>
               <p>
-                Sponsors can buy the Underhyped Spot on the homepage for a fixed period.
+                Sponsors can buy the Underhyped Spot in the Arena for a fixed period.
                 It is clearly marked as sponsored. It is a placement, not a ranking, and
                 it has no effect on any creator&apos;s Aura, battles, or leaderboard
                 position.

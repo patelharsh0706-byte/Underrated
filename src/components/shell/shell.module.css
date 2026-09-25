@@ -1,0 +1,344 @@
+/* Site shell — header and footer, identical on every route (root layout).
+   Ported 1:1 from the V3 reference mock (DESIGN.md § Header (V3), § Footer
+   (V3)). Colours come from the tokens in globals.css so both themes work. */
+
+.wrap {
+  width: 100%;
+  max-width: 1180px;
+  margin-inline: auto;
+  padding-inline: 24px;
+}
+
+/* ---------- header ---------------------------------------------------- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding-block: 16px 20px;
+}
+
+/* Never shrinks: the tagline is wider than the wordmark and must not slide
+   under the nav. The row makes room elsewhere. */
+.brand {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-right: 18px;
+  flex: none;
+}
+.brand p {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+
+.logo {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 23px;
+  letter-spacing: -0.04em;
+  line-height: 1.1;
+  text-decoration: none;
+  color: var(--foreground);
+  white-space: nowrap;
+}
+.logo span {
+  color: var(--wtf);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+}
+.nav a {
+  font-size: 14.5px;
+  font-weight: 500;
+  color: var(--foreground);
+  text-decoration: none;
+  padding: 9px 15px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  transition: background 0.15s ease;
+  white-space: nowrap;
+}
+.nav a:hover {
+  background: var(--hairline);
+}
+.nav a[aria-current="page"] {
+  background: var(--nav-here-bg);
+  color: var(--nav-here-fg);
+  border-color: var(--nav-here-line);
+  font-weight: 600;
+}
+
+.tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+.theme {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--card-line);
+  background: var(--card);
+  color: var(--foreground);
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+.theme:hover {
+  transform: rotate(-14deg);
+}
+.theme:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 2px;
+}
+.sun {
+  display: var(--icon-sun);
+}
+.moon {
+  display: var(--icon-moon);
+}
+
+.enter {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #d8ff3e;
+  color: #111111;
+  font-size: 14.5px;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 13px 22px;
+  border-radius: 999px;
+  white-space: nowrap;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.enter:hover {
+  background: #c4ee1f;
+  transform: translateY(-1px);
+}
+
+.arrow {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+/* ---------- footer ---------------------------------------------------- */
+
+.foot {
+  display: grid;
+  grid-template-columns: minmax(220px, 1.25fr) minmax(0, 2.4fr) minmax(250px, 1.05fr);
+  align-items: start;
+  gap: 40px;
+  margin-top: 44px;
+  padding-block: 34px 40px;
+  border-top: 1px solid var(--card-line);
+}
+.footBrand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.footBrand .logo {
+  font-size: 26px;
+}
+.tag {
+  margin: 8px 0 0;
+  font-size: 16px;
+  color: var(--ink-soft);
+}
+.social {
+  display: flex;
+  gap: 10px;
+  margin-top: 22px;
+}
+.soc {
+  width: 46px;
+  height: 46px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--hairline);
+  color: var(--ink-soft);
+  transition: color 0.15s ease;
+}
+.soc:hover {
+  color: var(--foreground);
+}
+.soc svg {
+  width: 19px;
+  height: 19px;
+}
+.copy {
+  margin: 26px 0 0;
+  font-size: 12.5px;
+  color: var(--ink-faint);
+}
+.copyMobile {
+  display: none;
+}
+
+.cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1.3fr);
+  gap: 28px;
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+.col h3 {
+  margin: 0 0 6px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+.col a {
+  font-size: 14.5px;
+  color: var(--foreground);
+  text-decoration: none;
+  opacity: 0.82;
+  width: fit-content;
+  white-space: nowrap;
+}
+.col a:hover {
+  opacity: 1;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.news h3 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.news > p {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+/* ---------- responsive ------------------------------------------------ */
+
+@media (max-width: 1100px) {
+  .nav a {
+    padding: 9px 12px;
+  }
+  .foot {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .cols {
+    grid-column: 1 / -1;
+    grid-row: 2;
+  }
+}
+
+@media (max-width: 960px) {
+  .topbar {
+    flex-wrap: wrap;
+    row-gap: 12px;
+  }
+  .nav {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+  }
+}
+
+@media (max-width: 760px) {
+  .wrap {
+    padding-inline: 16px;
+  }
+  .topbar {
+    gap: 8px;
+    padding-block: 12px 14px;
+  }
+  .logo {
+    font-size: 20px;
+  }
+  .enter {
+    padding: 11px 15px;
+    font-size: 13px;
+    gap: 7px;
+  }
+  .nav {
+    gap: 2px;
+  }
+  .nav a {
+    font-size: 13.5px;
+    padding: 8px 13px;
+  }
+
+  .foot {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 32px;
+    padding-block: 28px 32px;
+  }
+  .cols {
+    grid-row: auto;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: 28px;
+  }
+  .copy {
+    display: none;
+  }
+  .copyMobile {
+    display: block;
+    margin: 28px 0 0;
+    font-size: 12px;
+    color: var(--ink-faint);
+  }
+}
+
+@media (max-width: 430px) {
+  /* Lockup + toggle + Enter must share one row at 390px (then the nav). */
+  .tools {
+    gap: 6px;
+  }
+  .enter {
+    padding: 10px 12px;
+    font-size: 12px;
+    gap: 5px;
+  }
+  .logo {
+    font-size: 19px;
+  }
+  .brand p {
+    font-size: 7.5px;
+    letter-spacing: 0.02em;
+  }
+  .brand {
+    margin-right: 0;
+  }
+}
+
+@media (max-width: 370px) {
+  /* Small Android widths: the Enter pill sheds its arrow to keep one row. */
+  .enter {
+    padding: 9px 10px;
+  }
+  .enter .arrow {
+    display: none;
+  }
+}

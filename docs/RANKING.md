@@ -206,6 +206,27 @@ Rules:
 - Main Character is computed from `battles`, not stored on `creators`.
 - The day boundary is UTC. Do not make it local time.
 
+## Top 10 This Week
+
+The list on Home (added 2026-09-24, see [DECISIONS.md](DECISIONS.md)
+§ 2026-09-24). A display ordering, not a new score:
+
+```
+week change = sum of the creator's Aura deltas over battles in the last 7 days
+            (winner: aura_winner_after - aura_winner_before,
+             loser:  aura_loser_after  - aura_loser_before)
+```
+
+- **Ranked creators only** (§ Placement), same as the leaderboard.
+- Ordered by `week change desc`, then current `aura desc`, then `battles_count
+  desc`. A ranked creator with no battles this week has a week change of 0, so
+  a quiet week still fills ten rows, ordered by Aura.
+- The window is a rolling 7 × 24h ending now, not a calendar week.
+- Each row shows the creator's **current Aura** (`🔥 1555`), not the week
+  change — the ordering says who moved, the number says where they are.
+- The Home "#1 card" is row one of this list. It is not the Main Character
+  (that stays the daily #1 by Daily Heat) and is never labelled as such.
+
 ## Rank
 
 Rank is position by `aura desc`, among **ranked** creators only (see
@@ -261,7 +282,8 @@ While unranked:
   about the Elo transaction changes — placement only affects what's
   *shown*, never how Aura is computed.
 - The creator has no numeric rank and is excluded from `/leaderboard` and
-  the homepage Top 10. In the UI this reads as **"🔥 NEW CHALLENGER"** —
+  the Top 10 lists. In the UI this reads as **"NEW CHALLENGER"** (V3 drops
+  the 🔥 — fire now only ever means Aura; see DESIGN.md) —
   never the word "unranked." It's framed as exciting (still being
   evaluated), not as a demotion.
 - Daily Heat / Main Character eligibility is **unaffected** — it's the

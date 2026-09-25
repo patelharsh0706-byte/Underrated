@@ -1322,3 +1322,57 @@ don't include last battle's creator, which is every newer visitor.
 Rejected:
 Keeping the streak so every pick counts — the operator chose alternation
 after seeing the streak twice.
+
+## 2026-09-24 — V3: Home and Arena split, day/night, Hype replaces Pick
+
+Decision:
+The operator approved a new design (the "Underhyped Arena" artifact) and it
+is ported with these changes to the docs:
+
+1. `/` becomes **Home**: a static page that explains the product — hero with
+   the week's #1 creator, Top 10 This Week, a weekly-drop email banner, Live
+   on Underhyped with Today / This week / All time tabs, a Live Feed, a
+   featured-battle teaser and the Nominate banner. The battle moves to
+   **`/arena`**, unchanged in behaviour.
+2. **Day and night themes**, following the OS until the viewer toggles; the
+   choice lives in `localStorage` and is applied before first paint.
+3. **Hype replaces Pick** in UI copy. A creator's Hype count is their wins.
+   Aura is always 🔥 + number, Hype always ⚡ + number, and neither emoji is
+   used for anything else.
+4. Header nav is Home / Arena / Leaderboard / Nominate with an active-route
+   pill; About and Rules move to a new, larger footer that is the same on
+   every page. The `.wtf` turns red; both lockups use "Talented people
+   deserve more hype."
+5. **Email capture** into a new `email_signups` table from the Home banner and
+   the footer. Nothing is sent yet.
+6. **Top 10 This Week** orders ranked creators by Aura gained in the last 7
+   days (RANKING.md § Top 10 This Week).
+7. The sponsor slot stays on the Arena page; Home carries no sponsor.
+
+Home uses real data only. Where the mock showed figures with nothing behind
+them they are replaced or dropped: the "+12K" facepile count becomes the real
+creator count, "1,200+ creators" becomes the real count, the verified tick and
+the "↑ +3" rank chip are not rendered, the feed drops "took #1" / "climbed N
+places" (no rank snapshots) and "was nominated" (it would name people who have
+not agreed to be named), and the mock's third tile "Hype given" becomes
+**People deciding** — hype given would always equal battles fought, the same
+duplication the "votes cast" rule exists to prevent. The header search box is
+not rendered until search exists.
+
+Why:
+The operator wanted a front door that explains the game before dropping a
+stranger into it, and a site that works at night. The data rules keep UX rule
+10 intact: the design is copied, the fake numbers are not.
+
+Consequences:
+UX rule 1 now governs `/arena`, not `/`. Every link that meant "the battle"
+points to `/arena`. The "Live panel's fourth tile is picks today" decision is
+superseded on Home by "Creators nominated", since nominations now exist. The
+Aura-milestone feed icon changes from ⚡ to 🔥 (2026-09-10 decision), and "New
+challenger" loses its 🔥. Anything sold as a "homepage" sponsor slot is now an
+Arena-page slot.
+
+Rejected:
+Hardcoding the mock's numbers — the live site would show figures that are not
+true. A non-working search box — rule 10. Sending the weekly drop in this
+change — Resend is a separate piece of work.

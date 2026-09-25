@@ -16,7 +16,7 @@ export default function NotFound() {
         Wrong link, or a creator who left the arena.
       </p>
       <Link
-        href="/"
+        href="/arena"
         className="mt-2 rounded-full bg-foreground px-5 py-2 text-sm font-semibold text-background transition-colors hover:bg-foreground/80"
       >
         Back to the arena

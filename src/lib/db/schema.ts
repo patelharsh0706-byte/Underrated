@@ -147,6 +147,27 @@ export const nominate = pgTable(
   (table) => [uniqueIndex("nominate_voter_session_key").on(table.voterSession)],
 );
 
+// Email capture from the Home weekly-drop banner and the footer's "Get the
+// latest" box. Capture only — nothing sends mail yet. Nothing here links to
+// creators, Aura or the game loop. See DATABASE.md § email_signups and
+// DECISIONS.md § 2026-09-24.
+export const emailSignups = pgTable(
+  "email_signups",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    // Trimmed + lower-cased by subscribeEmail before insert.
+    email: text("email").notNull(),
+    // 'drop' | 'footer' — which box it came from.
+    source: text("source").notNull(),
+    voterSession: text("voter_session"),
+    createdAt: timestamptz("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("email_signups_email_key").on(table.email),
+    index("email_signups_session_created_idx").on(table.voterSession, table.createdAt),
+  ],
+);
+
 export const sponsorships = pgTable(
   "sponsorships",
   {

@@ -199,10 +199,10 @@ function EmptyBoard({ isDaily }: { isDaily: boolean }) {
         </>
       )}
       <Link
-        href="/"
+        href="/arena"
         className="rounded-lg bg-lime px-4 py-2 font-display text-xs font-bold tracking-wide text-foreground uppercase transition-colors hover:bg-lime-deep"
       >
-        Start battling 🔥
+        Start hyping ⚡
       </Link>
     </div>
   );
