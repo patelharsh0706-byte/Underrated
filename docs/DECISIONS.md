@@ -1376,3 +1376,18 @@ Rejected:
 Hardcoding the mock's numbers — the live site would show figures that are not
 true. A non-working search box — rule 10. Sending the weekly drop in this
 change — Resend is a separate piece of work.
+
+## 2026-09-26 — Day is the default theme
+
+Decision:
+Every page opens in the day theme. Night applies only when the viewer picks it
+with the header toggle; the choice persists in `localStorage`. The OS
+`prefers-color-scheme` setting is no longer followed.
+
+Why:
+The operator wants every first visit to see the day design.
+
+Consequences:
+A visitor whose phone is in dark mode now sees the day site until they tap the
+toggle. `globals.css` defines the night palette only under
+`:root[data-theme="dark"]`.

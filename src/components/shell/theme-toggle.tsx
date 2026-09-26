@@ -7,13 +7,13 @@ import { THEME_KEY } from "./theme-script";
 
 // Day/night switch — DESIGN.md § Night theme. The inline script in
 // layout.tsx applies a saved choice before first paint; with no saved
-// choice the CSS follows the OS. This island only flips the attribute and
+// choice the page stays in day. This island only flips the attribute and
 // remembers it. Which icon shows is pure CSS (--icon-sun / --icon-moon), so
 // server and client render the same markup and nothing flashes.
+// Day unless the viewer chose night — the OS setting is not followed
+// (DECISIONS.md § 2026-09-26).
 function currentTheme(): "dark" | "light" {
-  const set = document.documentElement.getAttribute("data-theme");
-  if (set === "dark" || set === "light") return set;
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
 }
 
 export function ThemeToggle() {
@@ -26,7 +26,7 @@ export function ThemeToggle() {
         document.documentElement.setAttribute("data-theme", saved);
       }
     } catch {
-      // storage blocked — the OS preference still applies via CSS
+      // storage blocked — the page simply stays in day
     }
   }, []);
 

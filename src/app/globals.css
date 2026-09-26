@@ -167,63 +167,10 @@
   --icon-moon: block;
 }
 
-/* Night palette. Two copies of the same values: the media query follows the
-   OS when the viewer hasn't chosen, the attribute wins once they have (the
-   inline script in layout.tsx stamps data-theme from localStorage). */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    color-scheme: dark;
-    --background: #0c0e0b;
-    --foreground: #f2f4ee;
-    --card: #131612;
-    --card-foreground: #f2f4ee;
-    --popover: #161915;
-    --popover-foreground: #f2f4ee;
-    --primary: #f2f4ee;
-    --primary-foreground: #111111;
-    --secondary: #161915;
-    --secondary-foreground: #f2f4ee;
-    --muted: #1a1d18;
-    --muted-foreground: #a2a79b;
-    --accent: #1a1d18;
-    --accent-foreground: #f2f4ee;
-    --border: #f2f4ee;
-    --input: #f2f4ee;
-    --ring: #f2f4ee;
-    --ink-soft: #a2a79b;
-    --ink-faint: #6d7268;
-    --hairline: rgb(255 255 255 / 8%);
-    --hairline-2: rgb(255 255 255 / 14%);
-    --shadow-card-raw: 0 1px 2px rgb(0 0 0 / 40%), 0 12px 28px -12px rgb(0 0 0 / 70%);
-    --shadow-lift-raw: 0 2px 4px rgb(0 0 0 / 40%), 0 22px 42px -14px rgb(0 0 0 / 80%);
-    --ink: #f2f4ee;
-    --card-line: rgb(255 255 255 / 7%);
-    --accent-text: #d8ff3e;
-    --seg-on-bg: #d8ff3e;
-    --seg-on-fg: #111111;
-    --row-hi: rgb(216 255 62 / 9%);
-    --row-hi-line: rgb(216 255 62 / 14%);
-    --btn-line: rgb(255 255 255 / 12%);
-    --cta-bg: #d8ff3e;
-    --banner-bg: #d8ff3e;
-    --banner-line: transparent;
-    --banner-chip: rgb(17 17 17 / 8%);
-    --feat-bg: radial-gradient(circle at 72% 30%, #2b4a12 0%, #111a0c 42%, #0d100b 75%);
-    --feat-photo: 0.62;
-    --feat-wash: linear-gradient(90deg, #0e120c 0%, rgb(14 18 12 / 75%) 36%, rgb(14 18 12 / 0%) 68%);
-    --feat-box: rgb(255 255 255 / 4%);
-    --feat-bar: #1a1d18;
-    --one-wash: linear-gradient(180deg, rgb(110 190 60 / 28%) 0%, rgb(20 30 14 / 0%) 40%, rgb(8 10 6 / 92%) 80%);
-    --one-bg: #1f3a14;
-    --nav-here-bg: rgb(216 255 62 / 14%);
-    --nav-here-fg: #d8ff3e;
-    --nav-here-line: rgb(216 255 62 / 35%);
-    --wtf: #ff4a3d;
-    --icon-sun: block;
-    --icon-moon: none;
-  }
-}
-
+/* Night palette — applied only when the viewer picks night with the header
+   toggle (the inline script in layout.tsx stamps data-theme from
+   localStorage). Day is the default on every page, whatever the OS setting —
+   DESIGN.md § Night theme, DECISIONS.md § 2026-09-26. */
 :root[data-theme="dark"] {
   color-scheme: dark;
   --background: #0c0e0b;
