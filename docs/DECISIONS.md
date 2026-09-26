@@ -1390,4 +1390,8 @@ The operator wants every first visit to see the day design.
 Consequences:
 A visitor whose phone is in dark mode now sees the day site until they tap the
 toggle. `globals.css` defines the night palette only under
-`:root[data-theme="dark"]`.
+`:root[data-theme="dark"]`, and the day `:root` declares `color-scheme: only
+light` so mobile browsers' own auto-dark (Chrome Android, Samsung Internet)
+cannot darken the day site — phones kept showing dark without it. The
+storage key moved from `uh-theme` to `uh-theme-v2`, so choices saved while
+the site followed the OS are ignored once and everyone starts on day.

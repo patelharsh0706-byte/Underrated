@@ -87,7 +87,7 @@ Shell max-width   1060px
 **Night theme** — every token above has a night value, defined once in
 `globals.css`. **Day is the default on every page**, whatever the viewer's OS
 setting; night applies only after the viewer uses the sun/moon toggle in the
-header. The choice is kept in `localStorage` (`uh-theme`) and applied before
+header. The choice is kept in `localStorage` (`uh-theme-v2`) and applied before
 first paint, so there is no flash. (The first V3 cut followed the OS; changed
 2026-09-26 so every first visit sees the day design.)
 

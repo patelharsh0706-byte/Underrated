@@ -17,6 +17,34 @@ Status: **FIXED** (shipped and verified) · **OPEN** (known, not yet fixed).
 
 ---
 
+## 2026-09-26 — Phones still opened the site in dark after "day is the default" · FIXED
+
+**Symptom.** After `9067942` made day the default on every page, the operator's
+phone still opened underhyped.wtf in dark. Desktop browsers showed day.
+
+**Cause.** Two things, one of them the real one. The site's own theme was day
+(`data-theme` empty), but the page no longer declared a `color-scheme` — that
+declaration used to live inside the removed "follow the OS" block. Mobile
+browsers with their own dark feature (Chrome on Android's auto-dark, Samsung
+Internet) then darkened the page themselves. Reproduced against the live site
+with Chrome's `WebContentsForceDark` flag: day theme, dark pixels `(34,35,33)`.
+Second, any phone that had tapped the toggle before still held a saved `dark`
+under `uh-theme`.
+
+**Fix.** The day `:root` declares `color-scheme: only light`, which tells the
+browser not to recolour it; the `[data-theme="dark"]` block still switches to
+dark. The storage key moved to `uh-theme-v2`, so choices saved before the
+change are ignored once. Same force-dark test after the fix: day pixels
+`(242,244,240)`; night after the toggle.
+
+**Prevention.** `src/app/theme.test.ts` fails if the day `:root` loses
+`color-scheme: only light` or the CSS starts following `prefers-color-scheme`
+again. Check theme work on a phone (or with the force-dark flag), not only a
+desktop browser. **Class of bug:** "it looked right in the source" — the
+theme was correct; the browser in between was not.
+
+---
+
 ## 2026-09-24 — A newcomer still streaked after the no-back-to-back fix · OPEN
 
 **Symptom.** Hours after shipping "no creator in two battles in a row", a

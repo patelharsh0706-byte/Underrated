@@ -80,6 +80,10 @@
 }
 
 :root {
+  /* Day is the default (DECISIONS.md § 2026-09-26). "only light" stops mobile
+     browsers' own auto-dark (Chrome Android, Samsung Internet) from darkening
+     the day theme; the [data-theme="dark"] block below switches it to dark. */
+  color-scheme: only light;
   /* Underhyped brand tokens — see docs/DESIGN.md */
   --background: #f3f5f1; /* V3 day ground */
   --foreground: oklch(0.18 0 0); /* #111111 */
