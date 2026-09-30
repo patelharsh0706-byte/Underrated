@@ -11,6 +11,7 @@ import styles from "./shell.module.css";
 const LINKS = [
   { href: "/", label: "Home" },
   { href: "/arena", label: "Arena" },
+  { href: "/demos", label: "Demos" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/nominate", label: "Nominate" },
 ] as const;

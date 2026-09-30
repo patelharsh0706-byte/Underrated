@@ -43,6 +43,16 @@ Anything that gets cut or deferred goes to [ROADMAP.md](ROADMAP.md).
   the latest" box store an email in `email_signups`. Capture only: sending
   the weekly drop (via Resend) is a later change. See [DECISIONS.md](DECISIONS.md)
   § 2026-09-24.
+- **Underhyped Demos** — a second judging game for products: one
+  15-second screen recording at a time, "Does this deserve hype?",
+  **Underhyped ⚡ / Not yet 🥱**, then the result (% split, judges, product
+  clicks, rank). Ranked in "Top demos this week" (RANKING.md § Demos). Makers
+  upload a pre-recorded MP4/WebM (1280×720 landscape, 15 s max, 8 MB max), pay $3, and the
+  operator reviews it before it enters the queue. A "for makers" card offers
+  a Claude prompt for making the video. Built in two phases: **Phase 1** ships
+  the pages on sample data (nothing saved); **Phase 2** adds storage (Vercel
+  Blob), judgements, payment and review. See [DECISIONS.md](DECISIONS.md)
+  § 2026-09-30.
 
 ## NICE TO HAVE
 

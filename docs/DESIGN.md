@@ -245,8 +245,9 @@ word the page is actually about.
 2.2 stroke. Used for step and feature rows.
 
 **Header (V3)** — one row: the wordmark lockup (tagline under the wordmark,
-never allowed to shrink into the nav), the nav **Home · Arena · Leaderboard ·
-Nominate** with the current route as a lime pill, the sun/moon theme toggle,
+never allowed to shrink into the nav), the nav **Home · Arena · Demos ·
+Leaderboard · Nominate** with the current route as a lime pill (Demos stays
+lit on its sub-pages), the sun/moon theme toggle,
 and the lime "Enter the Arena ↗" pill (to `/submit`). About and Rules live in
 the footer. A search box appears in the reference mock but stays hidden until
 search exists (rule 10).
@@ -256,10 +257,23 @@ search exists (rule 10).
 > and highlights the active route with a small client island.
 
 **Footer (V3)** — the same on every page: lockup + social icons + copyright on
-the left; link columns Explore (Arena, Leaderboard, Nominate, Discover),
+the left; link columns Explore (Arena, Demos, Leaderboard, Nominate, Discover),
 Learn (About, Arena Rules) and Legal (Privacy Policy, Terms of Service,
 Refunds, Community Guidelines); and "Get the latest" with an email box on the
 right. Social icons appear only for accounts that exist.
+
+**Demos (V3)** — ported 1:1 from the reference mock's Demos views.
+`/demos` is one centred card: "Product drop #N", a 16:9 player with a lime
+progress bar and "N sec left", the product name and tagline, "Does this
+deserve hype?", two large buttons — **UNDERHYPED ⚡** (lime) and **NOT YET 🥱**
+(outline) — and "View product ↗". Voting swaps the buttons for "The internet
+has spoken": a lime split bar, two big percentages, judges, clicks and rank,
+then "Next demo →". Below the card, a "For makers" card carries the Claude
+prompt with a copy button. `/demos/top` reuses the Leaderboard's hero,
+filter chips, podium (#1 on lime) and ranked table, with ⚡ % as the score
+and a "Not ranked yet · needs 20 judges" section. `/demos/submit` is four
+numbered steps: product → 15-sec demo → $3 → review. Sub-navigation is a
+segmented pill (Judge · Top this week · Submit yours).
 
 **Aura and Hype icons (V3)** — Aura is always 🔥 followed by the number
 (`🔥 1555`); Hype is always ⚡ followed by the number. Neither emoji is used
@@ -345,6 +359,7 @@ page-by-page reinvention.
 
 | Surface | Route | V2 state |
 | ------- | ----- | -------- |
+| Demos | `/demos`, `/demos/top`, `/demos/submit` | judge loop + result card + makers card; podium + ranked table; 4-step submit |
 | Home | `/` | hero + #1 creator card + Top 10 This Week, weekly-drop email banner, Live on Underhyped (tabs) + Enter CTA, Live Feed + Featured battle, Nominate banner |
 | Arena | `/arena` | headline, battle pair, pulse row, CTA, stats bar, three-up, sponsor, Hottest 10, Live on Underhyped |
 | Leaderboard | `/leaderboard` | scope + category filters, top-3 podium, ranked table, load more |

@@ -227,6 +227,26 @@ week change = sum of the creator's Aura deltas over battles in the last 7 days
 - The Home "#1 card" is row one of this list. It is not the Main Character
   (that stays the daily #1 by Daily Heat) and is never labelled as such.
 
+## Demos
+
+The "Top demos this week" list for Underhyped Demos (added 2026-09-30, see
+[DECISIONS.md](DECISIONS.md) § 2026-09-30). Products are never given Aura —
+Aura belongs to people.
+
+```
+% underhyped = Underhyped judgements ÷ all judgements of that demo
+```
+
+- A demo needs **at least 20 judges** before it is ranked. Below that it is
+  listed as "Not ranked yet — needs N more judges".
+- Ranked demos are ordered by `% underhyped desc`, then by more judges.
+- Product clicks and the "today" trend are shown, never used for rank. The
+  $3 entry fee never affects rank.
+- One judgement per visitor session per demo (enforced in the database in
+  Phase 2).
+- Open for Phase 2: the counting window for "this week" (proposed: judgements
+  from the last 7 × 24h). Phase 1 ranks sample totals.
+
 ## Rank
 
 Rank is position by `aura desc`, among **ranked** creators only (see

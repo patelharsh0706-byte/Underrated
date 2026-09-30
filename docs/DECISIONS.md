@@ -1395,3 +1395,34 @@ light` so mobile browsers' own auto-dark (Chrome Android, Samsung Internet)
 cannot darken the day site — phones kept showing dark without it. The
 storage key moved from `uh-theme` to `uh-theme-v2`, so choices saved while
 the site followed the OS are ignored once and everyone starts on day.
+
+## 2026-09-30 — Underhyped Demos, a separate judging game for products
+
+Decision:
+Add Underhyped Demos: one 15-second product screen recording at a time,
+judged **Underhyped ⚡ / Not yet 🥱**. It is its own game on `/demos`, not
+part of the people battle, and its own ranking (RANKING.md § Demos):
+% underhyped among demos with 20+ judges, no invented score, no Aura.
+Makers upload a pre-recorded MP4/WebM (1280×720 16:9 landscape — the
+player's frame; other shapes play letterboxed with a warning — 15 s, 8 MB max, which keeps Vercel Blob
+transfer inside the free allowance, roughly 4,000 plays a month at ~2.5 MB),
+pay $3, and the operator reviews before it goes live. No live screen-sharing.
+Built frontend-first: Phase 1 ports the approved artifact prototype on sample
+data; Phase 2 adds storage, judgements, payment and review.
+
+Why:
+"15 seconds to make me care" forces makers to show the product, not pitch it —
+proof over self-promotion, the same idea as the battle. Products do not fit
+the people battle (you don't compare two tools side by side), so they get a
+single-item judgement instead. ⚡ keeps the icon rule: a product's score is
+Hype, never Aura.
+
+Consequences:
+"THE BATTLE IS THE PRODUCT" still holds for people; Demos is deliberately a
+second loop. The header gets a fifth link. Phase 2 must settle how the $3 is
+linked to the demo (API checkout vs static link) and how review happens.
+
+Rejected:
+Live screen-sharing (scheduling and moderation), links to 4-minute videos
+(no 15-second discipline), a 0–100 "Hype score" (opaque), putting demos
+inside the people battle (two different games in one loop).
