@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 
 import { creatorFieldsSchema } from "@/lib/creator-schema";
 import { insertCreator, linkPaymentToCreator, recordPayment } from "@/lib/db/queries";
+import { markDemoPaid } from "@/lib/demos/queries";
+import { demoIdFromMetadata } from "@/lib/demos/schemas";
 import { getDodoClient } from "@/lib/dodo-payments";
 
 export async function POST(request: Request) {
@@ -91,6 +93,19 @@ async function handleCompletedSubmission(payment: {
   // 3. Tie them together. A no-op when no creator exists for this payment —
   //    that row then shows up in the orphan list (creator_id IS NULL).
   await linkPaymentToCreator(payment.payment_id);
+
+  // 4. A $3 demo entry: the checkout link carried the demo's id as metadata.
+  //    After the ledger write, and wrapped, so it can never lose a payment.
+  //    If it doesn't mark anything, the operator matches by email instead.
+  const demoId = demoIdFromMetadata(payment.metadata);
+  if (demoId) {
+    try {
+      const marked = await markDemoPaid(demoId, payment.payment_id);
+      if (!marked) console.warn("Demo payment matched no unpaid submitted demo", payment.payment_id, demoId);
+    } catch (err) {
+      console.error("Failed to mark demo paid", payment.payment_id, demoId, err);
+    }
+  }
 }
 
 /** The validated form payload from payment metadata, or null if absent/invalid. */

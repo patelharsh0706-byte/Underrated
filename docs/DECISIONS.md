@@ -1506,3 +1506,31 @@ Consequences:
 Percentages from 10 judges move in 10-point steps, so early ranks are
 noisier. `MIN_JUDGES` in `src/lib/demos/rank.ts` is the single source; the
 Top page reads it instead of a hard-coded number.
+
+## 2026-10-01 — Demo payments link to their demo via Dodo metadata
+
+Decision:
+The $3 checkout link carries the demo's id as `metadata_demo_id` (Dodo turns
+any `metadata_*` query parameter on a static link into payment metadata) and
+pre-fills the maker's email. The webhook reads it back and sets
+`demos.paid_at` + `demos.dodo_payment_id`. The operator approves from the
+`demos` table alone.
+
+Why:
+Matching by email alone breaks when a maker pays with a different address,
+and `payments` couldn't tell a demo fee from an Arena entry fee. This needs
+no Dodo API call and no new table — `payments.metadata` already stores
+whatever Dodo sends.
+
+Consequences:
+The id sits in a URL the maker can edit; the worst case is paying $3 for
+someone else's submitted demo, so there is nothing to gain. The webhook only
+marks rows that are `submitted` and unpaid. Dodo's docs don't say whether
+the key arrives as `demo_id` or `metadata_demo_id`; the webhook accepts
+both. Test-mode payments can't reach a localhost webhook, so `paid_at` is
+only proven end to end on a deployed URL.
+
+Rejected:
+Dynamic checkout sessions via the Dodo API (one per demo) — more code and
+another failure point for a $3 fee. A `demo_id` column on `payments` — the
+operator works in `demos`, so the "paid" mark belongs there.

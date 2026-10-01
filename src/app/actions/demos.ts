@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { isMockMode } from "@/lib/db/mock-data";
 import { demoClicks, demoJudgements, demos } from "@/lib/db/schema";
 import { getDemoTally } from "@/lib/demos/queries";
-import { clickDemoSchema, createDemoSchema, isOurDemoBlob, judgeDemoSchema, type CreateDemoInput } from "@/lib/demos/schemas";
+import { clickDemoSchema, createDemoSchema, demoCheckoutUrl, isOurDemoBlob, judgeDemoSchema, type CreateDemoInput } from "@/lib/demos/schemas";
 import { demoPaymentLink } from "@/lib/env";
 import { getOrCreateVoterSession } from "@/lib/session";
 
@@ -18,7 +18,7 @@ const DEMOS_PER_SESSION_PER_DAY = 3;
 
 export interface CreateDemoResult {
   error?: string;
-  /** The static Dodo $3 link to send the maker to next. */
+  /** The $3 Dodo checkout to send the maker to next. */
   payUrl?: string;
 }
 
@@ -57,7 +57,7 @@ export async function createDemo(input: CreateDemoInput): Promise<CreateDemoResu
       .where(and(eq(demos.voterSession, voterSession), gte(demos.createdAt, dayStart)));
     if (today >= DEMOS_PER_SESSION_PER_DAY) return { error: "That’s 3 demos today from here — come back tomorrow." };
 
-    await db.insert(demos).values({
+    const [row] = await db.insert(demos).values({
       productName: d.productName,
       tagline: d.tagline,
       productUrl: d.productUrl,
@@ -69,8 +69,10 @@ export async function createDemo(input: CreateDemoInput): Promise<CreateDemoResu
       videoHeight: d.videoHeight,
       durationMs: d.durationMs,
       voterSession,
-    });
-    return { payUrl };
+    }).returning({ id: demos.id });
+    // The id rides along as payment metadata so the webhook can mark this
+    // demo paid (DATABASE.md § demos).
+    return { payUrl: demoCheckoutUrl(payUrl, row.id, d.contactEmail) };
   } catch (error) {
     console.error("createDemo failed", error);
     return { error: "Couldn’t save your demo just now — try again in a minute." };

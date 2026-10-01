@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, eq, gte, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { demoClicks, demoJudgements, demos } from "@/lib/db/schema";
@@ -98,4 +98,18 @@ export async function getDemoTally(demoId: string): Promise<{ judges: number; un
     .from(demoClicks)
     .where(and(eq(demoClicks.demoId, demoId), gte(demoClicks.createdAt, week)));
   return { judges: j?.judges ?? 0, underhyped: j?.underhyped ?? 0, clicks: c?.clicks ?? 0 };
+}
+
+/**
+ * Marks a demo paid from the Dodo webhook. Only a still-'submitted', unpaid
+ * demo changes, so a retried webhook or an edited id can't touch anything
+ * else. Returns whether a row was marked.
+ */
+export async function markDemoPaid(demoId: string, dodoPaymentId: string): Promise<boolean> {
+  const rows = await db
+    .update(demos)
+    .set({ paidAt: new Date(), dodoPaymentId })
+    .where(and(eq(demos.id, demoId), eq(demos.status, "submitted"), isNull(demos.paidAt)))
+    .returning({ id: demos.id });
+  return rows.length > 0;
 }

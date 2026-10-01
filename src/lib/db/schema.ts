@@ -180,8 +180,8 @@ export const demos = pgTable(
     tagline: text("tagline").notNull(),
     productUrl: text("product_url").notNull(),
     category: text("category").notNull(),
-    // Lower-cased; how the operator matches the $3 Dodo payment
-    // (payments.customer_email) — the static payment link carries no details.
+    // Lower-cased; pre-filled at checkout, and the fallback match against
+    // payments.customer_email when paid_at stays null.
     contactEmail: text("contact_email").notNull(),
     videoUrl: text("video_url").notNull(),
     videoBytes: integer("video_bytes").notNull(),
@@ -192,6 +192,10 @@ export const demos = pgTable(
     // the operator in the Supabase Table Editor. Only approved demos show.
     status: text("status").notNull().default("submitted"),
     voterSession: text("voter_session"),
+    // Set by the Dodo webhook from the payment's metadata_demo_id
+    // (DATABASE.md § demos). Null until the $3 payment arrives.
+    paidAt: timestamptz("paid_at"),
+    dodoPaymentId: text("dodo_payment_id").unique(),
     createdAt: timestamptz("created_at").notNull().defaultNow(),
   },
   (table) => [

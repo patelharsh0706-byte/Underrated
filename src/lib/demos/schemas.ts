@@ -47,3 +47,26 @@ export function isOurDemoBlob(url: string): boolean {
     return false;
   }
 }
+
+/**
+ * The $3 checkout link for one demo: the static Dodo link plus the demo's id
+ * as payment metadata and the maker's email pre-filled (DATABASE.md § demos).
+ */
+export function demoCheckoutUrl(link: string, demoId: string, email: string): string {
+  const url = new URL(link);
+  url.searchParams.set("metadata_demo_id", demoId);
+  url.searchParams.set("email", email);
+  return url.toString();
+}
+
+/**
+ * The demo a Dodo payment paid for, read from its metadata — or null.
+ * Dodo's docs don't say whether the `metadata_` prefix is kept, so both
+ * shapes are accepted; anything that isn't a uuid is ignored.
+ */
+export function demoIdFromMetadata(metadata: unknown): string | null {
+  if (!metadata || typeof metadata !== "object") return null;
+  const m = metadata as Record<string, unknown>;
+  const parsed = z.uuid().safeParse(m.demo_id ?? m.metadata_demo_id);
+  return parsed.success ? parsed.data : null;
+}

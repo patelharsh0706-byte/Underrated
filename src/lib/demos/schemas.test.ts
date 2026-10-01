@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { clickDemoSchema, createDemoSchema, isOurDemoBlob, judgeDemoSchema } from "./schemas";
+import { clickDemoSchema, createDemoSchema, demoCheckoutUrl, demoIdFromMetadata, isOurDemoBlob, judgeDemoSchema } from "./schemas";
 
 const valid = {
   productName: "MetricShots",
@@ -48,5 +48,32 @@ describe("isOurDemoBlob", () => {
     expect(isOurDemoBlob("https://abc.public.blob.vercel-storage.com/avatars/x.jpg")).toBe(false);
     expect(isOurDemoBlob("https://evil.example.com/demos/x.mp4")).toBe(false);
     expect(isOurDemoBlob("not a url")).toBe(false);
+  });
+});
+
+const DEMO_ID = "9596990d-aeec-4cb3-97cf-1969b6d6c068";
+
+describe("demoCheckoutUrl — DATABASE.md § demos", () => {
+  it("keeps the link's own params and adds the demo id and email", () => {
+    const url = new URL(demoCheckoutUrl("https://test.checkout.dodopayments.com/buy/pdt_X?quantity=1", DEMO_ID, "maker+1@site.com"));
+    expect(url.origin + url.pathname).toBe("https://test.checkout.dodopayments.com/buy/pdt_X");
+    expect(url.searchParams.get("quantity")).toBe("1");
+    expect(url.searchParams.get("metadata_demo_id")).toBe(DEMO_ID);
+    expect(url.searchParams.get("email")).toBe("maker+1@site.com");
+  });
+});
+
+describe("demoIdFromMetadata", () => {
+  it("reads the id with or without Dodo's metadata_ prefix", () => {
+    expect(demoIdFromMetadata({ demo_id: DEMO_ID })).toBe(DEMO_ID);
+    expect(demoIdFromMetadata({ metadata_demo_id: DEMO_ID })).toBe(DEMO_ID);
+  });
+
+  it("ignores missing, junk and non-object metadata", () => {
+    expect(demoIdFromMetadata(null)).toBeNull();
+    expect(demoIdFromMetadata({})).toBeNull();
+    expect(demoIdFromMetadata({ demo_id: "1; drop table demos" })).toBeNull();
+    expect(demoIdFromMetadata({ creator_data: "{}" })).toBeNull();
+    expect(demoIdFromMetadata("demo_id")).toBeNull();
   });
 });

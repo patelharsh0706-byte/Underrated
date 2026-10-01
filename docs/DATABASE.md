@@ -265,12 +265,22 @@ duration_ms     integer not null     ≤ 15,500, read in the browser
 status          text not null        'submitted' | 'approved' | 'rejected' | 'hidden'
                                      default 'submitted'
 voter_session   text                 the submitter's anonymous session — rate limit only
+paid_at         timestamptz          null until the webhook sees its $3 payment
+dodo_payment_id text unique          the payment that paid for it; null until then
 created_at      timestamptz
 ```
 
 - A demo is shown to judges **only when `status = 'approved'`**. The operator
-  sets that in the Supabase Table Editor after (1) seeing a $3 row in
-  `payments` with the same email and (2) watching the video.
+  sets that in the Supabase Table Editor after (1) seeing `paid_at` filled in
+  and (2) watching the video.
+- **How a demo gets marked paid:** `createDemo` saves the row first, then
+  sends the maker to the static Dodo link with `metadata_demo_id=<id>` and
+  `email=<contact_email>` added. Dodo returns that metadata on the payment;
+  the webhook (on `payment.succeeded`) sets `paid_at` + `dodo_payment_id` on
+  that demo, only while it is still `submitted` and not yet paid. The
+  `payments` row is written regardless, with the raw metadata, so a failed
+  link never loses money from the ledger. If `paid_at` stays null, fall back
+  to matching `contact_email` against `payments.customer_email`.
 - "Product drop #N" is derived, never stored: N = position among approved
   demos by `created_at`, plus a fixed offset so the first real drop reads #1.
 - Width, height and duration are what the browser reported. The server
