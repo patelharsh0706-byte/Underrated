@@ -17,6 +17,65 @@ Status: **FIXED** (shipped and verified) · **OPEN** (known, not yet fixed).
 
 ---
 
+## 2026-10-01 — "View product" overlapped the vote buttons on live demos · FIXED
+
+**Symptom.** On underhyped.wtf/demos the "View product ↗" pill sat on top of
+the bottom edge of the UNDERHYPED / NOT YET buttons, on desktop and phone.
+
+**Cause.** For a real demo the pill is an `<a>` (it links to the product); in
+preview mode it is a `<button>`. `.dmVisit` set `margin-top: 14px` but no
+`display`, and an `<a>` is `inline` — vertical margins don't apply to inline
+boxes and their padding overlaps the line above. A `<button>` is
+`inline-block` by default, so preview mode looked right. Measured on
+production: `display: inline`, the pill started **8 px above** the buttons'
+bottom edge.
+
+**Fix.** `.dmVisit` is `display: inline-flex` (plus `text-decoration: none`
+for the link). Same measurement with the fix applied: a **14 px** gap at
+1280 px and 390 px.
+
+**Prevention.** `src/components/demos/demos-css.test.ts` fails if `.dmVisit`
+loses its explicit box display. When one class styles both a link and a
+button, give it a `display`. Check UI that renders differently when live on a
+real (non-preview) page before shipping. **Class of bug:** "it looked right in
+the source" — the preview path rendered a different element than production.
+
+## 2026-10-01 — Demo submissions failed on production: Blob token, missing demo link, blank Dodo settings · FIXED
+
+**Symptom.** After Demos went live, "Pay $3 & submit" failed in turn with
+"Upload failed — check your connection", then "Demo payments aren't switched
+on yet", then (after the API-checkout change) "Couldn't start checkout".
+
+**Cause.** Three production settings, one after another — no code bug:
+1. `BLOB_READ_WRITE_TOKEN` was listed on Vercel but the running site couldn't
+   read a value (`handleUpload` answered "No read-write token found"). The
+   store had been reconnected to OIDC (`BLOB_STORE_ID`) a week earlier; photo
+   uploads use OIDC, client uploads need the static token.
+2. `DODO_PAYMENTS_DEMO_LINK` existed in no Vercel project at all — confirmed
+   through the Vercel API, although it had been "saved" in the dashboard.
+3. `DODO_PAYMENTS_WEBHOOK_KEY`, `DODO_PAYMENTS_ENVIRONMENT` and
+   `DODO_PAYMENTS_SUBMISSION_PRODUCT_ID` were attached to Production with
+   **empty values** since 2026-09-01 (runtime log: Zod "missing" / "invalid
+   option"). Nothing called them until the demo checkout did — and the payment
+   webhook loads the same settings, so every real webhook had been crashing,
+   which is why `payments` stayed empty after 2026-09-20.
+
+Every failure showed the maker one vague message, so each round took a guess.
+
+**Fix.** Re-saved the Blob token and redeployed; added the demo setting
+through the Vercel CLI; filled the three blank Dodo values (live mode, the
+live product id, the live endpoint's signing secret); redeployed. Verified in
+a real browser on production: upload → live Dodo checkout session, no row
+saved, no errors in `vercel logs`.
+
+**Prevention.** Before merging anything that adds or starts using an env var,
+run `vercel env ls production` **and** read the runtime log after the deploy —
+a listed variable can still be empty. Server errors log the real reason
+(`createDemo: couldn't start Dodo checkout …`), so read `vercel logs
+--environment production --level error` before guessing. `vercel env pull`
+writes Secret values as blanks into `.env.local` — don't pull over a working
+local file. **Class of bug:** a config value that fails silently.
+
 ## 2026-09-26 — Phones still opened the site in dark after "day is the default" · FIXED
 
 **Symptom.** After `9067942` made day the default on every page, the operator's

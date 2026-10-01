@@ -1160,7 +1160,14 @@ button.btnMore {
   border-color: var(--ink-faint);
 }
 
+/* Live demos render this as an <a> (inline by default), sample ones as a
+   <button>. Without an explicit display the link ignores margin-top and rides
+   up over the vote buttons (ISSUES.md § 2026-10-01). */
 .dmVisit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
   margin-top: 14px;
   font: 600 14px var(--font-geist-sans);
   color: var(--ink);
