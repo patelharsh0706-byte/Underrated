@@ -14,9 +14,9 @@ describe("pctUnderhyped", () => {
 });
 
 describe("rankDemos — RANKING.md § Demos", () => {
-  it("needs at least 20 judges to be ranked", () => {
-    expect(MIN_JUDGES).toBe(20);
-    const { ranked, unranked } = rankDemos([d("few", 19, 19), d("enough", 20, 10)]);
+  it("needs at least 10 judges to be ranked", () => {
+    expect(MIN_JUDGES).toBe(10);
+    const { ranked, unranked } = rankDemos([d("few", 9, 9), d("enough", 10, 5)]);
     expect(ranked.map((r) => r.id)).toEqual(["enough"]);
     expect(unranked.map((r) => r.id)).toEqual(["few"]);
   });
@@ -38,8 +38,8 @@ describe("rankDemos — RANKING.md § Demos", () => {
   });
 
   it("tells unranked demos how many more judges they need, most-judged first", () => {
-    const { unranked } = rankDemos([d("x", 3, 3), d("y", 12, 9)]);
-    expect(unranked.map((u) => [u.id, u.needs])).toEqual([["y", 8], ["x", 17]]);
+    const { unranked } = rankDemos([d("x", 3, 3), d("y", 7, 5)]);
+    expect(unranked.map((u) => [u.id, u.needs])).toEqual([["y", 3], ["x", 7]]);
   });
 
   it("does not change the list it was given", () => {
@@ -55,7 +55,7 @@ describe("queueOrder — RANKING.md § Demos", () => {
   it("skips demos this visitor already judged", () => {
     expect(queueOrder([q("a", 1, "2026-10-01"), q("b", 1, "2026-10-01")], ["a"])).toEqual(["b"]);
   });
-  it("puts the fewest-judged first so new demos reach 20 quickly", () => {
+  it("puts the fewest-judged first so new demos reach 10 quickly", () => {
     expect(queueOrder([q("busy", 40, "2026-10-01"), q("new", 2, "2026-10-01")], [])).toEqual(["new", "busy"]);
   });
   it("breaks a tie with the newest demo", () => {

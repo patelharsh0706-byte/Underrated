@@ -237,21 +237,22 @@ Aura belongs to people.
 % underhyped = Underhyped judgements ÷ all judgements of that demo
 ```
 
-- A demo needs **at least 20 judges** before it is ranked. Below that it is
-  listed as "Not ranked yet — needs N more judges".
+- A demo needs **at least 10 judges** before it is ranked. Below that it is
+  listed as "Not ranked yet — needs N more judges". (Changed 2026-10-01: was
+  20 — too slow for a queue that starts with a handful of judges a day.)
 - Ranked demos are ordered by `% underhyped desc`, then by more judges.
 - Product clicks and the "today" trend are shown, never used for rank. The
   $3 entry fee never affects rank.
 - One judgement per visitor session per demo, enforced by the database
   (`demo_judgements` unique on demo + session).
-- **Window: the last 7 × 24h.** Both the % and the 20-judge minimum count
+- **Window: the last 7 × 24h.** Both the % and the 10-judge minimum count
   only judgements from the last 7 days (decided 2026-10-01), so new demos can
   climb and old ones fade. The result card shows the same 7-day numbers.
 - Only `approved` demos are ranked or shown.
 - **"Today" column:** judgements received in the last 24h, shown as "+N".
   It is a pulse, never used for rank.
 - **Judging queue order:** approved demos this visitor has not judged, fewest
-  7-day judges first (so new demos reach 20 judges quickly), then newest.
+  7-day judges first (so new demos reach 10 judges quickly), then newest.
 
 ## Rank
 

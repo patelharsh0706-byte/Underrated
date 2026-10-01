@@ -77,6 +77,19 @@ export async function createDemo(input: CreateDemoInput): Promise<CreateDemoResu
   }
 }
 
+/**
+ * Preview mode only: the payment link, so the Submit page can still walk
+ * through Dodo's checkout. Uploads and saves nothing.
+ */
+export async function previewDemoCheckout(): Promise<CreateDemoResult> {
+  if (!isMockMode()) return { error: "Not in preview mode." };
+  try {
+    return { payUrl: demoPaymentLink() };
+  } catch {
+    return { error: "Set DODO_PAYMENTS_DEMO_LINK to try checkout in preview." };
+  }
+}
+
 export interface JudgeDemoResult {
   error?: string;
   judges?: number;

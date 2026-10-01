@@ -1,8 +1,8 @@
 // Underhyped Demos ranking — RANKING.md § Demos. A filter, then a sort:
-// at least 20 judges to be ranked; then % underhyped (highest first), with
+// at least 10 judges to be ranked; then % underhyped (highest first), with
 // more judges breaking a tie. No invented score, no Aura, clicks never count.
 
-export const MIN_JUDGES = 20;
+export const MIN_JUDGES = 10;
 
 export interface DemoTally {
   id: string;
@@ -33,7 +33,7 @@ export function rankDemos<T extends DemoTally>(demos: readonly T[]): { ranked: R
 
 /**
  * Judging queue — RANKING.md § Demos: demos this visitor hasn't judged,
- * fewest 7-day judges first (so new demos reach 20 quickly), then newest.
+ * fewest 7-day judges first (so new demos reach 10 quickly), then newest.
  */
 export function queueOrder<T extends { id: string; judges: number; createdAt: string }>(all: readonly T[], judged: readonly string[]): string[] {
   const seen = new Set(judged);

@@ -1491,3 +1491,18 @@ the npm that writes `package-lock.json` locally; the first run on Node 22
 Rejected:
 A read-only production database key in GitHub secrets so CI builds against
 real data — more to protect, and the build doesn't need real rows.
+
+## 2026-10-01 — Demos rank at 10 judges, not 20
+
+Decision:
+A demo needs 10 judges in the last 7 days to be ranked (was 20). Everything
+else in RANKING.md § Demos is unchanged.
+
+Why:
+At launch the queue has few judges a day; 20 would leave the Top page empty
+for days. 10 still keeps one or two votes from deciding a rank.
+
+Consequences:
+Percentages from 10 judges move in 10-point steps, so early ranks are
+noisier. `MIN_JUDGES` in `src/lib/demos/rank.ts` is the single source; the
+Top page reads it instead of a hard-coded number.

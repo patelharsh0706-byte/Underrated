@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { rankDemos, type RankedDemo, type UnrankedDemo } from "@/lib/demos/rank";
+import { MIN_JUDGES, rankDemos, type RankedDemo, type UnrankedDemo } from "@/lib/demos/rank";
 
 import { useDemos } from "./demos-state";
 import { DemosTabs } from "./demos-tabs";
@@ -97,7 +97,7 @@ function Row({ d, rank, you }: { d: RankedDemo<Tally> | UnrankedDemo<Tally>; ran
       ) : (
         <>
           <span className={s.dmNeeds}>{"needs" in d ? d.needs : 0} more judges</span>
-          <span className={s.rankTrend}>{d.judges}/20</span>
+          <span className={s.rankTrend}>{d.judges}/{MIN_JUDGES}</span>
         </>
       )}
     </div>
@@ -123,7 +123,7 @@ export function DemosTop() {
         <h1>
           Top <span className={s.swipe}>demos.</span>
         </h1>
-        <p className={s.heroSub}>Ranked by the share of people who said Underhyped&nbsp;⚡. A demo needs 20 judges before it gets a rank.</p>
+        <p className={s.heroSub}>Ranked by the share of people who said Underhyped&nbsp;⚡. A demo needs {MIN_JUDGES} judges before it gets a rank.</p>
       </section>
 
       <DemosTabs center />
@@ -169,7 +169,7 @@ export function DemosTop() {
 
         {unranked.length > 0 && (
           <div className={s.dmUnranked}>
-            <p className={s.dmUnrankedH}>Not ranked yet · needs 20 judges</p>
+            <p className={s.dmUnrankedH}>Not ranked yet · needs {MIN_JUDGES} judges</p>
             <div className={`${s.ranks} ${s.dmRanks}`}>
               {unranked.map((d) => (
                 <Row key={d.id} d={d} rank={null} you={!!voted[d.id]} />

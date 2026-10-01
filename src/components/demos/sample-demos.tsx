@@ -95,7 +95,7 @@ export const QUEUE: SampleDemo[] = [
   {
     id: "tabby", drop: 41, name: "Tabby", tag: "Close 40 tabs, keep the three that matter.",
     host: "tabby.tools", color: "#2F6BE0", grad: "linear-gradient(135deg,#2F6BE0,#6B5BD6)",
-    cat: "Productivity", trend: 0, judges: 12, underhyped: 9, clicks: 4,
+    cat: "Productivity", trend: 0, judges: 6, underhyped: 5, clicks: 4,
     scenes: [
       ["Problem", <>
         <p className={s.dmH}>43 tabs open.</p>
@@ -137,7 +137,7 @@ export const QUEUE: SampleDemo[] = [
 export const OTHERS: SampleDemo[] = [
   { id: "cueboard", name: "Cueboard", tag: "A teleprompter that follows your voice.", host: "cueboard.app", color: "#C4399E", cat: "Creator tools", trend: -1, judges: 510, underhyped: 413, clicks: 88 },
   { id: "mapstack", name: "Mapstack", tag: "Plan a trip by dragging places onto days.", host: "mapstack.app", color: "#1D8E45", cat: "Productivity", trend: 2, judges: 340, underhyped: 252, clicks: 61 },
-  { id: "formfly", name: "Formfly", tag: "Forms that fill themselves from a pasted link.", host: "formfly.app", color: "#E0A100", cat: "Productivity", trend: 1, judges: 18, underhyped: 16, clicks: 3 },
+  { id: "formfly", name: "Formfly", tag: "Forms that fill themselves from a pasted link.", host: "formfly.app", color: "#E0A100", cat: "Productivity", trend: 1, judges: 8, underhyped: 7, clicks: 3 },
 ];
 
 export const CATEGORIES = ["Dev tools", "Creator tools", "Productivity", "Finance"] as const;

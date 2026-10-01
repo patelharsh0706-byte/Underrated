@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { upload } from "@vercel/blob/client";
 
-import { createDemo } from "@/app/actions/demos";
+import { createDemo, previewDemoCheckout } from "@/app/actions/demos";
 import { checkClipDuration, checkClipFile, checkClipShape } from "@/lib/demos/check-clip";
 import { DEMO_CATEGORIES } from "@/lib/demos/schemas";
 
@@ -18,7 +18,7 @@ import s from "./demos.module.css";
 // file uploads straight to Vercel Blob, createDemo() stores it as
 // 'submitted', and the maker pays $3 on the static Dodo link, which brings
 // them back here with ?paid=1. Sample mode (PREVIEW_MOCK=1) uploads nothing.
-const STEPS = ["Product", "15-sec demo", "$3", "Review"];
+const STEPS = ["Product", "15-sec demo", "Payment", "Review"];
 const URL_RE = /^https?:\/\/[^\s.]+\.[^\s]{2,}/i;
 const BARE_RE = /^[^\s.]+\.[a-z]{2,}(\/\S*)?$/i;
 
@@ -110,6 +110,26 @@ export function DemosSubmit({ paid = false }: { paid?: boolean }) {
     setStep(0);
   }
 
+  function goToCheckout(payUrl: string) {
+    setBusy("Taking you to checkout…");
+    const back = `${window.location.origin}/demos/submit?paid=1`;
+    // External Dodo checkout, not an internal route — a full navigation is right here.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+    window.location.assign(`${payUrl}${payUrl.includes("?") ? "&" : "?"}redirect_url=${encodeURIComponent(back)}`);
+  }
+
+  // Preview mode: same checkout, nothing uploaded or saved.
+  async function previewCheckout() {
+    setPayErr("");
+    setBusy("Taking you to checkout…");
+    const res = await previewDemoCheckout();
+    if (res.error || !res.payUrl) {
+      setBusy(null);
+      return setPayErr(res.error ?? "Couldn’t open checkout — try again.");
+    }
+    goToCheckout(res.payUrl);
+  }
+
   async function payAndSubmit() {
     const p = picked.current;
     if (!p) return setPayErr("Pick your video again — it wasn’t kept.");
@@ -140,11 +160,7 @@ export function DemosSubmit({ paid = false }: { paid?: boolean }) {
         setBusy(null);
         return setPayErr(res.error ?? "Couldn’t save your demo — try again.");
       }
-      setBusy("Taking you to checkout…");
-      const back = `${window.location.origin}/demos/submit?paid=1`;
-      // External Dodo checkout, not an internal route — a full navigation is right here.
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-      window.location.assign(`${res.payUrl}${res.payUrl.includes("?") ? "&" : "?"}redirect_url=${encodeURIComponent(back)}`);
+      goToCheckout(res.payUrl);
     } catch (error) {
       setBusy(null);
       setPayErr(error instanceof Error && /size|type/i.test(error.message) ? "That file was refused — MP4/WebM under 8 MB only." : "Upload failed — check your connection and try again.");
@@ -262,7 +278,7 @@ export function DemosSubmit({ paid = false }: { paid?: boolean }) {
               </button>
               )}
               <button className={s.dmNext} type="button" disabled={!ready} onClick={() => setStep(2)}>
-                Next: $3 <span aria-hidden="true">→</span>
+                Next: payment <span aria-hidden="true">→</span>
               </button>
             </div>
           </div>
@@ -277,7 +293,7 @@ export function DemosSubmit({ paid = false }: { paid?: boolean }) {
               </p>
               <p className={s.dmSmall}>One time. It pays for review and hosting, and buys nothing about rank — the internet decides that.</p>
             </div>
-            <p className={s.dmProto}>{live ? "You’ll pay on Dodo’s secure checkout, then come straight back here." : "Preview — no card is charged yet."}</p>
+            <p className={s.dmProto}>{live ? "You’ll pay on Dodo’s secure checkout, then come straight back here." : "Preview — Dodo test checkout. Nothing is uploaded or saved."}</p>
             {busy && (
               <p className={s.dmProto} role="status">
                 {busy}
@@ -292,7 +308,7 @@ export function DemosSubmit({ paid = false }: { paid?: boolean }) {
               <button className={s.dmGhost} type="button" onClick={() => setStep(1)}>
                 ← Back
               </button>
-              <button className={s.dmNext} type="button" disabled={!!busy} onClick={() => (live ? payAndSubmit() : setStep(3))}>
+              <button className={s.dmNext} type="button" disabled={!!busy} onClick={() => (live ? payAndSubmit() : previewCheckout())}>
                 Pay $3 &amp; submit <span aria-hidden="true">→</span>
               </button>
             </div>

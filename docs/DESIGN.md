@@ -271,8 +271,8 @@ has spoken": a lime split bar, two big percentages, judges, clicks and rank,
 then "Next demo →". Below the card, a "For makers" card carries the Claude
 prompt with a copy button. `/demos/top` reuses the Leaderboard's hero,
 filter chips, podium (#1 on lime) and ranked table, with ⚡ % as the score
-and a "Not ranked yet · needs 20 judges" section. `/demos/submit` is four
-numbered steps: product → 15-sec demo → $3 → review. Sub-navigation is a
+and a "Not ranked yet · needs 10 judges" section. `/demos/submit` is four
+numbered steps: product → 15-sec demo → payment → review. Sub-navigation is a
 segmented pill (Judge · Top this week · Submit yours).
 
 **Aura and Hype icons (V3)** — Aura is always 🔥 followed by the number
