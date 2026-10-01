@@ -1459,3 +1459,34 @@ Rejected:
 API checkout with metadata (automatic match) — not chosen for now; the old
 version stays in git at `d422c37` if manual matching becomes a chore. An
 admin review page — needs auth; later if volume grows.
+
+## 2026-10-01 — CI on GitHub Actions, secret-free
+
+Decision:
+Every push (any branch) and every pull request into `main` runs four checks
+on GitHub Actions, in `.github/workflows/ci.yml`: typecheck → lint → tests →
+production build. They are the four checks AGENTS.md already requires before
+work is called done. The build runs with `PREVIEW_MOCK=1` and **no secrets**:
+CI never holds a database URL, Blob token or payment key. `main` is protected
+by a branch rule that requires the CI check to pass before a pull request can
+merge; the habit becomes branch → PR → green → merge, never a direct push.
+
+Why:
+Vercel builds on every push but never runs lint or tests, so a failing test
+(for example the `color-scheme` guard from ISSUES.md § 2026-09-26) could ship.
+The checks also depended on someone remembering to run them. Keeping CI
+secret-free means nothing sensitive can leak from a workflow log or a fork.
+
+Consequences:
+The database client (`src/lib/db/index.ts`) now connects on the first query,
+not at import: a clean checkout with no `.env` failed the build because merely
+importing it read `DATABASE_URL`. Pages that query while the site is built
+(`sitemap.ts`, `/sponsor`) return sample or fixed data in preview mode, the
+same pattern `/arena` and `/leaderboard` already use. Tests that need a real
+database still don't exist; CI cannot catch query bugs like the `${demos.id}`
+one found in the Demos end-to-end test. Node 22 in CI matches Vercel's
+default. A run takes about 2–3 minutes, well inside GitHub's free minutes.
+
+Rejected:
+A read-only production database key in GitHub secrets so CI builds against
+real data — more to protect, and the build doesn't need real rows.

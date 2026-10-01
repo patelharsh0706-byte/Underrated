@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import { SponsorForm } from "@/components/sponsor/sponsor-form";
+import { isMockMode } from "@/lib/db/mock-data";
 import { getActiveSponsorship, getNextSponsorshipStart } from "@/lib/db/queries";
 
 // Availability changes when someone buys the slot — same reasoning as
@@ -16,10 +17,11 @@ function formatDate(date: Date): string {
 }
 
 export default async function SponsorPage() {
-  const [active, nextStart] = await Promise.all([
-    getActiveSponsorship(),
-    getNextSponsorshipStart(),
-  ]);
+  // Preview mode (and the secret-free CI build) has no database: show the
+  // slot as free rather than querying.
+  const [active, nextStart] = isMockMode()
+    ? [null, new Date()]
+    : await Promise.all([getActiveSponsorship(), getNextSponsorshipStart()]);
 
   const isBookedNow = active !== null;
 

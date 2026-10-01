@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { db } from "@/lib/db";
+import { isMockMode } from "@/lib/db/mock-data";
 import { creators } from "@/lib/db/schema";
 
 // Same canonical host as metadataBase in layout.tsx.
@@ -26,6 +27,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${SITE_URL}/privacy`, changeFrequency: "yearly", priority: 0.2 },
     { url: `${SITE_URL}/refunds`, changeFrequency: "yearly", priority: 0.2 },
   ];
+
+  // Preview mode (PREVIEW_MOCK=1 — local and CI) has no database: list the
+  // fixed routes only (DECISIONS.md § 2026-10-01 "CI on GitHub Actions").
+  if (isMockMode()) return staticRoutes;
 
   const rows = await db
     .select({ username: creators.username, createdAt: creators.createdAt })
