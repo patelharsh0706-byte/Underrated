@@ -14,10 +14,11 @@ import { useDemos } from "./demos-state";
 import { DemosTabs } from "./demos-tabs";
 import s from "./demos.module.css";
 
-// Submit yours — four steps, ported from the prototype. Live (Phase 2): the
-// file uploads straight to Vercel Blob, createDemo() stores it as
-// 'submitted', and the maker pays $3 on the static Dodo link, which brings
-// them back here with ?paid=1. Sample mode (PREVIEW_MOCK=1) uploads nothing.
+// Submit yours — four steps, ported from the prototype. Live: the file uploads
+// straight to Vercel Blob, createDemo() checks it and opens a $3 Dodo
+// checkout, which brings the maker back here with ?paid=1. The demo is saved
+// by the webhook only once the payment succeeds (DATABASE.md § demos).
+// Sample mode (PREVIEW_MOCK=1) uploads and saves nothing.
 const STEPS = ["Product", "15-sec demo", "Payment", "Review"];
 const URL_RE = /^https?:\/\/[^\s.]+\.[^\s]{2,}/i;
 const BARE_RE = /^[^\s.]+\.[a-z]{2,}(\/\S*)?$/i;
@@ -112,10 +113,9 @@ export function DemosSubmit({ paid = false }: { paid?: boolean }) {
 
   function goToCheckout(payUrl: string) {
     setBusy("Taking you to checkout…");
-    const back = `${window.location.origin}/demos/submit?paid=1`;
-    // External Dodo checkout, not an internal route — a full navigation is right here.
-    // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-    window.location.assign(`${payUrl}${payUrl.includes("?") ? "&" : "?"}redirect_url=${encodeURIComponent(back)}`);
+    // External Dodo checkout, not an internal route — a full navigation is right
+    // here. The session itself sends the maker back to /demos/submit?paid=1.
+    window.location.assign(payUrl);
   }
 
   // Preview mode: same checkout, nothing uploaded or saved.
@@ -143,7 +143,7 @@ export function DemosSubmit({ paid = false }: { paid?: boolean }) {
         contentType: p.file.type || (ext === "webm" ? "video/webm" : "video/mp4"),
         onUploadProgress: ({ percentage }) => setBusy(`Uploading your demo… ${Math.round(percentage)}%`),
       });
-      setBusy("Saving…");
+      setBusy("Checking your demo…");
       const res = await createDemo({
         productName: name,
         tagline: tag,
@@ -197,7 +197,7 @@ export function DemosSubmit({ paid = false }: { paid?: boolean }) {
               if (!tag.trim()) return setErr1("Add a one-line tagline — what does it do?");
               if (!URL_RE.test(url.trim()) && !BARE_RE.test(url.trim())) return setErr1("That URL looks off — try something like https://yourproduct.com");
               if (!category) return setErr1("Pick a category.");
-              if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setErr1("Add the email you’ll pay with — it’s how we match your $3.");
+              if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setErr1("Add your email — it’s filled in at checkout and how we reach you.");
               setErr1("");
               setStep(1);
             }}
@@ -220,7 +220,7 @@ export function DemosSubmit({ paid = false }: { paid?: boolean }) {
               ))}
             </select>
             <label htmlFor="dm-f-email">
-              Your email <small>(use the one you’ll pay with — it’s how we match your $3)</small>
+              Your email <small>(filled in at checkout — we’ll write if there’s a problem)</small>
             </label>
             <input id="dm-f-email" type="email" inputMode="email" placeholder="you@yourproduct.com" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             <p className={s.dmErr} role="status">

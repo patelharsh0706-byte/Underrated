@@ -255,8 +255,7 @@ product_name    text not null        ≤ 40 chars
 tagline         text not null        ≤ 60 chars, one line
 product_url     text not null        normalized https URL
 category        text not null        'Dev tools' | 'Creator tools' | 'Productivity' | 'Finance'
-contact_email   text not null        lower-cased; how the operator matches the
-                                     $3 Dodo payment (payments.customer_email)
+contact_email   text not null        lower-cased; pre-filled as the checkout email
 video_url       text not null        public Vercel Blob URL (demos/…)
 video_bytes     integer not null     ≤ 8 MB (8,388,608)
 video_width     integer              pixels, read in the browser
@@ -264,29 +263,36 @@ video_height    integer              pixels, read in the browser
 duration_ms     integer not null     ≤ 15,500, read in the browser
 status          text not null        'submitted' | 'approved' | 'rejected' | 'hidden'
                                      default 'submitted'
-voter_session   text                 the submitter's anonymous session — rate limit only
-paid_at         timestamptz          null until the webhook sees its $3 payment
-dodo_payment_id text unique          the payment that paid for it; null until then
+voter_session   text                 unused since 2026-10-01 (null on paid-first rows)
+paid_at         timestamptz          when Dodo confirmed the $3 payment
+dodo_payment_id text unique          the payment that created this row — the
+                                     webhook's idempotency key (a retry inserts nothing)
 created_at      timestamptz
 ```
 
-- A demo is shown to judges **only when `status = 'approved'`**. The operator
-  sets that in the Supabase Table Editor after (1) seeing `paid_at` filled in
-  and (2) watching the video.
-- **How a demo gets marked paid:** `createDemo` saves the row first, then
-  sends the maker to the static Dodo link with `metadata_demo_id=<id>` and
-  `email=<contact_email>` added. Dodo returns that metadata on the payment;
-  the webhook (on `payment.succeeded`) sets `paid_at` + `dodo_payment_id` on
-  that demo, only while it is still `submitted` and not yet paid. The
-  `payments` row is written regardless, with the raw metadata, so a failed
-  link never loses money from the ledger. If `paid_at` stays null, fall back
-  to matching `contact_email` against `payments.customer_email`.
+- **A row is written only after its $3 payment succeeds** — never before
+  (changed 2026-10-01; it used to be saved at submit and marked paid later).
+  `createDemo` validates the form and re-checks the uploaded video, then
+  creates a Dodo **checkout session** through the API with the whole form as
+  metadata (`demo_data`, a JSON string) and the maker's email pre-filled. It
+  writes nothing. On `payment.succeeded` the webhook writes the `payments`
+  ledger row first (as for every payment), then parses `demo_data` with the
+  same Zod schema and inserts the demo as `submitted`, with `paid_at` and
+  `dodo_payment_id`. A retried webhook hits the unique `dodo_payment_id` and
+  inserts nothing.
+- If `demo_data` is missing or fails validation, the payment is still in
+  `payments` (with the raw metadata) and the operator adds the demo by hand.
+- A demo is shown to judges **only when `status = 'approved'`**. Every row is
+  already paid, so the operator only has to watch the video before approving
+  it in the Supabase Table Editor.
+- A maker who uploads and then abandons checkout leaves a video in Blob
+  (`demos/…`) with no row. Harmless; find them by listing `demos/` and
+  dropping any URL that no row's `video_url` references.
 - "Product drop #N" is derived, never stored: N = position among approved
   demos by `created_at`, plus a fixed offset so the first real drop reads #1.
 - Width, height and duration are what the browser reported. The server
   re-checks type and size against the Blob object; duration is confirmed by
   the operator watching it.
-- Rate limit: at most 3 new rows per voter session per UTC day.
 
 ### demo_judgements
 
@@ -399,8 +405,8 @@ in the server layer where not.
 - `creator_a != creator_b`
 - `winner` must be `creator_a` or `creator_b`
 - `username` is unique
-- a creator submission is never inserted until its Dodo Payments payment is
-  confirmed by webhook — no unpaid/pending rows
+- a creator submission or a demo is never inserted until its Dodo Payments
+  payment is confirmed by webhook — no unpaid/pending rows
 - username availability is checked before payment, never after — don't
   charge someone for a username that turns out to be taken
 - entry fee amount never influences Aura, pairing, or rank

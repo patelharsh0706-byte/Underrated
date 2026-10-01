@@ -48,25 +48,32 @@ export function isOurDemoBlob(url: string): boolean {
   }
 }
 
+export type DemoData = z.output<typeof createDemoSchema>;
+
 /**
- * The $3 checkout link for one demo: the static Dodo link plus the demo's id
- * as payment metadata and the maker's email pre-filled (DATABASE.md § demos).
+ * The checked form, packed into the Dodo checkout's metadata. The webhook
+ * turns it back into a row once the payment succeeds — nothing is saved
+ * before that (DATABASE.md § demos).
  */
-export function demoCheckoutUrl(link: string, demoId: string, email: string): string {
-  const url = new URL(link);
-  url.searchParams.set("metadata_demo_id", demoId);
-  url.searchParams.set("email", email);
-  return url.toString();
+export function encodeDemoData(d: DemoData): Record<string, string> {
+  return { demo_data: JSON.stringify(d) };
 }
 
 /**
- * The demo a Dodo payment paid for, read from its metadata — or null.
- * Dodo's docs don't say whether the `metadata_` prefix is kept, so both
- * shapes are accepted; anything that isn't a uuid is ignored.
+ * The demo a succeeded payment is for, read back from its metadata — or null
+ * when there is none (an Arena payment) or it doesn't pass the same rules the
+ * form did. Re-validated because a webhook is a network input.
  */
-export function demoIdFromMetadata(metadata: unknown): string | null {
+export function demoDataFromMetadata(metadata: unknown): DemoData | null {
   if (!metadata || typeof metadata !== "object") return null;
-  const m = metadata as Record<string, unknown>;
-  const parsed = z.uuid().safeParse(m.demo_id ?? m.metadata_demo_id);
-  return parsed.success ? parsed.data : null;
+  const raw = (metadata as Record<string, unknown>).demo_data;
+  if (typeof raw !== "string") return null;
+  let json: unknown;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  const parsed = createDemoSchema.safeParse(json);
+  return parsed.success && isOurDemoBlob(parsed.data.videoUrl) ? parsed.data : null;
 }

@@ -151,8 +151,9 @@ uploads**: the browser asks `/api/demos/upload` for a one-time token (the
 route allows only `video/mp4` and `video/webm` up to 8 MB), then sends the file
 straight to Blob — it never passes through a Vercel Function, whose request
 body limit is about 4.5 MB. The `createDemo` Server Action then checks the
-Blob object with `head()` (our store, video type, ≤ 8 MB) before inserting the
-row. The 8 MB cap keeps Blob data transfer inside the Hobby allowance (10 GB a
+Blob object with `head()` (our store, video type, ≤ 8 MB) before starting the
+Dodo checkout; the row itself is inserted by the webhook once the payment
+succeeds (DATABASE.md § demos). The 8 MB cap keeps Blob data transfer inside the Hobby allowance (10 GB a
 month ≈ 4,000 plays of a 2.5 MB demo); if Blob usage hits the Hobby limit,
 Blob stops for 30 days for avatars too — watch Observability → Blob.
 Uploads that were never paid for are left in the store for now (cleanup is a

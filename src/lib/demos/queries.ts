@@ -1,9 +1,11 @@
 import "server-only";
 
-import { and, eq, gte, isNull, sql } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { demoClicks, demoJudgements, demos } from "@/lib/db/schema";
+
+import type { DemoData } from "./schemas";
 
 // Underhyped Demos reads (RANKING.md § Demos). Every tally counts the last
 // 7 × 24h; "today" is the last 24h. Drop numbers are derived, never stored.
@@ -101,15 +103,29 @@ export async function getDemoTally(demoId: string): Promise<{ judges: number; un
 }
 
 /**
- * Marks a demo paid from the Dodo webhook. Only a still-'submitted', unpaid
- * demo changes, so a retried webhook or an edited id can't touch anything
- * else. Returns whether a row was marked.
+ * Saves a demo from the Dodo webhook once its $3 payment has succeeded — the
+ * first and only time the row is written (DATABASE.md § demos). A retried
+ * webhook hits the unique dodo_payment_id and inserts nothing. Returns
+ * whether a row was inserted.
  */
-export async function markDemoPaid(demoId: string, dodoPaymentId: string): Promise<boolean> {
+export async function insertPaidDemo(d: DemoData, dodoPaymentId: string): Promise<boolean> {
   const rows = await db
-    .update(demos)
-    .set({ paidAt: new Date(), dodoPaymentId })
-    .where(and(eq(demos.id, demoId), eq(demos.status, "submitted"), isNull(demos.paidAt)))
+    .insert(demos)
+    .values({
+      productName: d.productName,
+      tagline: d.tagline,
+      productUrl: d.productUrl,
+      category: d.category,
+      contactEmail: d.contactEmail,
+      videoUrl: d.videoUrl,
+      videoBytes: d.videoBytes,
+      videoWidth: d.videoWidth,
+      videoHeight: d.videoHeight,
+      durationMs: d.durationMs,
+      paidAt: new Date(),
+      dodoPaymentId,
+    })
+    .onConflictDoNothing({ target: demos.dodoPaymentId })
     .returning({ id: demos.id });
   return rows.length > 0;
 }

@@ -57,16 +57,16 @@ export function dodoEnv() {
   return cachedDodoEnv;
 }
 
-// Underhyped Demos' $3 entry — a static Dodo payment link, configured like the
-// Enter the Arena one (DECISIONS.md § 2026-10-01). Test-mode link locally,
-// live link on Vercel; swapping is this one setting. Not a secret.
-const demoLinkSchema = z
-  .url("DODO_PAYMENTS_DEMO_LINK is missing or not a URL")
-  .refine((u) => /^https:\/\/(test\.)?checkout\.dodopayments\.com\/buy\//.test(u), "DODO_PAYMENTS_DEMO_LINK must be a checkout.dodopayments.com/buy/… link");
+// Underhyped Demos' $3 entry product — checkout sessions are created through
+// the API (DECISIONS.md § 2026-10-01 "Demos are saved only after payment").
+// Test-mode product id locally, live one on Vercel Production.
+const demoProductSchema = z
+  .string("DODO_PAYMENTS_DEMO_PRODUCT_ID is missing")
+  .regex(/^pdt_\w+$/, "DODO_PAYMENTS_DEMO_PRODUCT_ID must be a Dodo product id (pdt_…)");
 
-export function demoPaymentLink(): string {
+export function demoProductId(): string {
   if (typeof window !== "undefined") {
-    throw new Error("demoPaymentLink() must never be called from the client");
+    throw new Error("demoProductId() must never be called from the client");
   }
-  return demoLinkSchema.parse(process.env.DODO_PAYMENTS_DEMO_LINK);
+  return demoProductSchema.parse(process.env.DODO_PAYMENTS_DEMO_PRODUCT_ID);
 }
