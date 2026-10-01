@@ -105,7 +105,7 @@ function Row({ d, rank, you }: { d: RankedDemo<Tally> | UnrankedDemo<Tally>; ran
 }
 
 export function DemosTop() {
-  const { demos, voted } = useDemos();
+  const { live, demos, voted } = useDemos();
   const [cat, setCat] = useState<string>("all");
   const [shown, setShown] = useState(PAGE);
 
@@ -190,7 +190,7 @@ export function DemosTop() {
         </div>
       </section>
       <p className={s.dmNote} style={{ textAlign: "center" }}>
-        Sample data for now. Your votes on the Judge tab move these numbers.
+        {live ? "Counts the last 7 days. “Today” is new judges in the last 24 hours." : "Sample data for now. Your votes on the Judge tab move these numbers."}
       </p>
     </>
   );

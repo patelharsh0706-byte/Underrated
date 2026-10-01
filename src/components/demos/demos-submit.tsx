@@ -3,14 +3,21 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
+import { upload } from "@vercel/blob/client";
+
+import { createDemo } from "@/app/actions/demos";
 import { checkClipDuration, checkClipFile, checkClipShape } from "@/lib/demos/check-clip";
+import { DEMO_CATEGORIES } from "@/lib/demos/schemas";
+
+import { useDemos } from "./demos-state";
 
 import { DemosTabs } from "./demos-tabs";
 import s from "./demos.module.css";
 
-// Submit yours — four steps, ported from the prototype. Phase 1: the file is
-// checked and previewed in the browser only (never uploaded), and the $3 step
-// is a mock. Phase 2 uploads to Vercel Blob and takes the real payment.
+// Submit yours — four steps, ported from the prototype. Live (Phase 2): the
+// file uploads straight to Vercel Blob, createDemo() stores it as
+// 'submitted', and the maker pays $3 on the static Dodo link, which brings
+// them back here with ?paid=1. Sample mode (PREVIEW_MOCK=1) uploads nothing.
 const STEPS = ["Product", "15-sec demo", "$3", "Review"];
 const URL_RE = /^https?:\/\/[^\s.]+\.[^\s]{2,}/i;
 const BARE_RE = /^[^\s.]+\.[a-z]{2,}(\/\S*)?$/i;
@@ -39,11 +46,14 @@ function readVideo(src: string): Promise<{ duration: number; width: number; heig
   });
 }
 
-export function DemosSubmit() {
-  const [step, setStep] = useState(0);
+export function DemosSubmit({ paid = false }: { paid?: boolean }) {
+  const { live } = useDemos();
+  const [step, setStep] = useState(paid ? 3 : 0);
   const [name, setName] = useState("");
   const [tag, setTag] = useState("");
   const [url, setUrl] = useState("");
+  const [email, setEmail] = useState("");
+  const [category, setCategory] = useState("");
   const [err1, setErr1] = useState("");
   const [err2, setErr2] = useState("");
   const [clip, setClip] = useState<string | null>(null);
@@ -51,6 +61,9 @@ export function DemosSubmit() {
   const [warn, setWarn] = useState("");
   const [ready, setReady] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const picked = useRef<{ file: File; width: number; height: number; secs: number } | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [payErr, setPayErr] = useState("");
 
   // Free the object URL when the clip changes or the page unmounts.
   useEffect(() => () => void (clip && URL.revokeObjectURL(clip)), [clip]);
@@ -61,6 +74,7 @@ export function DemosSubmit() {
     setInfo("");
     setWarn("");
     setReady(false);
+    picked.current = null;
   }
 
   async function onFile(f: File | undefined) {
@@ -77,6 +91,7 @@ export function DemosSubmit() {
     }
     setErr2("");
     setClip(src);
+    picked.current = { file: f, width, height, secs };
     const shapeWarn = checkClipShape(width, height);
     setWarn(shapeWarn ?? "");
     setInfo(`${width}×${height} · ${secs.toFixed(1)}s · ${(f.size / 1048576).toFixed(1)} MB ${shapeWarn ? "" : "✓  Looks good."}`.trim());
@@ -87,10 +102,53 @@ export function DemosSubmit() {
     setName("");
     setTag("");
     setUrl("");
+    setEmail("");
+    setCategory("");
     setErr1("");
     bad("");
     if (fileRef.current) fileRef.current.value = "";
     setStep(0);
+  }
+
+  async function payAndSubmit() {
+    const p = picked.current;
+    if (!p) return setPayErr("Pick your video again — it wasn’t kept.");
+    setPayErr("");
+    try {
+      setBusy("Uploading your demo… 0%");
+      const ext = p.file.name.toLowerCase().endsWith(".webm") ? "webm" : "mp4";
+      const blob = await upload(`demos/demo.${ext}`, p.file, {
+        access: "public",
+        handleUploadUrl: "/api/demos/upload",
+        contentType: p.file.type || (ext === "webm" ? "video/webm" : "video/mp4"),
+        onUploadProgress: ({ percentage }) => setBusy(`Uploading your demo… ${Math.round(percentage)}%`),
+      });
+      setBusy("Saving…");
+      const res = await createDemo({
+        productName: name,
+        tagline: tag,
+        productUrl: url,
+        category: category as (typeof DEMO_CATEGORIES)[number],
+        contactEmail: email,
+        videoUrl: blob.url,
+        videoBytes: p.file.size,
+        videoWidth: p.width || null,
+        videoHeight: p.height || null,
+        durationMs: Math.round(p.secs * 1000),
+      });
+      if (res.error || !res.payUrl) {
+        setBusy(null);
+        return setPayErr(res.error ?? "Couldn’t save your demo — try again.");
+      }
+      setBusy("Taking you to checkout…");
+      const back = `${window.location.origin}/demos/submit?paid=1`;
+      // External Dodo checkout, not an internal route — a full navigation is right here.
+      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+      window.location.assign(`${res.payUrl}${res.payUrl.includes("?") ? "&" : "?"}redirect_url=${encodeURIComponent(back)}`);
+    } catch (error) {
+      setBusy(null);
+      setPayErr(error instanceof Error && /size|type/i.test(error.message) ? "That file was refused — MP4/WebM under 8 MB only." : "Upload failed — check your connection and try again.");
+    }
   }
 
   return (
@@ -122,6 +180,8 @@ export function DemosSubmit() {
               if (!name.trim()) return setErr1("Give the product a name.");
               if (!tag.trim()) return setErr1("Add a one-line tagline — what does it do?");
               if (!URL_RE.test(url.trim()) && !BARE_RE.test(url.trim())) return setErr1("That URL looks off — try something like https://yourproduct.com");
+              if (!category) return setErr1("Pick a category.");
+              if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setErr1("Add the email you’ll pay with — it’s how we match your $3.");
               setErr1("");
               setStep(1);
             }}
@@ -134,6 +194,19 @@ export function DemosSubmit() {
             <input id="dm-f-tag" maxLength={60} placeholder="Turn numbers into social milestone cards." autoComplete="off" value={tag} onChange={(e) => setTag(e.target.value)} />
             <label htmlFor="dm-f-url">Product URL</label>
             <input id="dm-f-url" inputMode="url" placeholder="https://metricshots.app" autoComplete="off" value={url} onChange={(e) => setUrl(e.target.value)} />
+            <label htmlFor="dm-f-cat">Category</label>
+            <select id="dm-f-cat" className={s.dmSelect} value={category} onChange={(e) => setCategory(e.target.value)}>
+              <option value="">Choose one…</option>
+              {DEMO_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+            <label htmlFor="dm-f-email">
+              Your email <small>(use the one you’ll pay with — it’s how we match your $3)</small>
+            </label>
+            <input id="dm-f-email" type="email" inputMode="email" placeholder="you@yourproduct.com" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             <p className={s.dmErr} role="status">
               {err1}
             </p>
@@ -175,6 +248,7 @@ export function DemosSubmit() {
               </div>
             )}
             <div className={s.dmRow}>
+              {!live && (
               <button
                 className={s.dmGhost}
                 type="button"
@@ -186,6 +260,7 @@ export function DemosSubmit() {
               >
                 No clip handy? Use a sample
               </button>
+              )}
               <button className={s.dmNext} type="button" disabled={!ready} onClick={() => setStep(2)}>
                 Next: $3 <span aria-hidden="true">→</span>
               </button>
@@ -202,12 +277,22 @@ export function DemosSubmit() {
               </p>
               <p className={s.dmSmall}>One time. It pays for review and hosting, and buys nothing about rank — the internet decides that.</p>
             </div>
-            <p className={s.dmProto}>Preview — no card is charged yet.</p>
+            <p className={s.dmProto}>{live ? "You’ll pay on Dodo’s secure checkout, then come straight back here." : "Preview — no card is charged yet."}</p>
+            {busy && (
+              <p className={s.dmProto} role="status">
+                {busy}
+              </p>
+            )}
+            {payErr && (
+              <p className={s.dmErr} role="status">
+                {payErr}
+              </p>
+            )}
             <div className={s.dmRow}>
               <button className={s.dmGhost} type="button" onClick={() => setStep(1)}>
                 ← Back
               </button>
-              <button className={s.dmNext} type="button" onClick={() => setStep(3)}>
+              <button className={s.dmNext} type="button" disabled={!!busy} onClick={() => (live ? payAndSubmit() : setStep(3))}>
                 Pay $3 &amp; submit <span aria-hidden="true">→</span>
               </button>
             </div>
@@ -221,13 +306,15 @@ export function DemosSubmit() {
             </span>
             <h2>In review.</h2>
             <p>We watch every demo before it goes live, usually within 24 hours. Once approved, it drops into the Demos queue and the internet decides.</p>
-            <div className={s.dmMini}>
-              <div className={s.dmMiniScreen}>{clip && <video src={clip} muted loop playsInline autoPlay />}</div>
-              <div>
-                <b>{name || "Your product"}</b>
-                <span>{tag}</span>
+            {(name || clip) && (
+              <div className={s.dmMini}>
+                <div className={s.dmMiniScreen}>{clip && <video src={clip} muted loop playsInline autoPlay />}</div>
+                <div>
+                  <b>{name || "Your product"}</b>
+                  <span>{tag}</span>
+                </div>
               </div>
-            </div>
+            )}
             <div className={s.dmRow}>
               <Link className={s.dmNext} href="/demos">
                 Back to judging <span aria-hidden="true">→</span>

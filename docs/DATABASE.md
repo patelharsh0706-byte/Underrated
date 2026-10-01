@@ -16,6 +16,9 @@ sponsorships
 visitor_pings
 nominate
 email_signups
+demos
+demo_judgements
+demo_clicks
 rank_snapshots   designed, not built — see below
 ```
 
@@ -240,6 +243,71 @@ per UTC day, checked in the Server Action.
 
 Nothing links this table to `creators`, Aura, or the game loop.
 
+### demos
+
+One row per product demo submitted to Underhyped Demos (DECISIONS.md
+§ 2026-09-30, § 2026-10-01). A demo is a product, not a creator — nothing
+here touches `creators`, Aura or battles.
+
+```
+id              uuid pk
+product_name    text not null        ≤ 40 chars
+tagline         text not null        ≤ 60 chars, one line
+product_url     text not null        normalized https URL
+category        text not null        'Dev tools' | 'Creator tools' | 'Productivity' | 'Finance'
+contact_email   text not null        lower-cased; how the operator matches the
+                                     $3 Dodo payment (payments.customer_email)
+video_url       text not null        public Vercel Blob URL (demos/…)
+video_bytes     integer not null     ≤ 8 MB (8,388,608)
+video_width     integer              pixels, read in the browser
+video_height    integer              pixels, read in the browser
+duration_ms     integer not null     ≤ 15,500, read in the browser
+status          text not null        'submitted' | 'approved' | 'rejected' | 'hidden'
+                                     default 'submitted'
+voter_session   text                 the submitter's anonymous session — rate limit only
+created_at      timestamptz
+```
+
+- A demo is shown to judges **only when `status = 'approved'`**. The operator
+  sets that in the Supabase Table Editor after (1) seeing a $3 row in
+  `payments` with the same email and (2) watching the video.
+- "Product drop #N" is derived, never stored: N = position among approved
+  demos by `created_at`, plus a fixed offset so the first real drop reads #1.
+- Width, height and duration are what the browser reported. The server
+  re-checks type and size against the Blob object; duration is confirmed by
+  the operator watching it.
+- Rate limit: at most 3 new rows per voter session per UTC day.
+
+### demo_judgements
+
+One row per visitor judging one demo — the Demos equivalent of a battle row.
+
+```
+id              uuid pk
+demo_id         uuid fk -> demos(id)
+voter_session   text not null        same anonymous identity as battles
+verdict         text not null        'underhyped' | 'not_yet'
+created_at      timestamptz
+```
+
+`unique (demo_id, voter_session)` — one judgement per visitor per demo,
+enforced by the database, so two tabs or a double-click cannot vote twice.
+Rows are never updated or deleted.
+
+### demo_clicks
+
+One row per visitor who clicked "View product ↗" on a demo.
+
+```
+id              uuid pk
+demo_id         uuid fk -> demos(id)
+voter_session   text not null
+created_at      timestamptz
+```
+
+`unique (demo_id, voter_session)` — a click counts once per visitor, so the
+"checked out the product" number is people, not taps.
+
 ### rank_snapshots
 
 **Designed, not built.** Specced here because rank movement keeps being asked
@@ -358,6 +426,11 @@ Per table:
   `submitNomination` Server Action under the service role; nobody but the
   operator reads the table (directly, via Drizzle Studio or a query), so no
   anon/authenticated policy is granted at all.
+- `demos`, `demo_judgements`, `demo_clicks` — no client read, no client
+  write. Pages read through server queries; writes go through the
+  `createDemo`, `judgeDemo` and `clickDemo` Server Actions under the service
+  role. The operator approves demos in the Table Editor. No anon/authenticated
+  policy is granted.
 - `email_signups` — no client read, no client write. Writes go through the
   `subscribeEmail` Server Action under the service role; only the operator
   reads it. No anon/authenticated policy is granted.
@@ -380,6 +453,11 @@ visitor_pings(last_seen_at)    "N here now" / online count
 nominate(voter_session)        unique — one nomination per session
 email_signups(email)           unique — one row per address
 email_signups(voter_session, created_at)   per-session daily rate limit
+demos(status, created_at)                  the approved queue, drop numbers
+demos(voter_session, created_at)           per-session daily rate limit
+demo_judgements(demo_id, voter_session)    unique — one judgement per visitor
+demo_judgements(demo_id, created_at)       7-day tallies
+demo_clicks(demo_id, voter_session)        unique — one click per visitor
 
 rank_snapshots(creator_id, captured_on) unique   when built — one per day
 rank_snapshots(captured_on)                      when built — day lookup

@@ -21,6 +21,9 @@ export interface SampleDemo {
   underhyped: number;
   clicks: number;
   scenes?: [string, ReactNode][];
+  /** Real demos (Phase 2): the uploaded video and the product's link. */
+  videoUrl?: string;
+  url?: string;
 }
 
 const cursor = (x: string, y: string) => (

@@ -78,6 +78,13 @@
       "when": 1790247920739,
       "tag": "0010_add_email_signups",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790779506163,
+      "tag": "0011_add_demos",
+      "breakpoints": true
     }
   ]
 }

@@ -30,3 +30,15 @@ export function rankDemos<T extends DemoTally>(demos: readonly T[]): { ranked: R
 
   return { ranked, unranked };
 }
+
+/**
+ * Judging queue — RANKING.md § Demos: demos this visitor hasn't judged,
+ * fewest 7-day judges first (so new demos reach 20 quickly), then newest.
+ */
+export function queueOrder<T extends { id: string; judges: number; createdAt: string }>(all: readonly T[], judged: readonly string[]): string[] {
+  const seen = new Set(judged);
+  return all
+    .filter((d) => !seen.has(d.id))
+    .sort((a, b) => a.judges - b.judges || b.createdAt.localeCompare(a.createdAt))
+    .map((d) => d.id);
+}

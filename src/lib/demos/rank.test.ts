@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { MIN_JUDGES, pctUnderhyped, rankDemos } from "./rank";
+import { MIN_JUDGES, pctUnderhyped, queueOrder, rankDemos } from "./rank";
 
 const d = (id: string, judges: number, underhyped: number) => ({ id, judges, underhyped });
 
@@ -47,5 +47,18 @@ describe("rankDemos — RANKING.md § Demos", () => {
     const copy = structuredClone(input);
     rankDemos(input);
     expect(input).toEqual(copy);
+  });
+});
+
+describe("queueOrder — RANKING.md § Demos", () => {
+  const q = (id: string, judges: number, createdAt: string) => ({ id, judges, createdAt });
+  it("skips demos this visitor already judged", () => {
+    expect(queueOrder([q("a", 1, "2026-10-01"), q("b", 1, "2026-10-01")], ["a"])).toEqual(["b"]);
+  });
+  it("puts the fewest-judged first so new demos reach 20 quickly", () => {
+    expect(queueOrder([q("busy", 40, "2026-10-01"), q("new", 2, "2026-10-01")], [])).toEqual(["new", "busy"]);
+  });
+  it("breaks a tie with the newest demo", () => {
+    expect(queueOrder([q("old", 5, "2026-09-01"), q("fresh", 5, "2026-10-01")], [])).toEqual(["fresh", "old"]);
   });
 });

@@ -2,17 +2,22 @@
 
 import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
 
+import { clickDemo, judgeDemo } from "@/app/actions/demos";
+
 import { OTHERS, QUEUE, type SampleDemo } from "./sample-demos";
 
-// Phase 1: votes and clicks live in page memory, shared across /demos,
-// /demos/top and /demos/submit through the /demos layout — as they were in
-// the single-page prototype. Nothing is saved; a reload starts fresh.
-// Phase 2 swaps this for judgeDemo()/clickDemo() Server Actions.
+// Shared across /demos, /demos/top and /demos/submit through the /demos layout.
+// live = real demos from the database (Phase 2): votes and clicks go through
+// Server Actions, and the returned tallies replace the optimistic ones.
+// Sample mode (PREVIEW_MOCK=1) keeps Phase 1's page-memory behaviour.
 
 type Verdict = "yes" | "no";
 
 interface DemosState {
+  live: boolean;
   demos: SampleDemo[];
+  /** Ids to judge, in RANKING.md § Demos order. */
+  queue: string[];
   voted: Record<string, Verdict>;
   judge: (id: string, underhyped: boolean) => void;
   click: (id: string) => void;
@@ -21,33 +26,46 @@ interface DemosState {
 
 const Ctx = createContext<DemosState | null>(null);
 
-const fresh = () => [...QUEUE, ...OTHERS].map((d) => ({ ...d }));
+const sampleDemos = () => [...QUEUE, ...OTHERS].map((d) => ({ ...d }));
+const sampleQueue = QUEUE.map((d) => d.id);
 
-export function DemosProvider({ children }: { children: ReactNode }) {
-  const [demos, setDemos] = useState<SampleDemo[]>(fresh);
+export function DemosProvider({ children, initial }: { children: ReactNode; initial: { live: boolean; demos: SampleDemo[]; queue: string[] } | null }) {
+  const live = !!initial?.live;
+  const [demos, setDemos] = useState<SampleDemo[]>(() => (initial ? initial.demos : sampleDemos()));
   const [voted, setVoted] = useState<Record<string, Verdict>>({});
+  const queue = initial ? initial.queue : sampleQueue;
 
-  // Updaters stay pure (React runs them twice in dev); the one-judgement-per-
-  // demo check reads current state instead.
+  const patch = useCallback((id: string, f: (d: SampleDemo) => SampleDemo) => setDemos((ds) => ds.map((d) => (d.id === id ? f(d) : d))), []);
+
   const judge = useCallback(
     (id: string, underhyped: boolean) => {
       if (voted[id]) return;
       setVoted((v) => ({ ...v, [id]: underhyped ? "yes" : "no" }));
-      setDemos((ds) => ds.map((d) => (d.id === id ? { ...d, judges: d.judges + 1, underhyped: d.underhyped + (underhyped ? 1 : 0) } : d)));
+      patch(id, (d) => ({ ...d, judges: d.judges + 1, underhyped: d.underhyped + (underhyped ? 1 : 0), trend: d.trend + (live ? 1 : 0) }));
+      if (!live) return;
+      void judgeDemo({ demoId: id, verdict: underhyped ? "underhyped" : "not_yet" }).then((r) => {
+        if (r.error || r.judges === undefined) return;
+        patch(id, (d) => ({ ...d, judges: r.judges!, underhyped: r.underhyped!, clicks: r.clicks ?? d.clicks }));
+      });
     },
-    [voted],
+    [voted, live, patch],
   );
 
-  const click = useCallback((id: string) => {
-    setDemos((ds) => ds.map((d) => (d.id === id ? { ...d, clicks: d.clicks + 1 } : d)));
-  }, []);
+  const click = useCallback(
+    (id: string) => {
+      patch(id, (d) => ({ ...d, clicks: d.clicks + 1 }));
+      if (live) void clickDemo({ demoId: id });
+    },
+    [live, patch],
+  );
 
   const reset = useCallback(() => {
-    setDemos(fresh());
+    if (live) return; // real votes can't be undone
+    setDemos(sampleDemos());
     setVoted({});
-  }, []);
+  }, [live]);
 
-  const value = useMemo(() => ({ demos, voted, judge, click, reset }), [demos, voted, judge, click, reset]);
+  const value = useMemo(() => ({ live, demos, queue, voted, judge, click, reset }), [live, demos, queue, voted, judge, click, reset]);
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 

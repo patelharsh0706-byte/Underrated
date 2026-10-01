@@ -1426,3 +1426,36 @@ Rejected:
 Live screen-sharing (scheduling and moderation), links to 4-minute videos
 (no 15-second discipline), a 0–100 "Hype score" (opaque), putting demos
 inside the people battle (two different games in one loop).
+
+## 2026-10-01 — Demos backend: static $3 link, email match, review in Supabase
+
+Decision:
+Phase 2 of Underhyped Demos:
+1. **Payment** — a new static Dodo payment link for "Demo entry, $3",
+   configured the same way as the Enter the Arena link (`dodo.pe/submit`).
+   The link carries no details, so the demo row stores the maker's
+   `contact_email`; the existing webhook already writes every payment with
+   Dodo's customer email into `payments`. The operator matches the two.
+2. **Review** — in the Supabase Table Editor: set `demos.status` to
+   `approved` or `rejected`. No admin page.
+3. **Ranking window** — the last 7 × 24h (RANKING.md § Demos).
+4. **Storage** — Vercel Blob client uploads, 8 MB, MP4/WebM
+   (ARCHITECTURE.md § Demo videos).
+
+Why:
+The operator chose to keep the payment set-up identical to Enter the Arena.
+Review volume is a handful a day, which the Table Editor handles without a
+login system. A 7-day window keeps "this week" honest.
+
+Consequences:
+Every demo payment is matched by hand (email + $3 + time) — the same manual
+step `/submit` has today. A maker who pays with a different email than the
+one they typed needs a manual lookup. Uploads that are never paid stay in
+Blob until a cleanup job exists. The submit form gains two fields the
+prototype didn't have: email (for the match) and category (Top demos filters
+by it).
+
+Rejected:
+API checkout with metadata (automatic match) — not chosen for now; the old
+version stays in git at `d422c37` if manual matching becomes a chore. An
+admin review page — needs auth; later if volume grows.

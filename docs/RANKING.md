@@ -242,10 +242,16 @@ Aura belongs to people.
 - Ranked demos are ordered by `% underhyped desc`, then by more judges.
 - Product clicks and the "today" trend are shown, never used for rank. The
   $3 entry fee never affects rank.
-- One judgement per visitor session per demo (enforced in the database in
-  Phase 2).
-- Open for Phase 2: the counting window for "this week" (proposed: judgements
-  from the last 7 × 24h). Phase 1 ranks sample totals.
+- One judgement per visitor session per demo, enforced by the database
+  (`demo_judgements` unique on demo + session).
+- **Window: the last 7 × 24h.** Both the % and the 20-judge minimum count
+  only judgements from the last 7 days (decided 2026-10-01), so new demos can
+  climb and old ones fade. The result card shows the same 7-day numbers.
+- Only `approved` demos are ranked or shown.
+- **"Today" column:** judgements received in the last 24h, shown as "+N".
+  It is a pulse, never used for rank.
+- **Judging queue order:** approved demos this visitor has not judged, fewest
+  7-day judges first (so new demos reach 20 judges quickly), then newest.
 
 ## Rank
 
