@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { clickDemoSchema, createDemoSchema, demoCheckoutUrl, demoIdFromMetadata, isOurDemoBlob, judgeDemoSchema } from "./schemas";
+import { clickDemoSchema, createDemoSchema, demoDataFromMetadata, encodeDemoData, isOurDemoBlob, judgeDemoSchema } from "./schemas";
 
 const valid = {
   productName: "MetricShots",
@@ -51,29 +51,27 @@ describe("isOurDemoBlob", () => {
   });
 });
 
-const DEMO_ID = "9596990d-aeec-4cb3-97cf-1969b6d6c068";
+describe("demo metadata — saved only after payment (DATABASE.md § demos)", () => {
+  const checked = createDemoSchema.parse(valid);
 
-describe("demoCheckoutUrl — DATABASE.md § demos", () => {
-  it("keeps the link's own params and adds the demo id and email", () => {
-    const url = new URL(demoCheckoutUrl("https://test.checkout.dodopayments.com/buy/pdt_X?quantity=1", DEMO_ID, "maker+1@site.com"));
-    expect(url.origin + url.pathname).toBe("https://test.checkout.dodopayments.com/buy/pdt_X");
-    expect(url.searchParams.get("quantity")).toBe("1");
-    expect(url.searchParams.get("metadata_demo_id")).toBe(DEMO_ID);
-    expect(url.searchParams.get("email")).toBe("maker+1@site.com");
-  });
-});
-
-describe("demoIdFromMetadata", () => {
-  it("reads the id with or without Dodo's metadata_ prefix", () => {
-    expect(demoIdFromMetadata({ demo_id: DEMO_ID })).toBe(DEMO_ID);
-    expect(demoIdFromMetadata({ metadata_demo_id: DEMO_ID })).toBe(DEMO_ID);
+  it("round-trips the checked form through the checkout metadata", () => {
+    const metadata = encodeDemoData(checked);
+    expect(Object.keys(metadata)).toEqual(["demo_data"]);
+    expect(demoDataFromMetadata(metadata)).toEqual(checked);
   });
 
-  it("ignores missing, junk and non-object metadata", () => {
-    expect(demoIdFromMetadata(null)).toBeNull();
-    expect(demoIdFromMetadata({})).toBeNull();
-    expect(demoIdFromMetadata({ demo_id: "1; drop table demos" })).toBeNull();
-    expect(demoIdFromMetadata({ creator_data: "{}" })).toBeNull();
-    expect(demoIdFromMetadata("demo_id")).toBeNull();
+  it("ignores payments that aren't demo entries", () => {
+    expect(demoDataFromMetadata(null)).toBeNull();
+    expect(demoDataFromMetadata({})).toBeNull();
+    expect(demoDataFromMetadata({ creator_data: "{}" })).toBeNull();
+    expect(demoDataFromMetadata("demo_data")).toBeNull();
+  });
+
+  it("rejects demo metadata that breaks the form's rules", () => {
+    const bad = (d: object) => demoDataFromMetadata({ demo_data: JSON.stringify(d) });
+    expect(demoDataFromMetadata({ demo_data: "{not json" })).toBeNull();
+    expect(bad({ ...checked, videoBytes: 50 * 1024 * 1024 })).toBeNull();
+    expect(bad({ ...checked, category: "Crypto" })).toBeNull();
+    expect(bad({ ...checked, videoUrl: "https://evil.example.com/demos/x.mp4" })).toBeNull();
   });
 });

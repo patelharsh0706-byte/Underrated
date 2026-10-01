@@ -3,8 +3,8 @@ import { NextResponse } from "next/server";
 
 import { creatorFieldsSchema } from "@/lib/creator-schema";
 import { insertCreator, linkPaymentToCreator, recordPayment } from "@/lib/db/queries";
-import { markDemoPaid } from "@/lib/demos/queries";
-import { demoIdFromMetadata } from "@/lib/demos/schemas";
+import { insertPaidDemo } from "@/lib/demos/queries";
+import { demoDataFromMetadata } from "@/lib/demos/schemas";
 import { getDodoClient } from "@/lib/dodo-payments";
 
 export async function POST(request: Request) {
@@ -94,17 +94,21 @@ async function handleCompletedSubmission(payment: {
   //    that row then shows up in the orphan list (creator_id IS NULL).
   await linkPaymentToCreator(payment.payment_id);
 
-  // 4. A $3 demo entry: the checkout link carried the demo's id as metadata.
-  //    After the ledger write, and wrapped, so it can never lose a payment.
-  //    If it doesn't mark anything, the operator matches by email instead.
-  const demoId = demoIdFromMetadata(payment.metadata);
-  if (demoId) {
+  // 4. A $3 demo entry: the checkout carried the whole form as metadata, and
+  //    this is the first time the demo is saved — never before payment
+  //    (DATABASE.md § demos). After the ledger write, and wrapped, so it can
+  //    never lose a payment; if it fails, the operator adds the demo by hand
+  //    from the payments row.
+  const demo = demoDataFromMetadata(payment.metadata);
+  if (demo) {
     try {
-      const marked = await markDemoPaid(demoId, payment.payment_id);
-      if (!marked) console.warn("Demo payment matched no unpaid submitted demo", payment.payment_id, demoId);
+      const inserted = await insertPaidDemo(demo, payment.payment_id);
+      if (!inserted) console.warn("Demo for this payment already saved (webhook retry)", payment.payment_id);
     } catch (err) {
-      console.error("Failed to mark demo paid", payment.payment_id, demoId, err);
+      console.error("Failed to save paid demo", payment.payment_id, err);
     }
+  } else if (payment.metadata && "demo_data" in payment.metadata) {
+    console.error("Paid demo metadata failed validation — add it by hand", payment.payment_id);
   }
 }
 

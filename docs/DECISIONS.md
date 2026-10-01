@@ -1509,6 +1509,8 @@ Top page reads it instead of a hard-coded number.
 
 ## 2026-10-01 — Demo payments link to their demo via Dodo metadata
 
+> Superseded the same day by "Demos are saved only after payment" below.
+
 Decision:
 The $3 checkout link carries the demo's id as `metadata_demo_id` (Dodo turns
 any `metadata_*` query parameter on a static link into payment metadata) and
@@ -1534,3 +1536,37 @@ Rejected:
 Dynamic checkout sessions via the Dodo API (one per demo) — more code and
 another failure point for a $3 fee. A `demo_id` column on `payments` — the
 operator works in `demos`, so the "paid" mark belongs there.
+
+## 2026-10-01 — Demos are saved only after payment (Dodo API checkout)
+
+Decision:
+A `demos` row is written by the Dodo webhook on `payment.succeeded`, never
+before. `createDemo` validates the form and re-checks the uploaded video,
+then creates a Dodo checkout session through the API (product
+`DODO_PAYMENTS_DEMO_PRODUCT_ID`) with the form as `metadata.demo_data` and
+the maker's email pre-filled; the webhook inserts the row from that
+metadata. Replaces the static demo link and `metadata_demo_id`.
+
+Why:
+Saving at submit left unpaid rows in Supabase for every abandoned checkout,
+and the operator had to tell paid from unpaid. The Arena's own rule is "no
+row until the payment is confirmed" (DATABASE.md § Invariants); Demos now
+follows it. The API keeps the form out of the URL, so the payer can't edit
+it and there is no URL-length worry — the static link could only carry
+short `metadata_*` values. The API-checkout pattern is the one the Arena
+used at `d422c37`, and its keys are already on Vercel.
+
+Consequences:
+The video still uploads before checkout (the browser loses the file when it
+leaves for Dodo), so an abandoned checkout leaves an unreferenced video in
+Blob. The maker returns to the review screen a few seconds before the
+webhook inserts the row. The 3-per-day submit limit is gone — paying is the
+limit. If the webhook can't reach the site (wrong URL or secret), the money
+still lands in `payments` and the operator adds the demo by hand. One
+setting per environment: the test product id locally, the live one on
+Production; `DODO_PAYMENTS_DEMO_LINK` is no longer read.
+
+Rejected:
+All form fields as `metadata_*` parameters on the static link — less code,
+but the payer can edit them and Dodo documents no size limit. Saving a
+hidden "pending" row before payment — still a row before payment.
