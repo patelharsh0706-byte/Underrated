@@ -1395,3 +1395,142 @@ light` so mobile browsers' own auto-dark (Chrome Android, Samsung Internet)
 cannot darken the day site — phones kept showing dark without it. The
 storage key moved from `uh-theme` to `uh-theme-v2`, so choices saved while
 the site followed the OS are ignored once and everyone starts on day.
+
+## 2026-09-30 — Underhyped Demos, a separate judging game for products
+
+Decision:
+Add Underhyped Demos: one 15-second product screen recording at a time,
+judged **Underhyped ⚡ / Not yet 🥱**. It is its own game on `/demos`, not
+part of the people battle, and its own ranking (RANKING.md § Demos):
+% underhyped among demos with 20+ judges, no invented score, no Aura.
+Makers upload a pre-recorded MP4/WebM (1280×720 16:9 landscape — the
+player's frame; other shapes play letterboxed with a warning — 15 s, 8 MB max, which keeps Vercel Blob
+transfer inside the free allowance, roughly 4,000 plays a month at ~2.5 MB),
+pay $3, and the operator reviews before it goes live. No live screen-sharing.
+Built frontend-first: Phase 1 ports the approved artifact prototype on sample
+data; Phase 2 adds storage, judgements, payment and review.
+
+Why:
+"15 seconds to make me care" forces makers to show the product, not pitch it —
+proof over self-promotion, the same idea as the battle. Products do not fit
+the people battle (you don't compare two tools side by side), so they get a
+single-item judgement instead. ⚡ keeps the icon rule: a product's score is
+Hype, never Aura.
+
+Consequences:
+"THE BATTLE IS THE PRODUCT" still holds for people; Demos is deliberately a
+second loop. The header gets a fifth link. Phase 2 must settle how the $3 is
+linked to the demo (API checkout vs static link) and how review happens.
+
+Rejected:
+Live screen-sharing (scheduling and moderation), links to 4-minute videos
+(no 15-second discipline), a 0–100 "Hype score" (opaque), putting demos
+inside the people battle (two different games in one loop).
+
+## 2026-10-01 — Demos backend: static $3 link, email match, review in Supabase
+
+Decision:
+Phase 2 of Underhyped Demos:
+1. **Payment** — a new static Dodo payment link for "Demo entry, $3",
+   configured the same way as the Enter the Arena link (`dodo.pe/submit`).
+   The link carries no details, so the demo row stores the maker's
+   `contact_email`; the existing webhook already writes every payment with
+   Dodo's customer email into `payments`. The operator matches the two.
+2. **Review** — in the Supabase Table Editor: set `demos.status` to
+   `approved` or `rejected`. No admin page.
+3. **Ranking window** — the last 7 × 24h (RANKING.md § Demos).
+4. **Storage** — Vercel Blob client uploads, 8 MB, MP4/WebM
+   (ARCHITECTURE.md § Demo videos).
+
+Why:
+The operator chose to keep the payment set-up identical to Enter the Arena.
+Review volume is a handful a day, which the Table Editor handles without a
+login system. A 7-day window keeps "this week" honest.
+
+Consequences:
+Every demo payment is matched by hand (email + $3 + time) — the same manual
+step `/submit` has today. A maker who pays with a different email than the
+one they typed needs a manual lookup. Uploads that are never paid stay in
+Blob until a cleanup job exists. The submit form gains two fields the
+prototype didn't have: email (for the match) and category (Top demos filters
+by it).
+
+Rejected:
+API checkout with metadata (automatic match) — not chosen for now; the old
+version stays in git at `d422c37` if manual matching becomes a chore. An
+admin review page — needs auth; later if volume grows.
+
+## 2026-10-01 — CI on GitHub Actions, secret-free
+
+Decision:
+Every push (any branch) and every pull request into `main` runs four checks
+on GitHub Actions, in `.github/workflows/ci.yml`: typecheck → lint → tests →
+production build. They are the four checks AGENTS.md already requires before
+work is called done. The build runs with `PREVIEW_MOCK=1` and **no secrets**:
+CI never holds a database URL, Blob token or payment key. `main` is protected
+by a branch rule that requires the CI check to pass before a pull request can
+merge; the habit becomes branch → PR → green → merge, never a direct push.
+
+Why:
+Vercel builds on every push but never runs lint or tests, so a failing test
+(for example the `color-scheme` guard from ISSUES.md § 2026-09-26) could ship.
+The checks also depended on someone remembering to run them. Keeping CI
+secret-free means nothing sensitive can leak from a workflow log or a fork.
+
+Consequences:
+The database client (`src/lib/db/index.ts`) now connects on the first query,
+not at import: a clean checkout with no `.env` failed the build because merely
+importing it read `DATABASE_URL`. Pages that query while the site is built
+(`sitemap.ts`, `/sponsor`) return sample or fixed data in preview mode, the
+same pattern `/arena` and `/leaderboard` already use. Tests that need a real
+database still don't exist; CI cannot catch query bugs like the `${demos.id}`
+one found in the Demos end-to-end test. CI runs Node 24, whose npm 11 is
+the npm that writes `package-lock.json` locally; the first run on Node 22
+(npm 10) rejected the same lockfile as out of sync. A run takes about 2–3 minutes, well inside GitHub's free minutes.
+
+Rejected:
+A read-only production database key in GitHub secrets so CI builds against
+real data — more to protect, and the build doesn't need real rows.
+
+## 2026-10-01 — Demos rank at 10 judges, not 20
+
+Decision:
+A demo needs 10 judges in the last 7 days to be ranked (was 20). Everything
+else in RANKING.md § Demos is unchanged.
+
+Why:
+At launch the queue has few judges a day; 20 would leave the Top page empty
+for days. 10 still keeps one or two votes from deciding a rank.
+
+Consequences:
+Percentages from 10 judges move in 10-point steps, so early ranks are
+noisier. `MIN_JUDGES` in `src/lib/demos/rank.ts` is the single source; the
+Top page reads it instead of a hard-coded number.
+
+## 2026-10-01 — Demo payments link to their demo via Dodo metadata
+
+Decision:
+The $3 checkout link carries the demo's id as `metadata_demo_id` (Dodo turns
+any `metadata_*` query parameter on a static link into payment metadata) and
+pre-fills the maker's email. The webhook reads it back and sets
+`demos.paid_at` + `demos.dodo_payment_id`. The operator approves from the
+`demos` table alone.
+
+Why:
+Matching by email alone breaks when a maker pays with a different address,
+and `payments` couldn't tell a demo fee from an Arena entry fee. This needs
+no Dodo API call and no new table — `payments.metadata` already stores
+whatever Dodo sends.
+
+Consequences:
+The id sits in a URL the maker can edit; the worst case is paying $3 for
+someone else's submitted demo, so there is nothing to gain. The webhook only
+marks rows that are `submitted` and unpaid. Dodo's docs don't say whether
+the key arrives as `demo_id` or `metadata_demo_id`; the webhook accepts
+both. Test-mode payments can't reach a localhost webhook, so `paid_at` is
+only proven end to end on a deployed URL.
+
+Rejected:
+Dynamic checkout sessions via the Dodo API (one per demo) — more code and
+another failure point for a $3 fee. A `demo_id` column on `payments` — the
+operator works in `demos`, so the "paid" mark belongs there.

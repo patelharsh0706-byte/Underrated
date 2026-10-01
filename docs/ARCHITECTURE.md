@@ -18,10 +18,11 @@ If a decision here needs to change, change it here first and log it in
 | ORM           | Drizzle                 |
 | Auth          | Supabase Auth           |
 | Payments      | Dodo Payments           |
-| Image storage | Vercel Blob             |
+| Image storage | Vercel Blob (images + 15-second demo videos) |
 | Analytics     | Vercel Web Analytics    |
 | Email         | Resend                  |
 | Hosting       | Vercel                  |
+| CI            | GitHub Actions — typecheck, lint, test, build on every push and PR to `main` (`.github/workflows/ci.yml`) |
 
 Not every service ships on day one. Resend and Dodo Payments can land after the
 core loop. But nothing else is allowed in their place.
@@ -143,6 +144,19 @@ checkout metadata — see DATABASE.md.
 No image storage is needed for sponsor logos specifically — the `Image
 storage | Vercel Blob` row above stays reserved for any future
 creator-uploaded asset.
+
+**Demo videos** — Underhyped Demos stores each 15-second MP4/WebM in the same
+public Vercel Blob store, under `demos/{random}`. Uploads are **client
+uploads**: the browser asks `/api/demos/upload` for a one-time token (the
+route allows only `video/mp4` and `video/webm` up to 8 MB), then sends the file
+straight to Blob — it never passes through a Vercel Function, whose request
+body limit is about 4.5 MB. The `createDemo` Server Action then checks the
+Blob object with `head()` (our store, video type, ≤ 8 MB) before inserting the
+row. The 8 MB cap keeps Blob data transfer inside the Hobby allowance (10 GB a
+month ≈ 4,000 plays of a 2.5 MB demo); if Blob usage hits the Hobby limit,
+Blob stops for 30 days for avatars too — watch Observability → Blob.
+Uploads that were never paid for are left in the store for now (cleanup is a
+roadmap item).
 
 **Creator avatars** — `/submit` uses the same link-first pattern: the photo
 comes from the creator's **primary social link**, server-side, never from

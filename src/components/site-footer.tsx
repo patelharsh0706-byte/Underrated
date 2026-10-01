@@ -30,6 +30,7 @@ export function SiteFooter() {
           <div className={styles.col}>
             <h3>Explore</h3>
             <Link href="/arena">Arena</Link>
+            <Link href="/demos">Demos</Link>
             <Link href="/leaderboard">Leaderboard</Link>
             <Link href="/nominate">Nominate</Link>
             <Link href="/">Discover</Link>

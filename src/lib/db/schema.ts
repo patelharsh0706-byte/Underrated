@@ -168,6 +168,77 @@ export const emailSignups = pgTable(
   ],
 );
 
+// Underhyped Demos — a product's 15-second screen recording, judged
+// Underhyped / Not yet. A demo is a product, not a creator: nothing here
+// touches creators, Aura or battles. See DATABASE.md § demos and DECISIONS.md
+// § 2026-09-30, § 2026-10-01.
+export const demos = pgTable(
+  "demos",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    productName: text("product_name").notNull(),
+    tagline: text("tagline").notNull(),
+    productUrl: text("product_url").notNull(),
+    category: text("category").notNull(),
+    // Lower-cased; pre-filled at checkout, and the fallback match against
+    // payments.customer_email when paid_at stays null.
+    contactEmail: text("contact_email").notNull(),
+    videoUrl: text("video_url").notNull(),
+    videoBytes: integer("video_bytes").notNull(),
+    videoWidth: integer("video_width"),
+    videoHeight: integer("video_height"),
+    durationMs: integer("duration_ms").notNull(),
+    // 'submitted' | 'approved' | 'rejected' | 'hidden' — set to 'approved' by
+    // the operator in the Supabase Table Editor. Only approved demos show.
+    status: text("status").notNull().default("submitted"),
+    voterSession: text("voter_session"),
+    // Set by the Dodo webhook from the payment's metadata_demo_id
+    // (DATABASE.md § demos). Null until the $3 payment arrives.
+    paidAt: timestamptz("paid_at"),
+    dodoPaymentId: text("dodo_payment_id").unique(),
+    createdAt: timestamptz("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("demos_status_created_idx").on(table.status, table.createdAt),
+    index("demos_session_created_idx").on(table.voterSession, table.createdAt),
+    check("demos_status_check", sql`${table.status} in ('submitted', 'approved', 'rejected', 'hidden')`),
+  ],
+);
+
+// One visitor judging one demo — unique, so two tabs can't vote twice.
+export const demoJudgements = pgTable(
+  "demo_judgements",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    demoId: uuid("demo_id")
+      .notNull()
+      .references(() => demos.id),
+    voterSession: text("voter_session").notNull(),
+    // 'underhyped' | 'not_yet'
+    verdict: text("verdict").notNull(),
+    createdAt: timestamptz("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("demo_judgements_demo_session_key").on(table.demoId, table.voterSession),
+    index("demo_judgements_demo_created_idx").on(table.demoId, table.createdAt),
+    check("demo_judgements_verdict_check", sql`${table.verdict} in ('underhyped', 'not_yet')`),
+  ],
+);
+
+// "View product ↗" — counted once per visitor per demo.
+export const demoClicks = pgTable(
+  "demo_clicks",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    demoId: uuid("demo_id")
+      .notNull()
+      .references(() => demos.id),
+    voterSession: text("voter_session").notNull(),
+    createdAt: timestamptz("created_at").notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("demo_clicks_demo_session_key").on(table.demoId, table.voterSession)],
+);
+
 export const sponsorships = pgTable(
   "sponsorships",
   {
