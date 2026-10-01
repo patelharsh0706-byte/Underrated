@@ -1484,8 +1484,9 @@ importing it read `DATABASE_URL`. Pages that query while the site is built
 (`sitemap.ts`, `/sponsor`) return sample or fixed data in preview mode, the
 same pattern `/arena` and `/leaderboard` already use. Tests that need a real
 database still don't exist; CI cannot catch query bugs like the `${demos.id}`
-one found in the Demos end-to-end test. Node 22 in CI matches Vercel's
-default. A run takes about 2–3 minutes, well inside GitHub's free minutes.
+one found in the Demos end-to-end test. CI runs Node 24, whose npm 11 is
+the npm that writes `package-lock.json` locally; the first run on Node 22
+(npm 10) rejected the same lockfile as out of sync. A run takes about 2–3 minutes, well inside GitHub's free minutes.
 
 Rejected:
 A read-only production database key in GitHub secrets so CI builds against
