@@ -1570,3 +1570,34 @@ Rejected:
 All form fields as `metadata_*` parameters on the static link — less code,
 but the payer can edit them and Dodo documents no size limit. Saving a
 hidden "pending" row before payment — still a row before payment.
+
+## 2026-10-01 — Unpaid demo videos are deleted daily (Vercel Cron)
+
+Decision:
+A Vercel Cron job calls `/api/cron/demos-cleanup` once a day. It lists every
+video under `demos/` in Blob and deletes the ones that (1) no `demos` row
+references, (2) were uploaded more than 48 hours ago, and (3) are not under
+`demos/beta/`. The route answers only to `Authorization: Bearer
+$CRON_SECRET`; `?dry=1` lists what it would delete without deleting.
+
+Why:
+Since demos are saved only after payment, "no row references this video"
+means the payment never succeeded — card declined, checkout or tab closed,
+or an error before checkout opened. One rule covers all of them; there is no
+need to track each failed payment, and Dodo doesn't reliably report a closed
+tab. The 48 h grace keeps a video safe while someone could still pay from an
+open checkout. `demos/beta/` lets the operator upload a beta maker's video
+before inserting its row without racing the job.
+
+Consequences:
+Deleting a demo row frees its video, and the next run removes it (unless it
+is in `demos/beta/`). A run is idempotent — running twice, or after a missed
+day, gives the same result. Hobby crons fire once a day at some point within
+the scheduled hour; that is plenty. Each run logs what it deleted.
+
+Rejected:
+A scheduled GitHub Actions workflow — it would need the Blob token and the
+database URL as GitHub secrets, and CI is deliberately secret-free (§ CI on
+GitHub Actions). Deleting on a `payment.failed` / `abandoned_checkout` webhook —
+misses tabs closed before checkout and errors before checkout opened.
+

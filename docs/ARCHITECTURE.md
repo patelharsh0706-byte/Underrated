@@ -22,6 +22,7 @@ If a decision here needs to change, change it here first and log it in
 | Analytics     | Vercel Web Analytics    |
 | Email         | Resend                  |
 | Hosting       | Vercel                  |
+| Scheduled jobs | Vercel Cron (`vercel.json`) — runs on the live site, which already holds the keys |
 | CI            | GitHub Actions — typecheck, lint, test, build on every push and PR to `main` (`.github/workflows/ci.yml`) |
 
 Not every service ships on day one. Resend and Dodo Payments can land after the
@@ -156,8 +157,12 @@ Dodo checkout; the row itself is inserted by the webhook once the payment
 succeeds (DATABASE.md § demos). The 8 MB cap keeps Blob data transfer inside the Hobby allowance (10 GB a
 month ≈ 4,000 plays of a 2.5 MB demo); if Blob usage hits the Hobby limit,
 Blob stops for 30 days for avatars too — watch Observability → Blob.
-Uploads that were never paid for are left in the store for now (cleanup is a
-roadmap item).
+Videos that were never paid for are deleted by a daily **Vercel Cron** job,
+`/api/cron/demos-cleanup` (scheduled in `vercel.json`, guarded by
+`CRON_SECRET`): a video under `demos/` that no `demos` row references and that
+is older than 48 hours is removed. Videos under **`demos/beta/`** are never
+touched — that folder is for demos the operator adds by hand. See DECISIONS.md
+§ 2026-10-01 "Unpaid demo videos are deleted daily".
 
 **Creator avatars** — `/submit` uses the same link-first pattern: the photo
 comes from the creator's **primary social link**, server-side, never from

@@ -286,8 +286,13 @@ created_at      timestamptz
   already paid, so the operator only has to watch the video before approving
   it in the Supabase Table Editor.
 - A maker who uploads and then abandons checkout leaves a video in Blob
-  (`demos/…`) with no row. Harmless; find them by listing `demos/` and
-  dropping any URL that no row's `video_url` references.
+  (`demos/…`) with no row. The daily cleanup job deletes any such video
+  older than 48 h — "no row references it" is the whole test, because a row
+  only exists once a payment succeeded (ARCHITECTURE.md § Demo videos).
+- **Adding a demo by hand** (beta makers): upload the video to Blob under
+  **`demos/beta/`** — the cleanup never looks there — then insert the row with
+  `paid_at` and `dodo_payment_id` left empty. Any row keeps its video, paid or
+  not; only `status = 'approved'` makes it public.
 - "Product drop #N" is derived, never stored: N = position among approved
   demos by `created_at`, plus a fixed offset so the first real drop reads #1.
 - Width, height and duration are what the browser reported. The server
