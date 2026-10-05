@@ -4,8 +4,18 @@
 export type EntryState =
   | { kind: "signed-out" }
   | { kind: "needs-profile" }
-  | { kind: "profile-only"; username: string; email: string }
-  | { kind: "in-arena"; username: string; email: string };
+  | ({ kind: "profile-only" } & Signed)
+  | ({ kind: "in-arena" } & Signed);
+
+/** What the pages fill in for a signed-in person with a finished profile. */
+interface Signed {
+  username: string;
+  email: string;
+  /** The X handle they signed in with — /submit shows it, locked. */
+  handle: string;
+  /** Their profile's project link ("" when they have none). */
+  projectUrl: string;
+}
 
 /**
  * Signed in with no `accounts` row counts as signed out: Sign in with X makes
@@ -13,15 +23,13 @@ export type EntryState =
  * back here, since /welcome needs the row too.
  */
 export function entryStateFrom(
-  account: { creatorId: string | null; email: string | null } | null,
-  creator: { username: string; profileOnly: boolean } | null,
+  account: { creatorId: string | null; email: string | null; xUsername: string } | null,
+  creator: { username: string; profileOnly: boolean; workUrl: string | null } | null,
 ): EntryState {
   if (!account) return { kind: "signed-out" };
   if (!account.creatorId || !creator) return { kind: "needs-profile" };
-  const email = account.email ?? "";
-  return creator.profileOnly
-    ? { kind: "profile-only", username: creator.username, email }
-    : { kind: "in-arena", username: creator.username, email };
+  const signed: Signed = { username: creator.username, email: account.email ?? "", handle: account.xUsername, projectUrl: creator.workUrl ?? "" };
+  return creator.profileOnly ? { kind: "profile-only", ...signed } : { kind: "in-arena", ...signed };
 }
 
 /** Pages that "⚡ You're in." continues to, instead of opening the new profile. */

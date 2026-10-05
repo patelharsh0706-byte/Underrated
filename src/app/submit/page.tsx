@@ -2,13 +2,13 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { EntryGate } from "@/components/auth/entry-gate";
-import { ArenaEntry } from "@/components/submit/arena-entry";
+import { EnterArenaFlow } from "@/components/submit/enter-arena-flow";
 import { getEntryState } from "@/lib/account";
 import { onboardingFor } from "@/lib/entry-gate";
 
 export const metadata: Metadata = {
   title: "Enter the Arena — Underhyped",
-  description: "Sign in with X, finish your free profile, then step into the Arena.",
+  description: "Two links. That’s the whole form.",
 };
 
 // The header's and Home's "Enter the Arena" — DECISIONS.md § 2026-10-06.
@@ -21,8 +21,12 @@ export default async function SubmitPage() {
   if (state.kind === "in-arena") redirect(`/c/${state.username}`);
 
   return (
-    <main className="mx-auto w-full max-w-[680px] flex-1 px-4 py-8 sm:py-10">
-      {state.kind === "signed-out" ? <EntryGate variant="arena" next="/submit" back="/" /> : <ArenaEntry />}
+    <main className="flex w-full flex-1 flex-col px-4 pb-16">
+      {state.kind === "signed-out" ? (
+        <EntryGate variant="arena" next="/submit" back="/" />
+      ) : (
+        <EnterArenaFlow handle={state.handle} projectUrl={state.projectUrl} />
+      )}
     </main>
   );
 }

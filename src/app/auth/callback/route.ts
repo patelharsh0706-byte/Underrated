@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { fetchXProfile, PREVIEW_PROFILE_DONE_COOKIE, syncAccountFromUser } from "@/lib/account";
 import { isMockMode } from "@/lib/db/mock-data";
+import { safeNext } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/server";
 
 // Sign in with X lands here (DECISIONS.md § 2026-10-04). Exchange the code,
@@ -12,9 +13,8 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const rawNext = searchParams.get("next") ?? "/arena";
-  // Only ever redirect within this site.
-  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/arena";
+  // Only ever redirect within this site (lib/safe-next.ts).
+  const next = safeNext(searchParams.get("next"));
 
   if (code) {
     const supabase = await createClient();

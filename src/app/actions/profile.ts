@@ -59,8 +59,7 @@ export async function hypeCreator(input: { creatorId: string }): Promise<HypeRes
   if (voter.kind === "needs-profile") return { counted: false, needsProfile: true };
   if (isMockMode()) return { counted: true };
   const userId = voter.userId;
-  const account = await getSignedInAccount();
-  if (account?.creatorId === parsed.data.creatorId) return { counted: false, error: "That’s you — share your profile instead." };
+  if (voter.creatorId === parsed.data.creatorId) return { counted: false, error: "That’s you — share your profile instead." };
   const inserted = await db
     .insert(profileHypes)
     .values({ creatorId: parsed.data.creatorId, userId })

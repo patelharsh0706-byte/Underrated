@@ -1,6 +1,9 @@
 "use server";
 
 import { lookup } from "node:dns/promises";
+import type { IncomingMessage } from "node:http";
+import { request } from "node:https";
+import type { LookupFunction } from "node:net";
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
@@ -14,7 +17,7 @@ import { accounts, creators } from "@/lib/db/schema";
 import { getDodoClient } from "@/lib/dodo-payments";
 import { getAppOrigin } from "@/lib/app-url";
 import { dodoEnv } from "@/lib/env";
-import { withProject } from "@/lib/profile/draft";
+import { domainOf, draftForAccount, withProject } from "@/lib/profile/draft";
 import { profileEditSchema, type ProfileEdit } from "@/lib/profile/options";
 import { PREVIEW_DRAFT_COOKIE } from "@/lib/profile/preview-me";
 import { isPrivateHost, parseProjectMeta } from "@/lib/profile/project-meta";
@@ -46,7 +49,7 @@ export async function saveWelcome(input: { email: string; projectUrl: string }):
   if (isMockMode()) return {};
   const account = await myAccount();
   if (!account) return { error: "Sign in with X first." };
-  const current = profileEditSchema.parse(account.draft ?? {});
+  const current = draftForAccount(account);
   let next: ProfileEdit;
   try {
     next = withProject(current, parsed.data.projectUrl);
@@ -119,35 +122,62 @@ export interface ProjectMetaResult {
 
 const MAX_BYTES = 300_000;
 
+/**
+ * The DNS answer, checked at connect time: the address checked is the address
+ * used. Checking with lookup() and then calling fetch() resolved the name a
+ * second time, and a short-TTL domain could answer with 10.x or
+ * 169.254.169.254 the second time (DNS rebinding).
+ */
+const publicOnlyLookup: LookupFunction = (hostname, options, callback) => {
+  lookup(hostname, { all: true }).then(
+    (addrs) => {
+      if (!addrs.length || addrs.some((a) => isPrivateHost(a.address))) return callback(new Error(`refused private address for ${hostname}`), "", 4);
+      if (options.all) return callback(null, addrs);
+      callback(null, addrs[0].address, addrs[0].family);
+    },
+    (err: NodeJS.ErrnoException) => callback(err, "", 4),
+  );
+};
+
+function getOnce(url: URL, signal: AbortSignal): Promise<IncomingMessage> {
+  return new Promise((resolve, reject) => {
+    const req = request(
+      url,
+      { lookup: publicOnlyLookup, signal, headers: { "user-agent": "UnderhypedBot/1.0 (+https://underhyped.wtf)", accept: "text/html" } },
+      resolve,
+    );
+    req.on("error", reject);
+    req.end();
+  });
+}
+
 /** Fetch one https page from a public host only, following at most 3 redirects. */
 async function fetchPublicPage(start: string): Promise<{ html: string; url: string } | null> {
+  const signal = AbortSignal.timeout(4000);
   let url = new URL(start);
   for (let hop = 0; hop < 4; hop++) {
     if (url.protocol !== "https:" || isPrivateHost(url.hostname)) return null;
-    const addrs = await lookup(url.hostname, { all: true }).catch(() => []);
-    if (!addrs.length || addrs.some((a) => isPrivateHost(a.address))) return null;
-    const res = await fetch(url, {
-      redirect: "manual",
-      signal: AbortSignal.timeout(4000),
-      headers: { "user-agent": "UnderhypedBot/1.0 (+https://underhyped.wtf)", accept: "text/html" },
-    });
-    if (res.status >= 300 && res.status < 400) {
-      const next = res.headers.get("location");
+    const res = await getOnce(url, signal);
+    const status = res.statusCode ?? 0;
+    if (status >= 300 && status < 400) {
+      res.destroy();
+      const next = res.headers.location;
       if (!next) return null;
       url = new URL(next, url);
       continue;
     }
-    if (!res.ok || !res.body || !(res.headers.get("content-type") ?? "").includes("html")) return null;
-    const reader = res.body.getReader();
-    const chunks: Uint8Array[] = [];
-    let size = 0;
-    while (size < MAX_BYTES) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      size += value.length;
+    if (status < 200 || status >= 300 || !(res.headers["content-type"] ?? "").includes("html")) {
+      res.destroy();
+      return null;
     }
-    await reader.cancel().catch(() => {});
+    const chunks: Buffer[] = [];
+    let size = 0;
+    for await (const chunk of res) {
+      chunks.push(chunk as Buffer);
+      size += (chunk as Buffer).length;
+      if (size >= MAX_BYTES) break;
+    }
+    res.destroy();
     return { html: new TextDecoder().decode(Buffer.concat(chunks).subarray(0, MAX_BYTES)), url: url.toString() };
   }
   return null;
@@ -158,6 +188,9 @@ async function fetchPublicPage(start: string): Promise<{ html: string; url: stri
  * Best effort: anything that fails just leaves the fields for the person to type.
  */
 export async function fetchProjectMeta(input: { url: string }): Promise<ProjectMetaResult | { error: string }> {
+  // Signed-in only: it makes our server fetch a URL, so it isn't open to
+  // anyone on the internet. Preview mode has its sample person signed out.
+  if (!isMockMode() && !(await getSignedInUserId())) return { error: "Sign in with X first." };
   const raw = z.string().trim().min(3).max(300).safeParse(input.url);
   if (!raw.success) return { error: "Paste the project’s link, like yourproduct.com." };
   let url: URL;
@@ -182,15 +215,36 @@ export async function fetchProjectMeta(input: { url: string }): Promise<ProjectM
  * "Enter the Arena →" — a $3 Dodo checkout for this account. Only the account
  * id travels as metadata; the webhook reads the draft from our database.
  */
-export async function startArenaCheckout(): Promise<{ error?: string; payUrl?: string }> {
+export async function startArenaCheckout(input?: { projectUrl?: string }): Promise<{ error?: string; payUrl?: string }> {
+  // From /submit's "What are you building?" (DECISIONS.md § 2026-10-06):
+  // required there, checked like every profile link. The profile card sends none.
+  let projectUrl: string | null = null;
+  if (input?.projectUrl !== undefined) {
+    const parsed = profileEditSchema.shape.projectUrl.safeParse(input.projectUrl);
+    if (!parsed.success) return { error: "That link looks off — try something like yourproduct.com." };
+    if (!parsed.data) return { error: "Add a link to something you’ve made." };
+    projectUrl = parsed.data;
+  }
   if (isMockMode()) return { error: "Preview — no checkout. Entering the Arena costs $3 on the live site." };
   const account = await myAccount();
   if (!account) return { error: "Sign in with X first." };
   // No paying before the profile is finished — DECISIONS.md § 2026-10-06.
   if (!account.creatorId) return { error: "Finish your profile first." };
-  const [owned] = await db.select({ profileOnly: creators.profileOnly, username: creators.username }).from(creators).where(eq(creators.id, account.creatorId));
+  const [owned] = await db
+    .select({ profileOnly: creators.profileOnly, username: creators.username, workUrl: creators.workUrl, projectName: creators.projectName })
+    .from(creators)
+    .where(eq(creators.id, account.creatorId));
   if (!owned) return { error: "Finish your profile first." };
   if (!owned.profileOnly) return { error: "You’re already in the Arena." };
+  // A changed project link is saved to the profile before paying, so the
+  // Arena card shows what they just typed. A name they chose themselves stays.
+  if (projectUrl && projectUrl !== owned.workUrl) {
+    const keepName = owned.projectName && owned.projectName !== domainOf(owned.workUrl ?? "");
+    await db
+      .update(creators)
+      .set({ workUrl: projectUrl, projectName: keepName ? owned.projectName : domainOf(projectUrl).slice(0, 40) })
+      .where(eq(creators.id, account.creatorId));
+  }
   const back = `/c/${owned.username}`;
   try {
     // The domain that served this request, never NEXT_PUBLIC_APP_URL (ISSUES.md, lib/app-url.ts).

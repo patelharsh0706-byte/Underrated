@@ -1711,9 +1711,13 @@ The header's and Home's "Enter the Arena" (`/submit`) and "Submit your demo"
 2. **No finished profile** → the five onboarding steps
    (`/welcome?next=<page>`); "⚡ You're in." then continues to that page, not
    the profile.
-3. **Profile finished** → `/submit` shows the $3 "Enter the Arena" card (or
-   sends someone already in the Arena to their profile); `/demos/submit` shows
-   the demo form with the account's email filled in.
+3. **Profile finished** → `/submit` shows the "Put yourself on the radar" page
+   (two links): **Your X profile** is the account they signed in with, shown
+   locked; **What are you building?** comes from their profile, is required,
+   and a changed link is saved to the profile before checkout; **Enter the
+   Arena →** goes straight to the $3 checkout for the account. Someone already
+   in the Arena goes to their profile. `/demos/submit` shows the demo form with
+   the account's email filled in.
 **Underhyped ⚡ / Not yet 🥱** on Demos sits behind the same gate: Demos reads
 the gate state once on load (`getJudgeGate`), so a signed-out click opens the X
 pop-up and a click with no profile goes to onboarding *before* any result is
@@ -1727,7 +1731,8 @@ Why:
 Every paid entry belongs to a real, visible person — the same reason votes
 need a profile (§ 2026-10-05 "Onboarding v2"). One path into the Arena also
 retires the anonymous `/submit` form, whose payments needed a creator made by
-hand.
+hand — its look stays, its anonymous preview/edit steps go (the profile
+already holds name, bio and category).
 
 Consequences:
 `startArenaCheckout` and `createDemo` refuse an account without a finished

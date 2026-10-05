@@ -31,3 +31,13 @@ export function withProject(draft: ProfileEdit, projectUrl: string): ProfileEdit
   const keepName = draft.projectName && domainOf(draft.projectUrl) !== draft.projectName;
   return { ...next, projectName: keepName ? draft.projectName : cut(domainOf(next.projectUrl), 40) };
 }
+
+/**
+ * The account's saved draft, or — before anything is saved — the one-time X
+ * prefill (bio, location, website). Every reader of `accounts.draft` goes
+ * through this: reading `draft ?? {}` instead wiped the X prefill on the
+ * Welcome step and on a paid entry made before Finish.
+ */
+export function draftForAccount(account: { draft: unknown; xBio: string | null; xLocation: string | null; xUrl: string | null }): ProfileEdit {
+  return account.draft ? profileEditSchema.parse(account.draft) : initialDraft({ xBio: account.xBio, xLocation: account.xLocation, xUrl: account.xUrl });
+}

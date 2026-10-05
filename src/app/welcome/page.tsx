@@ -7,10 +7,10 @@ import { getSignedInUserId } from "@/lib/account";
 import { db } from "@/lib/db";
 import { isMockMode } from "@/lib/db/mock-data";
 import { accounts, creators } from "@/lib/db/schema";
-import { initialDraft } from "@/lib/profile/draft";
-import { profileEditSchema } from "@/lib/profile/options";
+import { draftForAccount, initialDraft } from "@/lib/profile/draft";
 import { getPreviewMe } from "@/lib/profile/preview-me";
 import { getProfileV2 } from "@/lib/profile/queries";
+import { safeNext } from "@/lib/safe-next";
 import { finishedWelcomeHref, hasFinishedOnboarding } from "@/lib/profile/welcome-route";
 
 // Onboarding v2, the five steps after Sign in with X — DECISIONS.md §
@@ -23,7 +23,6 @@ interface WelcomePageProps {
   searchParams: Promise<{ next?: string }>;
 }
 
-const safeNext = (n?: string) => (n && n.startsWith("/") && !n.startsWith("//") ? n : "/arena");
 
 export default async function WelcomePage({ searchParams }: WelcomePageProps) {
   const { next: rawNext } = await searchParams;
@@ -54,7 +53,9 @@ export default async function WelcomePage({ searchParams }: WelcomePageProps) {
   const userId = await getSignedInUserId();
   if (!userId) redirect(next);
   const [account] = await db.select().from(accounts).where(eq(accounts.id, userId));
-  if (!account) redirect(next);
+  // No account row: sign in with X again (that creates it). Sending them on to
+  // `next` looped — the pick there asked for a profile and came straight back.
+  if (!account) redirect(`/sign-in?next=${encodeURIComponent(next)}`);
 
   let claimed = null;
   if (account.creatorId) {
@@ -63,9 +64,7 @@ export default async function WelcomePage({ searchParams }: WelcomePageProps) {
     if (row && hasFinishedOnboarding(account)) redirect(finishedWelcomeHref(next, row.username));
     claimed = row ? await getProfileV2(row.username) : null;
   }
-  const draft = account.draft
-    ? profileEditSchema.parse(account.draft)
-    : initialDraft({ xBio: account.xBio, xLocation: account.xLocation, xUrl: account.xUrl });
+  const draft = draftForAccount(account);
   const avatar = account.xAvatarUrl ? account.xAvatarUrl.replace("_normal.", "_400x400.") : null;
 
   return (

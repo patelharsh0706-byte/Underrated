@@ -3,12 +3,14 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
+import { safeNext } from "@/lib/safe-next";
+
 import { cx } from "./profile-view";
 
 // The payoff: "⚡ You're in." for about 1.5 s, then the public profile — or
 // straight back to the battle when a pick was waiting (DESIGN.md § Welcome v2).
 
-const SAYS = { pick: "Your pick now counts.", demo: "Your vote now counts.", hype: "Your Hype now counts." } as const;
+const SAYS = { pick: "Your Hype now counts.", demo: "Your judgement now counts.", hype: "Your Hype now counts." } as const;
 
 interface YoureInProps {
   to: string;
@@ -20,7 +22,7 @@ interface YoureInProps {
 export function YoureIn({ to, pending, line }: YoureInProps) {
   const router = useRouter();
   useEffect(() => {
-    const t = setTimeout(() => router.push(to), 1500);
+    const t = setTimeout(() => router.push(safeNext(to)), 1500);
     return () => clearTimeout(t);
   }, [router, to]);
 

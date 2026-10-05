@@ -48,7 +48,8 @@ export async function getProfileV2(username: string): Promise<ProfileV2 | null> 
   const base = await getCreatorByUsername(username);
   if (!base) return null;
 
-  const [extra] = await db
+  // The three below don't depend on each other: one round trip of waiting, not three.
+  const extraQuery = db
     .select({
       about: creators.about,
       location: creators.location,
@@ -67,14 +68,14 @@ export async function getProfileV2(username: string): Promise<ProfileV2 | null> 
     .from(creators)
     .where(eq(creators.id, base.id));
 
-  const past = await db
+  const pastQuery = db
     .select({ name: creatorPastProjects.name, line: creatorPastProjects.line, url: creatorPastProjects.url, year: creatorPastProjects.year, status: creatorPastProjects.status })
     .from(creatorPastProjects)
     .where(eq(creatorPastProjects.creatorId, base.id))
     .orderBy(creatorPastProjects.position, desc(creatorPastProjects.createdAt));
 
   const opponent = alias(creators, "opponent");
-  const recent = await db
+  const recentQuery = db
     .select({
       creatorAId: battles.creatorAId,
       creatorBId: battles.creatorBId,
@@ -94,6 +95,7 @@ export async function getProfileV2(username: string): Promise<ProfileV2 | null> 
     .where(or(eq(battles.creatorAId, base.id), eq(battles.creatorBId, base.id)))
     .orderBy(desc(battles.createdAt))
     .limit(30);
+  const [[extra], past, recent] = await Promise.all([extraQuery, pastQuery, recentQuery]);
 
   return {
     ...base,

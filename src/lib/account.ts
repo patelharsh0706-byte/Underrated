@@ -34,7 +34,11 @@ export async function getSignedInUserId(): Promise<string | null> {
 /** Set at "Finish profile" in PREVIEW_MOCK=1, where there is no accounts row to read. */
 export const PREVIEW_PROFILE_DONE_COOKIE = "uh-profile-done";
 
-export type Voter = { kind: "signed-out" } | { kind: "needs-profile"; userId: string } | { kind: "ok"; userId: string };
+export type Voter =
+  | { kind: "signed-out" }
+  | { kind: "needs-profile"; userId: string }
+  /** `creatorId`: the voter's own creator, so a battle they're in never counts (RANKING.md § Scoring). */
+  | { kind: "ok"; userId: string; creatorId: string | null };
 
 /**
  * Who may cast a counted vote — DECISIONS.md § 2026-10-05 "Onboarding v2".
@@ -46,10 +50,14 @@ export async function getVoter(): Promise<Voter> {
   if (!userId) return { kind: "signed-out" };
   if (isMockMode()) {
     const done = (await cookies()).get(PREVIEW_PROFILE_DONE_COOKIE)?.value === userId;
-    return done ? { kind: "ok", userId } : { kind: "needs-profile", userId };
+    return done ? { kind: "ok", userId, creatorId: null } : { kind: "needs-profile", userId };
   }
   const [row] = await db.select({ creatorId: accounts.creatorId }).from(accounts).where(eq(accounts.id, userId));
-  return row?.creatorId ? { kind: "ok", userId } : { kind: "needs-profile", userId };
+  // No account row (an old session, or the sync in /auth/callback failed):
+  // signed out, so the X pop-up runs again and creates it. "needs-profile"
+  // here looped: /welcome needs the row too and bounced straight back.
+  if (!row) return { kind: "signed-out" };
+  return row.creatorId ? { kind: "ok", userId, creatorId: row.creatorId } : { kind: "needs-profile", userId };
 }
 
 /**
@@ -60,12 +68,20 @@ export async function getEntryState(): Promise<EntryState> {
   const userId = await getSignedInUserId();
   if (!userId) return { kind: "signed-out" };
   if (isMockMode()) {
+    // No database: the X identity from the session, the profile from the "Finish profile" cookie.
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getUser();
+    const x = data.user ? xIdentityFromUser(data.user) : null;
     const done = (await cookies()).get(PREVIEW_PROFILE_DONE_COOKIE)?.value === userId;
-    return entryStateFrom({ creatorId: done ? "preview" : null, email: null }, done ? { username: "preview", profileOnly: true } : null);
+    const handle = x?.xUsername ?? "preview";
+    return entryStateFrom(
+      { creatorId: done ? "preview" : null, email: data.user?.email ?? null, xUsername: handle },
+      done ? { username: handle.toLowerCase(), profileOnly: true, workUrl: null } : null,
+    );
   }
-  const [account] = await db.select({ creatorId: accounts.creatorId, email: accounts.email }).from(accounts).where(eq(accounts.id, userId));
+  const [account] = await db.select({ creatorId: accounts.creatorId, email: accounts.email, xUsername: accounts.xUsername }).from(accounts).where(eq(accounts.id, userId));
   const [creator] = account?.creatorId
-    ? await db.select({ username: creators.username, profileOnly: creators.profileOnly }).from(creators).where(eq(creators.id, account.creatorId))
+    ? await db.select({ username: creators.username, profileOnly: creators.profileOnly, workUrl: creators.workUrl }).from(creators).where(eq(creators.id, account.creatorId))
     : [];
   return entryStateFrom(account ?? null, creator ?? null);
 }

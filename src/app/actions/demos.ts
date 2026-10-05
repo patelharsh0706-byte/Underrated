@@ -120,7 +120,7 @@ export async function getJudgeGate(): Promise<"signed-out" | "needs-profile" | "
 /** One judgement per account per demo (Sign in with X) — the unique index makes a repeat a no-op. */
 export async function judgeDemo(input: { demoId: string; verdict: "underhyped" | "not_yet" }): Promise<JudgeDemoResult> {
   const parsed = judgeDemoSchema.safeParse(input);
-  if (!parsed.success) return { error: "That vote didn’t look right." };
+  if (!parsed.success) return { error: "That judgement didn’t look right." };
   const voter = await getVoter();
   if (voter.kind === "signed-out") return { needsSignIn: true };
   if (voter.kind === "needs-profile") return { needsProfile: true };
@@ -138,7 +138,7 @@ export async function judgeDemo(input: { demoId: string; verdict: "underhyped" |
     return { ...(await getDemoTally(parsed.data.demoId)), counted: inserted.length > 0 };
   } catch (error) {
     console.error("judgeDemo failed", error);
-    return { error: "Couldn’t save that vote — try again." };
+    return { error: "Couldn’t save that judgement — try again." };
   }
 }
 

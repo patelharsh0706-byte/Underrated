@@ -5,8 +5,10 @@ import { and, eq, sql } from "drizzle-orm";
 import { storeCreatorAvatar } from "@/lib/avatar-store";
 import { db } from "@/lib/db";
 import { accounts, creatorPastProjects, creators } from "@/lib/db/schema";
+import { uniqueViolation } from "@/lib/db/unique-violation";
 
-import { profileEditSchema, type ProfileEdit } from "./options";
+import { draftForAccount } from "./draft";
+import { type ProfileEdit } from "./options";
 
 // Profile v2 writes — DECISIONS.md § 2026-10-04 "Onboarding from X and profile v2".
 
@@ -23,7 +25,8 @@ export async function saveProfileFields(tx: Tx, creatorId: string, edit: Profile
       locationHidden: edit.locationHidden,
       projectName: edit.projectName || null,
       projectTagline: edit.projectTagline || null,
-      ...(edit.projectUrl ? { workUrl: edit.projectUrl } : {}),
+      // Always written, so clearing the project really clears it.
+      workUrl: edit.projectUrl || null,
       workHow: edit.workHow ?? null,
       workStage: edit.workStage ?? null,
       workCareer: edit.workCareer ?? null,
@@ -70,42 +73,80 @@ export async function createCreatorForAccount(accountId: string, edit: ProfileEd
   if (!account) return null;
   if (account.creatorId) return null;
 
-  const fields = edit ?? profileEditSchema.parse(account.draft ?? {});
-  // The @handle is the username; if an older, unrelated row already holds it,
-  // add a short suffix rather than fail.
-  let username = account.xUsername.toLowerCase();
-  const [taken] = await db.select({ id: creators.id }).from(creators).where(sql`lower(${creators.username}) = ${username}`);
-  if (taken) username = `${username}_${accountId.slice(0, 4)}`;
+  // The saved draft, or the X prefill when nothing is saved yet (never `{}`).
+  const fields = edit ?? draftForAccount(account);
+
+  // The webhook ran twice for this payment: the creator already exists.
+  if (payment) {
+    const [paid] = await db.select({ username: creators.username }).from(creators).where(eq(creators.dodoPaymentId, payment.dodoPaymentId));
+    if (paid) return paid;
+  }
+
+  // This X person already has a creator (an earlier sign-in didn't link it):
+  // link that one. Inserting would only break creators_x_user_id_key.
+  const [mine] = await db
+    .select({ id: creators.id, username: creators.username, userId: creators.userId, profileOnly: creators.profileOnly })
+    .from(creators)
+    .where(eq(creators.xUserId, account.xUserId));
+  if (mine) {
+    if (mine.userId && mine.userId !== accountId) {
+      throw new Error(`createCreatorForAccount: creator ${mine.id} for X user ${account.xUserId} belongs to another account`);
+    }
+    await db.transaction(async (tx) => {
+      const paid = payment && mine.profileOnly ? { isActive: true, profileOnly: false, entryFeeCents: payment.entryFeeCents, dodoPaymentId: payment.dodoPaymentId } : {};
+      await tx.update(creators).set({ userId: accountId, ...paid }).where(eq(creators.id, mine.id));
+      await saveProfileFields(tx, mine.id, fields);
+      await tx.update(accounts).set({ creatorId: mine.id, draft: fields, onboardedAt: account.onboardedAt ?? new Date() }).where(eq(accounts.id, accountId));
+    });
+    return { username: mine.username };
+  }
+
+  // The @handle is the username. If an older, unrelated row holds it (any
+  // case), or another sign-up takes it between this check and the insert,
+  // fall back to a short suffix.
+  const base = account.xUsername.toLowerCase();
+  const [taken] = await db.select({ id: creators.id }).from(creators).where(sql`lower(${creators.username}) = ${base}`);
+  const spellings = [base, `${base}_${accountId.slice(0, 4)}`, `${base}_${accountId.slice(0, 8)}`].slice(taken ? 1 : 0);
 
   const xLink = `https://x.com/${account.xUsername}`;
-  const { url: avatarUrl } = await storeCreatorAvatar(xLink, username);
+  const { url: avatarUrl } = await storeCreatorAvatar(xLink, spellings[0]);
 
-  return db.transaction(async (tx) => {
-    const [row] = await tx
-      .insert(creators)
-      .values({
-        username,
-        name: account.xName || account.xUsername,
-        avatarUrl,
-        bio: fields.tagline || null,
-        category: "Builder",
-        workUrl: fields.projectUrl || xLink,
-        socials: { twitter: xLink },
-        primarySocial: "twitter",
-        entryFeeCents: payment?.entryFeeCents ?? null,
-        dodoPaymentId: payment?.dodoPaymentId ?? null,
-        isActive: !!payment,
-        profileOnly: !payment,
-        userId: accountId,
-        xUserId: account.xUserId,
-      })
-      .onConflictDoNothing()
-      .returning({ id: creators.id, username: creators.username });
-    if (!row) return null;
-    await saveProfileFields(tx, row.id, fields);
-    await tx.update(accounts).set({ creatorId: row.id, draft: fields, onboardedAt: account.onboardedAt ?? new Date() }).where(eq(accounts.id, accountId));
-    return { username: row.username };
-  });
+  for (const username of spellings) {
+    try {
+      return await db.transaction(async (tx) => {
+        const [row] = await tx
+          .insert(creators)
+          .values({
+            username,
+            name: account.xName || account.xUsername,
+            avatarUrl,
+            bio: fields.tagline || null,
+            category: "Builder",
+            // No project means no project — never the X profile (it showed as
+            // "Currently cooking: x.com").
+            workUrl: fields.projectUrl || null,
+            socials: { twitter: xLink },
+            primarySocial: "twitter",
+            entryFeeCents: payment?.entryFeeCents ?? null,
+            dodoPaymentId: payment?.dodoPaymentId ?? null,
+            isActive: !!payment,
+            profileOnly: !payment,
+            userId: accountId,
+            xUserId: account.xUserId,
+          })
+          .returning({ id: creators.id, username: creators.username });
+        await saveProfileFields(tx, row.id, fields);
+        await tx.update(accounts).set({ creatorId: row.id, draft: fields, onboardedAt: account.onboardedAt ?? new Date() }).where(eq(accounts.id, accountId));
+        return { username: row.username };
+      });
+    } catch (err) {
+      // Username taken in the meantime: the next spelling. Any other clash is
+      // a real problem — thrown, so finishProfile and the webhook log it.
+      if (uniqueViolation(err) === "creators_username_key") continue;
+      throw err;
+    }
+  }
+  throw new Error(`createCreatorForAccount: no free username for @${account.xUsername}`);
 }
 
 /** The $3 Enter the Arena payment for an account succeeded (webhook). */
@@ -116,7 +157,12 @@ export async function enterArenaForAccount(accountId: string, payment: Payment):
     ? await db.select({ profileOnly: creators.profileOnly }).from(creators).where(eq(creators.id, account.creatorId))
     : [];
   const action = arenaEntryAction(owned ?? null);
-  if (action === "create") await createCreatorForAccount(accountId, null, payment);
+  if (action === "create") {
+    const made = await createCreatorForAccount(accountId, null, payment);
+    // Null only when the account vanished or got a creator meanwhile — log it
+    // with the payment, so it's never a silent $3 with no profile.
+    if (!made) console.error("enterArenaForAccount: no creator made", payment.dodoPaymentId, accountId);
+  }
   if (action === "activate" && account.creatorId) {
     await db
       .update(creators)

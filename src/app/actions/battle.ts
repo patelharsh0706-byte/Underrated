@@ -8,7 +8,7 @@ import { battles, creators } from "@/lib/db/schema";
 import { getRandomPair, type PublicCreator } from "@/lib/db/queries";
 import { isMockMode, mockAnyPair, mockCreatorById, mockHomeStats } from "@/lib/db/mock-data";
 import { computeEloUpdate } from "@/lib/ranking/elo";
-import { getSignedInUserId, getVoter } from "@/lib/account";
+import { getVoter } from "@/lib/account";
 import { accountVoterKey } from "@/lib/account-claim";
 import { readVoterSession } from "@/lib/session";
 
@@ -25,8 +25,11 @@ export async function nextBattle(
   if (isMockMode()) return mockAnyPair(excludeIds.slice(0, 2));
   // Signed in: the account is the voter (RANKING.md § Scoring). Signed out:
   // the browser session, read without creating one — picks need an account.
-  const userId = await getSignedInUserId();
-  return getRandomPair(userId ? accountVoterKey(userId) : await readVoterSession(), excludeIdsSchema.parse(excludeIds));
+  const voter = await getVoter();
+  const userId = voter.kind === "signed-out" ? null : voter.userId;
+  // Never serve someone their own card (RANKING.md § Scoring, 2026-10-06).
+  const own = voter.kind === "ok" && voter.creatorId ? [voter.creatorId] : [];
+  return getRandomPair(userId ? accountVoterKey(userId) : await readVoterSession(), [...excludeIdsSchema.parse(excludeIds), ...own]);
 }
 
 const pickWinnerInput = z
@@ -72,6 +75,11 @@ export interface PickResult {
    * client keeps the pick pending and opens onboarding, then replays it.
    */
   needsProfile?: boolean;
+  /**
+   * The voter's own creator is one of the two cards: not counted, nothing
+   * written (RANKING.md § Scoring, 2026-10-06). The UI says "That's you".
+   */
+  isSelf?: boolean;
 }
 
 function notCounted(winnerId: string, loserId: string): PickResult {
@@ -157,6 +165,20 @@ export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promis
     }
     if (!winner.isActive || !loser.isActive) {
       throw new Error("One of the creators in this battle is no longer active");
+    }
+
+    // You never judge a battle you're in — either side (RANKING.md § Scoring).
+    if (voter.creatorId === winner.id || voter.creatorId === loser.id) {
+      return {
+        winnerId: winner.id,
+        loserId: loser.id,
+        winnerAura: winner.aura,
+        loserAura: loser.aura,
+        delta: 0,
+        counted: false,
+        isSelf: true,
+        battlesToday: await picksToday(),
+      };
     }
 
     // One scoring pick per pair per account (voterSession is "u:<id>"; the

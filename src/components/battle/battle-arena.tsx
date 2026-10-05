@@ -259,7 +259,7 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
       <div className="flex min-h-6 items-center justify-center text-center">
         {result && !result.counted ? (
           <span className="rounded-full border border-hairline-2 bg-card px-3 py-0.5 text-xs font-medium text-ink-soft shadow-card">
-            Already counted — one pick per battle per account.
+            {result.isSelf ? "That’s you — your own battles don’t count." : "Already counted — one Hype per battle per account."}
           </span>
         ) : null}
       </div>

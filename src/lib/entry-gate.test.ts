@@ -8,26 +8,30 @@ describe("entryStateFrom", () => {
   });
 
   it("sends an account without a creator to onboarding", () => {
-    expect(entryStateFrom({ creatorId: null, email: "a@b.co" }, null)).toEqual({ kind: "needs-profile" });
+    expect(entryStateFrom({ creatorId: null, email: "a@b.co", xUsername: "maya" }, null)).toEqual({ kind: "needs-profile" });
   });
 
   it("sends an account whose creator row is gone to onboarding", () => {
-    expect(entryStateFrom({ creatorId: "c1", email: null }, null)).toEqual({ kind: "needs-profile" });
+    expect(entryStateFrom({ creatorId: "c1", email: null, xUsername: "maya" }, null)).toEqual({ kind: "needs-profile" });
   });
 
   it("offers the $3 entry to a free profile", () => {
-    expect(entryStateFrom({ creatorId: "c1", email: "a@b.co" }, { username: "maya", profileOnly: true })).toEqual({
+    expect(entryStateFrom({ creatorId: "c1", email: "a@b.co", xUsername: "Maya" }, { username: "maya", profileOnly: true, workUrl: "https://ship.app" })).toEqual({
       kind: "profile-only",
       username: "maya",
       email: "a@b.co",
+      handle: "Maya",
+      projectUrl: "https://ship.app",
     });
   });
 
   it("recognises someone already in the Arena", () => {
-    expect(entryStateFrom({ creatorId: "c1", email: null }, { username: "maya", profileOnly: false })).toEqual({
+    expect(entryStateFrom({ creatorId: "c1", email: null, xUsername: "maya" }, { username: "maya", profileOnly: false, workUrl: null })).toEqual({
       kind: "in-arena",
       username: "maya",
       email: "",
+      handle: "maya",
+      projectUrl: "",
     });
   });
 });

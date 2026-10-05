@@ -14,7 +14,7 @@ export default function SignInPage() {
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-bold tracking-tight">Sign in to Underhyped</h1>
           <p className="text-sm text-muted-foreground">
-            One account, made with X. It keeps battles fair: one pick per
+            One account, made with X. It keeps battles fair: one Hype per
             battle. We never post for you.
           </p>
         </div>

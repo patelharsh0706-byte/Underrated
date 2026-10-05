@@ -132,14 +132,28 @@ export function DemosJudge() {
     voteRef.current = vote;
   });
   useEffect(() => {
-    if (!resume || !current || current.id !== resume.demoId) return;
+    if (!resume) return;
     const r = resume;
     const t = setTimeout(() => {
+      if (current?.id === r.demoId) {
+        clearResume();
+        voteRef.current(r.underhyped);
+        return;
+      }
+      // The queue came back in a different order: go to that demo, and this
+      // effect replays it there. Waiting for it to come round dropped it.
+      const at = order.indexOf(r.demoId);
+      if (at >= 0 && at !== idx) {
+        setIdx(at);
+        setPhase("ask");
+        return;
+      }
+      // Not in this queue any more: record it anyway, without the result screen.
       clearResume();
-      voteRef.current(r.underhyped);
+      if (judge(r.demoId, r.underhyped)) setToast("Your judgement counted ⚡");
     }, 0);
     return () => clearTimeout(t);
-  }, [resume, current, clearResume]);
+  }, [resume, current, clearResume, order, idx, judge]);
 
   function next() {
     setEnded(false);

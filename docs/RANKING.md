@@ -78,6 +78,14 @@ profile** (DECISIONS.md § "Onboarding v2"). Signed in without one, nothing is
 written and the person is sent to finish their profile; the pick is replayed
 after. Profile-only creators (not in the Arena) are never paired or ranked.
 
+**Changed 2026-10-06:** **you never judge a battle you're in.** A pick from an
+account whose own creator is either card is not counted — nothing is written,
+no Aura moves, and the person is told "That's you". Pairing also leaves the
+voter's own creator out of their battles (a sort key like every other
+exclusion, so a tiny pool still returns a pair; the pick check is the real
+guard). Profile Hype already refused hyping yourself; this closes the Aura
+path, which had no such check.
+
 A session gets **one scoring pick per pair**. The first time a voter session
 judges the matchup A vs B, the battle is recorded and Aura moves. Every later
 A vs B from that same session is a no-op: no Aura change, no `battles_count`
