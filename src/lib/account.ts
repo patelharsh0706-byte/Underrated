@@ -1,13 +1,14 @@
 import "server-only";
 
-import { eq, sql } from "drizzle-orm";
+import { and, eq, getTableColumns, isNull, sql } from "drizzle-orm";
 import { cookies } from "next/headers";
 
-import { chooseClaim, xIdentityFromUser, type ClaimCandidate } from "@/lib/account-claim";
+import { chooseClaim, xIdentityFromUser, xVoterKey, type ClaimCandidate } from "@/lib/account-claim";
 import { db } from "@/lib/db";
 import { entryStateFrom, type EntryState } from "@/lib/entry-gate";
 import { isMockMode } from "@/lib/db/mock-data";
 import { accounts, creators } from "@/lib/db/schema";
+import { initialDraft } from "@/lib/profile/draft";
 import { createClient } from "@/lib/supabase/server";
 import { shippingUrlFrom, type XProfileData } from "@/lib/x-profile";
 
@@ -22,6 +23,20 @@ export interface SignedInAccount {
   creatorId: string | null;
 }
 
+/**
+ * The account row plus the creator it owns: the one with the same X user id —
+ * the only link (DATABASE.md § accounts, 2026-10-06). `creatorId` is null until
+ * the free profile is finished or an existing creator is claimed.
+ */
+export async function loadAccount(userId: string) {
+  const [row] = await db
+    .select({ ...getTableColumns(accounts), creatorId: creators.id })
+    .from(accounts)
+    .leftJoin(creators, eq(creators.xUserId, accounts.xUserId))
+    .where(eq(accounts.id, userId));
+  return row ?? null;
+}
+
 /** Who is signed in (auth only, no database read) — for the frequent calls. */
 export async function getSignedInUserId(): Promise<string | null> {
   const supabase = await createClient();
@@ -34,11 +49,15 @@ export async function getSignedInUserId(): Promise<string | null> {
 /** Set at "Finish profile" in PREVIEW_MOCK=1, where there is no accounts row to read. */
 export const PREVIEW_PROFILE_DONE_COOKIE = "uh-profile-done";
 
+/**
+ * `voterKey` is what a pick or judgement stores in voter_session: "x:<X user
+ * id>" (RANKING.md § Scoring, 2026-10-06). `creatorId`: the voter's own
+ * creator, so a battle they're in never counts.
+ */
 export type Voter =
   | { kind: "signed-out" }
-  | { kind: "needs-profile"; userId: string }
-  /** `creatorId`: the voter's own creator, so a battle they're in never counts (RANKING.md § Scoring). */
-  | { kind: "ok"; userId: string; creatorId: string | null };
+  | { kind: "needs-profile"; userId: string; voterKey: string }
+  | { kind: "ok"; userId: string; voterKey: string; creatorId: string | null };
 
 /**
  * Who may cast a counted vote — DECISIONS.md § 2026-10-05 "Onboarding v2".
@@ -49,15 +68,18 @@ export async function getVoter(): Promise<Voter> {
   const userId = await getSignedInUserId();
   if (!userId) return { kind: "signed-out" };
   if (isMockMode()) {
+    // Preview writes no votes, so the key only has to be stable.
+    const voterKey = xVoterKey(`preview-${userId}`);
     const done = (await cookies()).get(PREVIEW_PROFILE_DONE_COOKIE)?.value === userId;
-    return done ? { kind: "ok", userId, creatorId: null } : { kind: "needs-profile", userId };
+    return done ? { kind: "ok", userId, voterKey, creatorId: null } : { kind: "needs-profile", userId, voterKey };
   }
-  const [row] = await db.select({ creatorId: accounts.creatorId }).from(accounts).where(eq(accounts.id, userId));
+  const row = await loadAccount(userId);
   // No account row (an old session, or the sync in /auth/callback failed):
   // signed out, so the X pop-up runs again and creates it. "needs-profile"
   // here looped: /welcome needs the row too and bounced straight back.
   if (!row) return { kind: "signed-out" };
-  return row.creatorId ? { kind: "ok", userId, creatorId: row.creatorId } : { kind: "needs-profile", userId };
+  const voterKey = xVoterKey(row.xUserId);
+  return row.creatorId ? { kind: "ok", userId, voterKey, creatorId: row.creatorId } : { kind: "needs-profile", userId, voterKey };
 }
 
 /**
@@ -79,7 +101,7 @@ export async function getEntryState(): Promise<EntryState> {
       done ? { username: handle.toLowerCase(), profileOnly: true, workUrl: null } : null,
     );
   }
-  const [account] = await db.select({ creatorId: accounts.creatorId, email: accounts.email, xUsername: accounts.xUsername }).from(accounts).where(eq(accounts.id, userId));
+  const account = await loadAccount(userId);
   const [creator] = account?.creatorId
     ? await db.select({ username: creators.username, profileOnly: creators.profileOnly, workUrl: creators.workUrl }).from(creators).where(eq(creators.id, account.creatorId))
     : [];
@@ -93,17 +115,8 @@ export async function getSignedInAccount(): Promise<SignedInAccount | null> {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return null;
-  const [row] = await db
-    .select({
-      id: accounts.id,
-      xUsername: accounts.xUsername,
-      xName: accounts.xName,
-      xAvatarUrl: accounts.xAvatarUrl,
-      creatorId: accounts.creatorId,
-    })
-    .from(accounts)
-    .where(eq(accounts.id, user.id));
-  return row ?? null;
+  const row = await loadAccount(user.id);
+  return row ? { id: row.id, xUsername: row.xUsername, xName: row.xName, xAvatarUrl: row.xAvatarUrl, creatorId: row.creatorId } : null;
 }
 
 /**
@@ -140,6 +153,15 @@ export async function fetchXProfile(providerToken: string | null | undefined): P
   }
 }
 
+/** The X prefill as a draft; a link X sent that isn't a valid URL is dropped, never fatal. */
+function prefillDraft(p: { bio: string | null; location: string | null; url: string | null }) {
+  try {
+    return initialDraft({ xBio: p.bio, xLocation: p.location, xUrl: p.url });
+  } catch {
+    return initialDraft({ xBio: p.bio, xLocation: p.location });
+  }
+}
+
 /**
  * Called from /auth/callback after X sign-in: creates or refreshes the account
  * row, then auto-claims an existing creator (lib/account-claim.ts § chooseClaim).
@@ -164,33 +186,33 @@ export async function syncAccountFromUser(
         xName: x.xName,
         xAvatarUrl: x.xAvatarUrl,
         email: user.email ?? null,
-        xBio: prefill?.bio ?? null,
-        xLocation: prefill?.location ?? null,
-        xUrl: prefill?.url ?? null,
+        // The one-time X prefill goes straight into the draft — the only
+        // place it lives (DATABASE.md § accounts, 2026-10-06).
+        draft: prefill ? prefillDraft(prefill) : null,
       })
       .onConflictDoUpdate({
         target: accounts.id,
         set: { xUsername: x.xUsername, xName: x.xName, xAvatarUrl: x.xAvatarUrl },
       })
-      .returning({ id: accounts.id, creatorId: accounts.creatorId, onboardedAt: accounts.onboardedAt });
+      .returning({ id: accounts.id, onboardedAt: accounts.onboardedAt });
     const onboarded = !!account.onboardedAt;
 
-    if (account.creatorId) return { id: account.id, creatorId: account.creatorId, onboarded };
-
-    const pick = { id: creators.id, username: creators.username, userId: creators.userId, xUserId: creators.xUserId };
+    // The X user id is the link: a creator carrying it is already theirs.
+    const pick = { id: creators.id, username: creators.username, xUserId: creators.xUserId };
     const [byXUserId] = await tx.select(pick).from(creators).where(eq(creators.xUserId, x.xUserId));
-    const [byHandle] = await tx
-      .select(pick)
-      .from(creators)
-      .where(sql`lower(${creators.username}) = ${x.xUsername.toLowerCase()}`);
+    const [byHandle] = byXUserId
+      ? []
+      : await tx
+          .select(pick)
+          .from(creators)
+          .where(and(sql`lower(${creators.username}) = ${x.xUsername.toLowerCase()}`, isNull(creators.xUserId)));
     const decision = chooseClaim(x, (byXUserId as ClaimCandidate) ?? null, (byHandle as ClaimCandidate) ?? null);
     if (!decision) return { id: account.id, creatorId: null, onboarded };
 
-    await tx
-      .update(creators)
-      .set(decision.saveXUserId ? { userId: user.id, xUserId: x.xUserId } : { userId: user.id })
-      .where(eq(creators.id, decision.creatorId));
-    await tx.update(accounts).set({ creatorId: decision.creatorId }).where(eq(accounts.id, user.id));
+    // First claim by @handle: saving the X user id IS the claim.
+    if (decision.saveXUserId) {
+      await tx.update(creators).set({ xUserId: x.xUserId }).where(and(eq(creators.id, decision.creatorId), isNull(creators.xUserId)));
+    }
     return { id: account.id, creatorId: decision.creatorId, onboarded };
   });
 }

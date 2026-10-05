@@ -2,6 +2,7 @@ import "server-only";
 
 import { and, eq, sql } from "drizzle-orm";
 
+import { loadAccount } from "@/lib/account";
 import { storeCreatorAvatar } from "@/lib/avatar-store";
 import { db } from "@/lib/db";
 import { accounts, creatorPastProjects, creators } from "@/lib/db/schema";
@@ -66,11 +67,13 @@ export function arenaEntryAction(owned: { profileOnly: boolean } | null): "activ
  * - No payment: "Finish profile" — a free, profile-only creator, never paired
  *   or ranked (`is_active = false`, `profile_only = true`).
  * - With a payment: straight into the Arena.
- * Idempotent on accounts.creator_id and dodo_payment_id.
+ * Idempotent: the account owns at most one creator (same X user id, unique)
+ * and a payment makes at most one (unique dodo_payment_id).
  */
 export async function createCreatorForAccount(accountId: string, edit: ProfileEdit | null, payment?: Payment): Promise<{ username: string } | null> {
-  const [account] = await db.select().from(accounts).where(eq(accounts.id, accountId));
+  const account = await loadAccount(accountId);
   if (!account) return null;
+  // Already owns a creator — the one with its X user id (DATABASE.md § accounts).
   if (account.creatorId) return null;
 
   // The saved draft, or the X prefill when nothing is saved yet (never `{}`).
@@ -80,25 +83,6 @@ export async function createCreatorForAccount(accountId: string, edit: ProfileEd
   if (payment) {
     const [paid] = await db.select({ username: creators.username }).from(creators).where(eq(creators.dodoPaymentId, payment.dodoPaymentId));
     if (paid) return paid;
-  }
-
-  // This X person already has a creator (an earlier sign-in didn't link it):
-  // link that one. Inserting would only break creators_x_user_id_key.
-  const [mine] = await db
-    .select({ id: creators.id, username: creators.username, userId: creators.userId, profileOnly: creators.profileOnly })
-    .from(creators)
-    .where(eq(creators.xUserId, account.xUserId));
-  if (mine) {
-    if (mine.userId && mine.userId !== accountId) {
-      throw new Error(`createCreatorForAccount: creator ${mine.id} for X user ${account.xUserId} belongs to another account`);
-    }
-    await db.transaction(async (tx) => {
-      const paid = payment && mine.profileOnly ? { isActive: true, profileOnly: false, entryFeeCents: payment.entryFeeCents, dodoPaymentId: payment.dodoPaymentId } : {};
-      await tx.update(creators).set({ userId: accountId, ...paid }).where(eq(creators.id, mine.id));
-      await saveProfileFields(tx, mine.id, fields);
-      await tx.update(accounts).set({ creatorId: mine.id, draft: fields, onboardedAt: account.onboardedAt ?? new Date() }).where(eq(accounts.id, accountId));
-    });
-    return { username: mine.username };
   }
 
   // The @handle is the username. If an older, unrelated row holds it (any
@@ -131,18 +115,23 @@ export async function createCreatorForAccount(accountId: string, edit: ProfileEd
             dodoPaymentId: payment?.dodoPaymentId ?? null,
             isActive: !!payment,
             profileOnly: !payment,
-            userId: accountId,
+            // The X user id is the link to the account (DATABASE.md § accounts).
             xUserId: account.xUserId,
           })
           .returning({ id: creators.id, username: creators.username });
         await saveProfileFields(tx, row.id, fields);
-        await tx.update(accounts).set({ creatorId: row.id, draft: fields, onboardedAt: account.onboardedAt ?? new Date() }).where(eq(accounts.id, accountId));
+        await tx.update(accounts).set({ draft: fields, onboardedAt: account.onboardedAt ?? new Date() }).where(eq(accounts.id, accountId));
         return { username: row.username };
       });
     } catch (err) {
       // Username taken in the meantime: the next spelling. Any other clash is
       // a real problem — thrown, so finishProfile and the webhook log it.
       if (uniqueViolation(err) === "creators_username_key") continue;
+      // A second Finish (two tabs) made this X person's creator first: it's theirs.
+      if (uniqueViolation(err) === "creators_x_user_id_key") {
+        const [made] = await db.select({ username: creators.username }).from(creators).where(eq(creators.xUserId, account.xUserId));
+        if (made) return made;
+      }
       throw err;
     }
   }
@@ -151,7 +140,7 @@ export async function createCreatorForAccount(accountId: string, edit: ProfileEd
 
 /** The $3 Enter the Arena payment for an account succeeded (webhook). */
 export async function enterArenaForAccount(accountId: string, payment: Payment): Promise<void> {
-  const [account] = await db.select({ creatorId: accounts.creatorId }).from(accounts).where(eq(accounts.id, accountId));
+  const account = await loadAccount(accountId);
   if (!account) return;
   const [owned] = account.creatorId
     ? await db.select({ profileOnly: creators.profileOnly }).from(creators).where(eq(creators.id, account.creatorId))

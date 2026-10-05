@@ -26,6 +26,8 @@ export const creators = pgTable(
   "creators",
   {
     id: uuid("id").primaryKey().defaultRandom(),
+    // Retired 2026-10-06: the app links accounts by x_user_id only. Kept
+    // because the live `main` code still selects it; dropped after deploy.
     userId: uuid("user_id").references(() => authUsers.id),
     username: text("username").notNull(),
     name: text("name").notNull(),
@@ -86,19 +88,15 @@ export const accounts = pgTable(
     xName: text("x_name"),
     xAvatarUrl: text("x_avatar_url"),
     email: text("email"),
-    creatorId: uuid("creator_id").references(() => creators.id),
-    // Onboarding (DATABASE.md § accounts — onboarding columns). The X values
-    // are a one-time prefill snapshot, never synced. draft is private.
-    xBio: text("x_bio"),
-    xLocation: text("x_location"),
-    xUrl: text("x_url"),
+    // The creator this account owns is the one with the same x_user_id — no
+    // separate link column (DATABASE.md § accounts, 2026-10-06).
+    // Onboarding: draft starts as the one-time X prefill; private.
     onboardedAt: timestamptz("onboarded_at"),
     draft: jsonb("draft"),
     createdAt: timestamptz("created_at").notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex("accounts_x_user_id_key").on(table.xUserId),
-    uniqueIndex("accounts_creator_id_key").on(table.creatorId),
   ],
 );
 
@@ -153,10 +151,9 @@ export const battles = pgTable(
     winnerId: uuid("winner_id")
       .notNull()
       .references(() => creators.id),
+    // A browser session id (anonymous, before 2026-10-04) or "x:<X user id>"
+    // for a signed-in pick — RANKING.md § Scoring.
     voterSession: text("voter_session").notNull(),
-    // The signed-in account that picked (Sign in with X, 2026-10-04). Null on
-    // battles from before accounts. RANKING.md § Scoring.
-    voterUserId: uuid("voter_user_id"),
     auraABefore: integer("aura_a_before").notNull(),
     auraBBefore: integer("aura_b_before").notNull(),
     auraAAfter: integer("aura_a_after").notNull(),
@@ -166,14 +163,14 @@ export const battles = pgTable(
   (table) => [
     index("battles_created_at_idx").on(table.createdAt),
     index("battles_winner_created_at_idx").on(table.winnerId, table.createdAt),
-    // One scoring pick per unordered pair per account — DATABASE.md § accounts.
-    uniqueIndex("battles_account_pair_key")
+    // One scoring pick per unordered pair per X person — DATABASE.md § accounts.
+    uniqueIndex("battles_x_pair_key")
       .on(
-        table.voterUserId,
+        table.voterSession,
         sql`least(${table.creatorAId}, ${table.creatorBId})`,
         sql`greatest(${table.creatorAId}, ${table.creatorBId})`,
       )
-      .where(sql`${table.voterUserId} is not null`),
+      .where(sql`${table.voterSession} like 'x:%'`),
     check("battles_distinct_creators", sql`${table.creatorAId} != ${table.creatorBId}`),
     check(
       "battles_winner_is_participant",
@@ -312,16 +309,12 @@ export const demoJudgements = pgTable(
       .notNull()
       .references(() => demos.id),
     voterSession: text("voter_session").notNull(),
-    voterUserId: uuid("voter_user_id"),
     // 'underhyped' | 'not_yet'
     verdict: text("verdict").notNull(),
     createdAt: timestamptz("created_at").notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex("demo_judgements_demo_session_key").on(table.demoId, table.voterSession),
-    uniqueIndex("demo_judgements_demo_account_key")
-      .on(table.demoId, table.voterUserId)
-      .where(sql`${table.voterUserId} is not null`),
     index("demo_judgements_demo_created_idx").on(table.demoId, table.createdAt),
     check("demo_judgements_verdict_check", sql`${table.verdict} in ('underhyped', 'not_yet')`),
   ],

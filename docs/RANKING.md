@@ -78,6 +78,14 @@ profile** (DECISIONS.md § "Onboarding v2"). Signed in without one, nothing is
 written and the person is sent to finish their profile; the pick is replayed
 after. Profile-only creators (not in the Arena) are never paired or ranked.
 
+**Changed 2026-10-06:** the voter is the **X person**, not the sign-in
+account: a pick stores `voter_session = "x:<X user id>"` (was `"u:<account
+id>"`, and `voter_user_id` is gone). One scoring pick per unordered pair per X
+person, enforced by the `battles_x_pair_key` unique index. A person who
+deletes and recreates their sign-in account keeps the same X id, so they can't
+judge the same pair twice. "People deciding" still counts distinct
+`voter_session`, unchanged.
+
 **Changed 2026-10-06:** **you never judge a battle you're in.** A pick from an
 account whose own creator is either card is not counted — nothing is written,
 no Aura moves, and the person is told "That's you". Pairing also leaves the

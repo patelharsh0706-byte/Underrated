@@ -1,19 +1,18 @@
 import { describe, expect, it } from "vitest";
 
-import { accountVoterKey, chooseClaim, xIdentityFromUser, type ClaimCandidate } from "./account-claim";
+import { chooseClaim, xVoterKey, xIdentityFromUser, type ClaimCandidate } from "./account-claim";
 
 const harsh = { xUserId: "1543827190", xUsername: "HarshPatel502" };
 const creator = (over: Partial<ClaimCandidate> = {}): ClaimCandidate => ({
   id: "c-1",
   username: "harshpatel502",
-  userId: null,
   xUserId: null,
   ...over,
 });
 
 describe("chooseClaim — DATABASE.md § accounts", () => {
   it("links the creator that already carries this X user id", () => {
-    expect(chooseClaim(harsh, creator({ xUserId: "1543827190", userId: "u-1" }), null)).toEqual({ creatorId: "c-1", saveXUserId: false });
+    expect(chooseClaim(harsh, creator({ xUserId: "1543827190" }), null)).toEqual({ creatorId: "c-1", saveXUserId: false });
   });
 
   it("claims an unclaimed creator by @handle once, case-insensitive, and saves the id", () => {
@@ -21,7 +20,6 @@ describe("chooseClaim — DATABASE.md § accounts", () => {
   });
 
   it("never takes over a claimed creator through a handle match", () => {
-    expect(chooseClaim(harsh, null, creator({ userId: "someone-else" }))).toBeNull();
     expect(chooseClaim(harsh, null, creator({ xUserId: "999" }))).toBeNull();
   });
 
@@ -31,7 +29,7 @@ describe("chooseClaim — DATABASE.md § accounts", () => {
   });
 
   it("prefers the id match even if the handle now points elsewhere (renamed account)", () => {
-    const byId = creator({ id: "c-old", username: "harsh_old", xUserId: "1543827190", userId: "u-1" });
+    const byId = creator({ id: "c-old", username: "harsh_old", xUserId: "1543827190" });
     expect(chooseClaim(harsh, byId, creator({ id: "c-other" }))?.creatorId).toBe("c-old");
   });
 });
@@ -55,8 +53,8 @@ describe("xIdentityFromUser", () => {
   });
 });
 
-describe("accountVoterKey", () => {
-  it("prefixes the account id so it can never collide with a browser session uuid", () => {
-    expect(accountVoterKey("abc")).toBe("u:abc");
+describe("xVoterKey — RANKING.md § Scoring (2026-10-06)", () => {
+  it("prefixes the X user id so it can never collide with a browser session uuid", () => {
+    expect(xVoterKey("1543827190")).toBe("x:1543827190");
   });
 });

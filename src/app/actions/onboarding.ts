@@ -10,7 +10,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { z } from "zod";
 
-import { getSignedInUserId, PREVIEW_PROFILE_DONE_COOKIE } from "@/lib/account";
+import { getSignedInUserId, loadAccount, PREVIEW_PROFILE_DONE_COOKIE } from "@/lib/account";
 import { db } from "@/lib/db";
 import { isMockMode } from "@/lib/db/mock-data";
 import { accounts, creators } from "@/lib/db/schema";
@@ -31,9 +31,7 @@ import { getUnavatarUrl } from "@/lib/unavatar";
 
 async function myAccount() {
   const userId = await getSignedInUserId();
-  if (!userId) return null;
-  const [row] = await db.select().from(accounts).where(eq(accounts.id, userId));
-  return row ?? null;
+  return userId ? loadAccount(userId) : null;
 }
 
 /** Welcome step A: private email + what you're building. */

@@ -33,11 +33,12 @@ export function withProject(draft: ProfileEdit, projectUrl: string): ProfileEdit
 }
 
 /**
- * The account's saved draft, or — before anything is saved — the one-time X
- * prefill (bio, location, website). Every reader of `accounts.draft` goes
- * through this: reading `draft ?? {}` instead wiped the X prefill on the
- * Welcome step and on a paid entry made before Finish.
+ * The account's saved draft. The one-time X prefill (bio, location, website)
+ * is written into it at the first sign-in (DATABASE.md § accounts, 2026-10-06),
+ * so the draft is the only source. A missing or unreadable draft is an empty
+ * profile, never an error page.
  */
-export function draftForAccount(account: { draft: unknown; xBio: string | null; xLocation: string | null; xUrl: string | null }): ProfileEdit {
-  return account.draft ? profileEditSchema.parse(account.draft) : initialDraft({ xBio: account.xBio, xLocation: account.xLocation, xUrl: account.xUrl });
+export function draftForAccount(account: { draft: unknown }): ProfileEdit {
+  const parsed = profileEditSchema.safeParse(account.draft ?? {});
+  return parsed.success ? parsed.data : profileEditSchema.parse({});
 }

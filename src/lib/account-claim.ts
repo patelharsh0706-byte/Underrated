@@ -36,7 +36,6 @@ export function xIdentityFromUser(user: SupabaseUserLike): XIdentity | null {
 export interface ClaimCandidate {
   id: string;
   username: string;
-  userId: string | null;
   xUserId: string | null;
 }
 
@@ -61,7 +60,6 @@ export function chooseClaim(
   if (byXUserId && byXUserId.xUserId === x.xUserId) return { creatorId: byXUserId.id, saveXUserId: false };
   if (
     byHandle &&
-    byHandle.userId === null &&
     byHandle.xUserId === null &&
     byHandle.username.toLowerCase() === x.xUsername.toLowerCase()
   ) {
@@ -71,10 +69,11 @@ export function chooseClaim(
 }
 
 /**
- * The value a signed-in pick stores in battles.voter_session. Every existing
- * "people deciding" / "already judged" query counts distinct voter_session,
- * so they count accounts with no rewrite (RANKING.md § Scoring).
+ * The value a signed-in pick or demo judgement stores in voter_session: the X
+ * person, so a recreated sign-in account can't judge the same pair again.
+ * Every "people deciding" / "already judged" query counts distinct
+ * voter_session, so they count X people with no rewrite (RANKING.md § Scoring).
  */
-export function accountVoterKey(accountId: string): string {
-  return `u:${accountId}`;
+export function xVoterKey(xUserId: string): string {
+  return `x:${xUserId}`;
 }

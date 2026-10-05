@@ -515,24 +515,31 @@ x_username    text           @handle at last sign-in (display only, can change)
 x_name        text           display name from X
 x_avatar_url  text           profile image URL from X
 email         text           PRIVATE — never selected by public reads
-creator_id    uuid unique    fk creators.id — the profile this account owns
 created_at    timestamptz
 ```
+
+**Changed 2026-10-06 (migration 0016):** `creator_id` is gone. The account
+owns the creator whose `creators.x_user_id` equals its `x_user_id` — the X
+user id is the only link (both columns are unique, so one creator per X
+person). `creators.user_id` is no longer read or written by the app; the live
+`main` code still selects it, so it is dropped in a later migration, after
+this branch is deployed.
 
 - RLS on, deny by default; only the server (service role) reads or writes.
 - `creators.x_user_id text unique` (new, nullable) is filled the first time a
   creator is claimed.
 - **Auto-claim at sign-in:** (1) a creator whose `x_user_id` equals the
-  account's → link. (2) Otherwise an **unclaimed** creator (`user_id` null and
-  no `x_user_id`) whose username equals the X @handle, case-insensitive →
-  link, set `creators.user_id` and `creators.x_user_id`. (3) Otherwise no
+  account's → already theirs, nothing to write. (2) Otherwise an **unclaimed**
+  creator (no `x_user_id`) whose username equals the X @handle,
+  case-insensitive → set its `x_user_id` (that is the claim). (3) Otherwise no
   creator. A claimed creator is never re-assigned by a handle match.
-- `battles.voter_user_id uuid` (new, nullable for history) and a unique index
-  on `(voter_user_id, least(creator_a_id, creator_b_id),
-  greatest(creator_a_id, creator_b_id))` where `voter_user_id` is not null —
-  one scoring pick per pair per account, enforced by the database.
-- `demo_judgements.voter_user_id uuid` (new, nullable) with a unique index on
-  `(demo_id, voter_user_id)` — one judgement per demo per account.
+- **Votes (changed 2026-10-06, migration 0016):** a signed-in pick or demo
+  judgement stores `voter_session = "x:<X user id>"` — one voter id, no
+  separate `voter_user_id` column (removed from `battles` and
+  `demo_judgements`). One scoring pick per pair per X person is enforced by
+  `battles_x_pair_key`, unique on `(voter_session, least(creator_a_id,
+  creator_b_id), greatest(creator_a_id, creator_b_id))` where `voter_session
+  like 'x:%'`. Demo judgements keep `unique (demo_id, voter_session)`.
 
 ### Profile v2 fields (added 2026-10-04, DECISIONS.md § "Onboarding from X and profile v2")
 
@@ -589,13 +596,16 @@ unique (creator_id, user_id)
 ### accounts — onboarding columns (added with profile v2)
 
 ```
-x_bio          text          X description at sign-in — bootstraps About ONCE, never synced
-x_location     text          X location at sign-in — prefill only
-x_url          text          what they ship: X Website field, else the first link in the
-                             bio (lib/x-profile.ts) — prefill for "What are you building?"
-onboarded_at   timestamptz   set when Welcome is finished or skipped
-draft          jsonb         the "Looking good?" profile before paying (PRIVATE)
+onboarded_at   timestamptz   set when the onboarding steps are finished
+draft          jsonb         the onboarding answers so far (PRIVATE). Created at the first
+                             sign-in from the one-time X prefill (bio, location, and the
+                             X Website field or first bio link — lib/x-profile.ts)
 ```
+
+**Changed 2026-10-06 (migration 0016):** `x_bio`, `x_location` and `x_url` are
+gone. They were only ever used to build the first draft, so the prefill now
+goes straight into `draft` at the first sign-in. 0016 copies any existing
+values into `draft` before dropping the columns.
 
 All new tables have RLS on, deny by default.
 
@@ -606,7 +616,8 @@ All new tables have RLS on, deny by default.
   and counts skip it unchanged. The profile page reads `is_active OR
   profile_only`. Paying $3 sets `is_active = true, profile_only = false`.
 - `creators.wants_to_meet` becomes `text[] not null default '{}'`, at most 2.
-- "Profile done" (votes count) = `accounts.creator_id is not null`.
+- "Profile done" (votes count) = a creator exists with the account's
+  `x_user_id` (was `accounts.creator_id is not null` until 0016).
 - Option lists (`src/lib/profile/options.ts`):
   - work_how: Solo · Small team · Team
   - work_stage: Exploring · Building · Launched · Growing
@@ -617,3 +628,19 @@ All new tables have RLS on, deny by default.
     💸 Investing · 🛠 Taking clients · 🧪 Looking for beta users · 👋 Just connecting
   - into (≤ 6): popular first (AI, SaaS, Dev tools, Design, Open source, Consumer,
     Mobile apps, Community, Startups, Indie hacking), then the rest.
+
+### One link, one voter id, prefill in the draft (2026-10-06, migration 0016)
+
+DECISIONS.md § 2026-10-06 "The X user id is the only link". In order:
+
+1. Backfill `creators.x_user_id` from `accounts.creator_id` where missing.
+2. Copy `x_bio` / `x_location` / `x_url` into `accounts.draft` where no draft exists.
+3. Rewrite any `voter_session = 'u:<account id>'` to `'x:<X user id>'` in
+   `battles` and `demo_judgements` (none existed when 0016 was written).
+4. Create `battles_x_pair_key` before dropping `battles_account_pair_key`.
+5. Drop `accounts.creator_id`, `accounts.x_bio`, `accounts.x_location`,
+   `accounts.x_url`, `battles.voter_user_id`, `demo_judgements.voter_user_id`
+   and their indexes.
+
+Kept: `creators.user_id` (the live `main` code selects it; dropped after deploy).
+

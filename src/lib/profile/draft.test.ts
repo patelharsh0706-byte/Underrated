@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { initialDraft, withProject } from "./draft";
+import { draftForAccount, initialDraft, withProject } from "./draft";
 
 describe("initialDraft — X bio bootstraps the profile once", () => {
   it("copies the X bio into tagline and About, and prefills location and project", () => {
@@ -42,5 +42,18 @@ describe("withProject — optional project (DECISIONS.md § 2026-10-05)", () => 
     const d = withProject(initialDraft({ xUrl: "https://shipnotes.app" }), "");
     expect(d.projectUrl).toBe("");
     expect(d.projectName).toBe("");
+  });
+});
+
+describe("draftForAccount — the draft is the only source (DATABASE.md § accounts, 2026-10-06)", () => {
+  it("returns the saved draft, prefill included", () => {
+    const saved = initialDraft({ xBio: "I build tools", xLocation: "🇸🇬 Singapore" });
+    expect(draftForAccount({ draft: saved })).toMatchObject({ about: "I build tools", location: "🇸🇬 Singapore" });
+  });
+  it("treats a missing or unreadable draft as an empty profile, never an error", () => {
+    expect(draftForAccount({ draft: null })).toMatchObject({ about: "", openTo: [], past: [] });
+    const bad = draftForAccount({ draft: { workHow: "Wizard" } });
+    expect(bad.about).toBe("");
+    expect(bad.workHow).toBeUndefined();
   });
 });

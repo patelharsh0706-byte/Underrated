@@ -1765,3 +1765,37 @@ The Arena and demo checkouts build their Dodo return links from
 Why:
 A second run through the steps after finishing is confusing and adds nothing.
 A stale env var would have sent paying people to the wrong domain.
+
+## 2026-10-06 — The X user id is the only link; one voter id; X prefill in the draft
+
+Decision:
+- **Link:** an account owns the creator whose `creators.x_user_id` equals its
+  `accounts.x_user_id`. `accounts.creator_id` is removed; the app stops using
+  `creators.user_id` (dropped after deploy, because the live code selects it).
+  Claiming an unclaimed creator by @handle means setting its `x_user_id`.
+- **Votes:** picks and demo judgements store `voter_session = "x:<X user id>"`.
+  The duplicate `voter_user_id` columns are removed; the one-pick-per-pair rule
+  is a unique index on `voter_session` for `x:` rows.
+- **Prefill:** the X bio, location and link go straight into `accounts.draft`
+  at the first sign-in; `x_bio`, `x_location` and `x_url` are removed.
+Migration 0016 (DATABASE.md § "One link, one voter id, prefill in the draft").
+
+Why:
+The same fact was stored in several places — the account↔creator link three
+ways, the voter twice per vote, the X prefill twice. Copies drift; one source
+can't. X's numeric id never changes and is known on both sides, even before
+an account exists (a hand-entered creator can carry it).
+
+Consequences:
+Sign-in is X-only, so every account has an X id; adding another sign-in method
+would need a new link. There is no foreign key between the two `x_user_id`
+columns (deliberate: a creator can carry an X id before its person signs up);
+both are unique. Existing data: 976 anonymous battles and 7 demo judgements
+are untouched; 0 votes used `u:`; one account (HarshPatel502) keeps its link
+because its X id is already on both sides; its X prefill is copied into its
+draft before the columns go.
+
+Rejected:
+Keeping `accounts.creator_id` as the link (a second source next to the X id).
+Keying votes by the sign-in account id (a recreated account could judge again).
+

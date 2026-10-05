@@ -12,7 +12,6 @@ import { getDodoClient } from "@/lib/dodo-payments";
 import { getAppOrigin } from "@/lib/app-url";
 import { demoProductId } from "@/lib/env";
 import { getEntryState, getVoter } from "@/lib/account";
-import { accountVoterKey } from "@/lib/account-claim";
 import { getOrCreateVoterSession } from "@/lib/session";
 
 // Underhyped Demos writes — DATABASE.md § demos, DECISIONS.md § 2026-10-01.
@@ -125,14 +124,13 @@ export async function judgeDemo(input: { demoId: string; verdict: "underhyped" |
   if (voter.kind === "signed-out") return { needsSignIn: true };
   if (voter.kind === "needs-profile") return { needsProfile: true };
   if (isMockMode()) return { counted: false };
-  const userId = voter.userId;
   try {
-    const voterSession = accountVoterKey(userId);
+    const voterSession = voter.voterKey;
     const [demo] = await db.select({ status: demos.status }).from(demos).where(eq(demos.id, parsed.data.demoId));
     if (demo?.status !== "approved") return { error: "That demo isn’t live." };
     const inserted = await db
       .insert(demoJudgements)
-      .values({ demoId: parsed.data.demoId, voterSession, voterUserId: userId, verdict: parsed.data.verdict })
+      .values({ demoId: parsed.data.demoId, voterSession, verdict: parsed.data.verdict })
       .onConflictDoNothing({ target: [demoJudgements.demoId, demoJudgements.voterSession] })
       .returning({ id: demoJudgements.id });
     return { ...(await getDemoTally(parsed.data.demoId)), counted: inserted.length > 0 };

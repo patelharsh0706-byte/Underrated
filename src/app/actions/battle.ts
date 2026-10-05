@@ -9,7 +9,6 @@ import { getRandomPair, type PublicCreator } from "@/lib/db/queries";
 import { isMockMode, mockAnyPair, mockCreatorById, mockHomeStats } from "@/lib/db/mock-data";
 import { computeEloUpdate } from "@/lib/ranking/elo";
 import { getVoter } from "@/lib/account";
-import { accountVoterKey } from "@/lib/account-claim";
 import { readVoterSession } from "@/lib/session";
 
 // The pair the client just showed, so it isn't served again back to back —
@@ -23,13 +22,12 @@ export async function nextBattle(
   // PREVIEW_MOCK=1 — see src/lib/db/mock-data.ts. No database round trip.
   // Mock ids aren't UUIDs, so they skip the schema.
   if (isMockMode()) return mockAnyPair(excludeIds.slice(0, 2));
-  // Signed in: the account is the voter (RANKING.md § Scoring). Signed out:
+  // Signed in: the X person is the voter (RANKING.md § Scoring). Signed out:
   // the browser session, read without creating one — picks need an account.
   const voter = await getVoter();
-  const userId = voter.kind === "signed-out" ? null : voter.userId;
   // Never serve someone their own card (RANKING.md § Scoring, 2026-10-06).
   const own = voter.kind === "ok" && voter.creatorId ? [voter.creatorId] : [];
-  return getRandomPair(userId ? accountVoterKey(userId) : await readVoterSession(), [...excludeIdsSchema.parse(excludeIds), ...own]);
+  return getRandomPair(voter.kind === "signed-out" ? await readVoterSession() : voter.voterKey, [...excludeIdsSchema.parse(excludeIds), ...own]);
 }
 
 const pickWinnerInput = z
@@ -133,8 +131,7 @@ export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promis
   if (voter.kind !== "ok") {
     return { ...notCounted(winnerId, loserId), ...(voter.kind === "signed-out" ? { needsSignIn: true } : { needsProfile: true }) };
   }
-  const userId = voter.userId;
-  const voterSession = accountVoterKey(userId);
+  const voterSession = voter.voterKey;
 
   return db.transaction(async (tx) => {
     // Same UTC-day boundary getHomeStats() and getTop24h() use, so every
@@ -181,8 +178,8 @@ export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promis
       };
     }
 
-    // One scoring pick per pair per account (voterSession is "u:<id>"; the
-    // battles_account_pair_key unique index backs this up). The pair is unordered, so picking
+    // One scoring pick per pair per X person (voterSession is "x:<X user id>";
+    // the battles_x_pair_key unique index backs this up). The pair is unordered, so picking
     // the other side of a matchup already judged doesn't buy a second vote.
     // See RANKING.md § Scoring.
     const [alreadyJudged] = await tx
@@ -216,7 +213,6 @@ export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promis
       creatorBId: loser.id,
       winnerId: winner.id,
       voterSession,
-      voterUserId: userId,
       auraABefore: winner.aura,
       auraBBefore: loser.aura,
       auraAAfter: winnerAfter,

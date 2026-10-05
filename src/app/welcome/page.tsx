@@ -3,10 +3,10 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 
 import { WelcomeFlow } from "@/components/profile/welcome-flow";
-import { getSignedInUserId } from "@/lib/account";
+import { getSignedInUserId, loadAccount } from "@/lib/account";
 import { db } from "@/lib/db";
 import { isMockMode } from "@/lib/db/mock-data";
-import { accounts, creators } from "@/lib/db/schema";
+import { creators } from "@/lib/db/schema";
 import { draftForAccount, initialDraft } from "@/lib/profile/draft";
 import { getPreviewMe } from "@/lib/profile/preview-me";
 import { getProfileV2 } from "@/lib/profile/queries";
@@ -52,7 +52,7 @@ export default async function WelcomePage({ searchParams }: WelcomePageProps) {
 
   const userId = await getSignedInUserId();
   if (!userId) redirect(next);
-  const [account] = await db.select().from(accounts).where(eq(accounts.id, userId));
+  const account = await loadAccount(userId);
   // No account row: sign in with X again (that creates it). Sending them on to
   // `next` looped — the pick there asked for a profile and came straight back.
   if (!account) redirect(`/sign-in?next=${encodeURIComponent(next)}`);
