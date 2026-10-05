@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { finishProfile, saveDraft, saveWelcome } from "@/app/actions/onboarding";
+import { continuesAfterProfile } from "@/lib/entry-gate";
 import { peekPendingType } from "@/lib/pending-action";
 import { withProject } from "@/lib/profile/draft";
 import { draftProfile } from "@/lib/profile/draft-profile";
@@ -47,7 +48,7 @@ export function WelcomeFlow({ me, email: initialEmail, draft: initialDraft, clai
   const [draft, setDraft] = useState<ProfileEdit>(() => (claimed ? editFromProfile(claimed) : initialDraft));
   const [inline, setInline] = useState<InlineField | null>(null);
   const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState<{ to: string; pending: ReturnType<typeof peekPendingType> } | null>(null);
+  const [done, setDone] = useState<{ to: string; pending: ReturnType<typeof peekPendingType>; line?: string } | null>(null);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const first = me.name.split(" ")[0];
 
@@ -102,17 +103,24 @@ export function WelcomeFlow({ me, email: initialEmail, draft: initialDraft, clai
     const r = sample ? {} : await finishProfile(draft);
     setBusy(false);
     if ("error" in r && r.error) return setErrors({ form: r.error });
-    // A vote was waiting: back to it (it replays and now counts). Otherwise the profile.
+    // A vote was waiting: back to it (it replays and now counts). Came from
+    // "Enter the Arena" or "Submit your demo": on to it (DECISIONS.md §
+    // 2026-10-06). Otherwise the profile.
     const resume = next.includes("resume=1");
+    const onward = continuesAfterProfile(next);
     const handle = ("username" in r && r.username) || claimed?.username || me.handle;
-    setDone({ to: resume || sample ? next : `/c/${handle}`, pending: resume ? peekPendingType() : null });
+    setDone({
+      to: resume || onward || sample ? next : `/c/${handle}`,
+      pending: resume ? peekPendingType() : null,
+      line: onward ? (next.startsWith("/demos") ? "Next: your demo." : "Next: the Arena.") : undefined,
+    });
     setStep("in");
   }
 
   if (step === "in" && done) {
     return (
       <div className={cx("root")}>
-        <YoureIn to={done.to} pending={done.pending} />
+        <YoureIn to={done.to} pending={done.pending} line={done.line} />
       </div>
     );
   }

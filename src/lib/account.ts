@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 
 import { chooseClaim, xIdentityFromUser, type ClaimCandidate } from "@/lib/account-claim";
 import { db } from "@/lib/db";
+import { entryStateFrom, type EntryState } from "@/lib/entry-gate";
 import { isMockMode } from "@/lib/db/mock-data";
 import { accounts, creators } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/server";
@@ -49,6 +50,24 @@ export async function getVoter(): Promise<Voter> {
   }
   const [row] = await db.select({ creatorId: accounts.creatorId }).from(accounts).where(eq(accounts.id, userId));
   return row?.creatorId ? { kind: "ok", userId } : { kind: "needs-profile", userId };
+}
+
+/**
+ * The gate in front of "Enter the Arena" (/submit) and "Submit your demo" —
+ * DECISIONS.md § 2026-10-06. lib/entry-gate.ts decides; this only reads.
+ */
+export async function getEntryState(): Promise<EntryState> {
+  const userId = await getSignedInUserId();
+  if (!userId) return { kind: "signed-out" };
+  if (isMockMode()) {
+    const done = (await cookies()).get(PREVIEW_PROFILE_DONE_COOKIE)?.value === userId;
+    return entryStateFrom({ creatorId: done ? "preview" : null, email: null }, done ? { username: "preview", profileOnly: true } : null);
+  }
+  const [account] = await db.select({ creatorId: accounts.creatorId, email: accounts.email }).from(accounts).where(eq(accounts.id, userId));
+  const [creator] = account?.creatorId
+    ? await db.select({ username: creators.username, profileOnly: creators.profileOnly }).from(creators).where(eq(creators.id, account.creatorId))
+    : [];
+  return entryStateFrom(account ?? null, creator ?? null);
 }
 
 /** The signed-in person's account, or null when signed out (or not an X account). */

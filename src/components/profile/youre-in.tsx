@@ -13,9 +13,11 @@ const SAYS = { pick: "Your pick now counts.", demo: "Your vote now counts.", hyp
 interface YoureInProps {
   to: string;
   pending: keyof typeof SAYS | null;
+  /** Where they're headed next, when it isn't the profile (DECISIONS.md § 2026-10-06). */
+  line?: string;
 }
 
-export function YoureIn({ to, pending }: YoureInProps) {
+export function YoureIn({ to, pending, line }: YoureInProps) {
   const router = useRouter();
   useEffect(() => {
     const t = setTimeout(() => router.push(to), 1500);
@@ -25,7 +27,7 @@ export function YoureIn({ to, pending }: YoureInProps) {
   return (
     <div className={cx("ob-in")} role="status">
       <h1>⚡ You’re in.</h1>
-      <p>{pending ? SAYS[pending] : "Opening your profile…"}</p>
+      <p>{pending ? SAYS[pending] : (line ?? "Opening your profile…")}</p>
     </div>
   );
 }

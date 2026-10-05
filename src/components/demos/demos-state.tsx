@@ -2,10 +2,9 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { clickDemo, judgeDemo } from "@/app/actions/demos";
+import { clickDemo, getJudgeGate, judgeDemo } from "@/app/actions/demos";
 import { SignInGate } from "@/components/auth/sign-in-gate";
 import { consumeResumeFlag, onboardingHref, resumeHere, savePending, takePending } from "@/lib/pending-action";
-import { createClient } from "@/lib/supabase/client";
 
 import { OTHERS, QUEUE, type SampleDemo } from "./sample-demos";
 
@@ -42,20 +41,21 @@ export function DemosProvider({ children, initial }: { children: ReactNode; init
   const [voted, setVoted] = useState<Record<string, Verdict>>({});
   const queue = initial ? initial.queue : sampleQueue;
 
-  // Sign in with X (DECISIONS.md § 2026-10-04): live judging needs an account.
-  const [signedIn, setSignedIn] = useState<boolean | null>(live ? null : true);
+  // The gate (DECISIONS.md § 2026-10-06): signed out → the X pop-up, no
+  // profile → onboarding, ok → the vote. Read in sample mode too, so
+  // PREVIEW_MOCK=1 shows the same gate. null while it loads.
+  const [gate, setGate] = useState<"signed-out" | "needs-profile" | "ok" | null>(null);
   const [gateOpen, setGateOpen] = useState(false);
   const [resume, setResume] = useState<{ demoId: string; underhyped: boolean } | null>(null);
   useEffect(() => {
-    if (!live) return;
     let alive = true;
-    void createClient()
-      .auth.getUser()
-      .then(({ data }) => {
+    void getJudgeGate()
+      .catch(() => "signed-out" as const)
+      .then((g) => {
         if (!alive) return;
-        setSignedIn(!!data.user);
-        // Back from X sign-in: hand the attempted judgement to the Judge screen.
-        if (data.user && consumeResumeFlag()) {
+        setGate(g);
+        // Back from X sign-in (and onboarding): hand the attempted judgement to the Judge screen.
+        if (g === "ok" && consumeResumeFlag()) {
           const p = takePending("demo");
           if (p?.type === "demo") setResume({ demoId: p.demoId, underhyped: p.underhyped });
         }
@@ -63,7 +63,7 @@ export function DemosProvider({ children, initial }: { children: ReactNode; init
     return () => {
       alive = false;
     };
-  }, [live]);
+  }, []);
   const clearResume = useCallback(() => setResume(null), []);
 
   const patch = useCallback((id: string, f: (d: SampleDemo) => SampleDemo) => setDemos((ds) => ds.map((d) => (d.id === id ? f(d) : d))), []);
@@ -71,9 +71,13 @@ export function DemosProvider({ children, initial }: { children: ReactNode; init
   const judge = useCallback(
     (id: string, underhyped: boolean) => {
       if (voted[id]) return false;
-      if (live && signedIn !== true) {
+      // Still checking who this is: a click this early does nothing.
+      if (gate === null) return false;
+      if (gate !== "ok") {
+        // Kept, and replayed once they're back with a finished profile.
         savePending({ type: "demo", demoId: id, underhyped });
-        setGateOpen(true);
+        if (gate === "needs-profile") window.location.assign(onboardingHref());
+        else setGateOpen(true);
         return false;
       }
       setVoted((v) => ({ ...v, [id]: underhyped ? "yes" : "no" }));
@@ -99,7 +103,7 @@ export function DemosProvider({ children, initial }: { children: ReactNode; init
       });
       return true;
     },
-    [voted, live, signedIn, patch],
+    [voted, live, gate, patch],
   );
 
   const click = useCallback(

@@ -1700,3 +1700,63 @@ required. The free profile exists so every counted vote belongs to a real,
 visible person — requiring a project would have blocked people who only want
 to vote. An empty project hides the "Currently cooking" card on the profile.
 
+
+## 2026-10-06 — Arena entry and demo submit need X sign-in and a finished profile
+
+Decision:
+The header's and Home's "Enter the Arena" (`/submit`) and "Submit your demo"
+(`/demos/submit`) are gated, in this order, on the server:
+1. **Signed out** (or signed in with no `accounts` row) → the Sign in with X
+   pop-up, which comes back to the same page.
+2. **No finished profile** → the five onboarding steps
+   (`/welcome?next=<page>`); "⚡ You're in." then continues to that page, not
+   the profile.
+3. **Profile finished** → `/submit` shows the $3 "Enter the Arena" card (or
+   sends someone already in the Arena to their profile); `/demos/submit` shows
+   the demo form with the account's email filled in.
+**Underhyped ⚡ / Not yet 🥱** on Demos sits behind the same gate: Demos reads
+the gate state once on load (`getJudgeGate`), so a signed-out click opens the X
+pop-up and a click with no profile goes to onboarding *before* any result is
+shown; the judgement is kept and replays on return. Sample demos
+(PREVIEW_MOCK=1) are gated too, so the flow can be reviewed locally.
+The "Enter the Arena" card on your own profile is unchanged: only the
+signed-in owner sees it, so both checks have already passed. A Dodo return
+(`/demos/submit?paid=1`) skips the gate and shows "In review".
+
+Why:
+Every paid entry belongs to a real, visible person — the same reason votes
+need a profile (§ 2026-10-05 "Onboarding v2"). One path into the Arena also
+retires the anonymous `/submit` form, whose payments needed a creator made by
+hand.
+
+Consequences:
+`startArenaCheckout` and `createDemo` refuse an account without a finished
+profile, so the gate can't be skipped by calling the action directly. The
+webhook's "create the creator from the draft" branch is no longer reached by
+new checkouts; it stays for checkouts already in flight. Demos are still
+matched to the maker by email (no schema change); linking a demo to its
+account is a later step. Supersedes "Submit yourself — no login required"
+(MVP.md) and paying before finishing onboarding.
+
+Rejected:
+A real pop-up window for X (phones block them; the modal → X → back pattern is
+what the rest of the site uses). Gating the profile card (it would ask a
+signed-in owner to sign in again).
+
+## 2026-10-06 — /welcome sends finished people on, checkouts return to the serving domain
+
+Decision:
+Someone who owns a profile and has done the steps once (`accounts.creator_id`
+and `onboarded_at` both set) never sees onboarding again: opening `/welcome`
+sends them to their profile, or on to the page that brought them (a waiting
+vote `…?resume=1`, `/submit`, `/demos/submit`). A claimed creator who hasn't
+finished the steps still sees them on each sign-in until they do (kept on
+purpose). Editing is "Edit profile" on the profile.
+
+The Arena and demo checkouts build their Dodo return links from
+`getAppOrigin()` (the domain that served the request), not
+`NEXT_PUBLIC_APP_URL`, which already took production down once (ISSUES.md).
+
+Why:
+A second run through the steps after finishing is confusing and adds nothing.
+A stale env var would have sent paying people to the wrong domain.

@@ -12,7 +12,8 @@ import { db } from "@/lib/db";
 import { isMockMode } from "@/lib/db/mock-data";
 import { accounts, creators } from "@/lib/db/schema";
 import { getDodoClient } from "@/lib/dodo-payments";
-import { clientEnv, dodoEnv } from "@/lib/env";
+import { getAppOrigin } from "@/lib/app-url";
+import { dodoEnv } from "@/lib/env";
 import { withProject } from "@/lib/profile/draft";
 import { profileEditSchema, type ProfileEdit } from "@/lib/profile/options";
 import { PREVIEW_DRAFT_COOKIE } from "@/lib/profile/preview-me";
@@ -185,14 +186,15 @@ export async function startArenaCheckout(): Promise<{ error?: string; payUrl?: s
   if (isMockMode()) return { error: "Preview — no checkout. Entering the Arena costs $3 on the live site." };
   const account = await myAccount();
   if (!account) return { error: "Sign in with X first." };
-  let back = "/welcome";
-  if (account.creatorId) {
-    const [owned] = await db.select({ profileOnly: creators.profileOnly, username: creators.username }).from(creators).where(eq(creators.id, account.creatorId));
-    if (!owned?.profileOnly) return { error: "You’re already in the Arena." };
-    back = `/c/${owned.username}`;
-  }
+  // No paying before the profile is finished — DECISIONS.md § 2026-10-06.
+  if (!account.creatorId) return { error: "Finish your profile first." };
+  const [owned] = await db.select({ profileOnly: creators.profileOnly, username: creators.username }).from(creators).where(eq(creators.id, account.creatorId));
+  if (!owned) return { error: "Finish your profile first." };
+  if (!owned.profileOnly) return { error: "You’re already in the Arena." };
+  const back = `/c/${owned.username}`;
   try {
-    const appUrl = clientEnv().NEXT_PUBLIC_APP_URL;
+    // The domain that served this request, never NEXT_PUBLIC_APP_URL (ISSUES.md, lib/app-url.ts).
+    const appUrl = await getAppOrigin();
     const session = await getDodoClient().checkoutSessions.create({
       product_cart: [{ product_id: dodoEnv().DODO_PAYMENTS_SUBMISSION_PRODUCT_ID, quantity: 1 }],
       customer: account.email ? { email: account.email } : null,

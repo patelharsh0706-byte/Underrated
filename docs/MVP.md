@@ -32,9 +32,10 @@ Anything that gets cut or deferred goes to [ROADMAP.md](ROADMAP.md).
   you're underhyped?") → $3 → you join battles; the card becomes your stats.
 - **Edit your own profile** — the fields above; nobody can edit someone else's.
 - **Discover** — browse creators outside the leaderboard.
-- **Submit yourself** — gated by a one-time $3 entry fee (Dodo Payments
-  Checkout), not an account. No login required. The fee is platform revenue and
-  never affects ranking — see [DECISIONS.md](DECISIONS.md).
+- **Submit yourself** — "Enter the Arena" in the header and on Home
+  (`/submit`): Sign in with X → finish the free profile → a one-time $3 entry
+  fee (Dodo Payments Checkout). The fee is platform revenue and never affects
+  ranking — see [DECISIONS.md](DECISIONS.md) § 2026-10-06.
 - **One $30 sponsor slot** — clearly labeled Spotlight on the Arena page, 30 days, zero ranking influence.
 - **Mobile responsive** — the battle must feel right on a phone first.
 - **Sharing** — shareable profile links with OG cards showing Aura and rank.
@@ -59,7 +60,8 @@ Anything that gets cut or deferred goes to [ROADMAP.md](ROADMAP.md).
   15-second screen recording at a time, "Does this deserve hype?",
   **Underhyped ⚡ / Not yet 🥱**, then the result (% split, judges, product
   clicks, rank). Ranked in "Top demos this week" (RANKING.md § Demos). Makers
-  upload a pre-recorded MP4/WebM (1280×720 landscape, 15 s max, 8 MB max), pay $3, and the
+  sign in with X and finish their profile (§ 2026-10-06), then upload a
+  pre-recorded MP4/WebM (1280×720 landscape, 15 s max, 8 MB max), pay $3, and the
   operator reviews it before it enters the queue. A "for makers" card offers
   a Claude prompt for making the video. Built in two phases: **Phase 1** ships
   the pages on sample data (nothing saved); **Phase 2** adds storage (Vercel

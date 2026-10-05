@@ -11,6 +11,7 @@ import { initialDraft } from "@/lib/profile/draft";
 import { profileEditSchema } from "@/lib/profile/options";
 import { getPreviewMe } from "@/lib/profile/preview-me";
 import { getProfileV2 } from "@/lib/profile/queries";
+import { finishedWelcomeHref, hasFinishedOnboarding } from "@/lib/profile/welcome-route";
 
 // Onboarding v2, the five steps after Sign in with X — DECISIONS.md §
 // 2026-10-05. Signed-in only. Never cached: it is one person's page.
@@ -33,6 +34,8 @@ export default async function WelcomePage({ searchParams }: WelcomePageProps) {
     // The signed-in X person (session + X prefill cookie, no database); the
     // sample person when nobody is signed in.
     const mine = await getPreviewMe();
+    // Already finished: no second run through the steps.
+    if (mine?.profileDone) redirect(finishedWelcomeHref(next, mine.me.handle));
     const me = mine?.me ?? { name: "Maya Chen", handle: "maya_builds", avatar: null };
     return (
       <main className="mx-auto w-full max-w-[680px] flex-1 px-4 py-8 sm:py-10">
@@ -56,6 +59,8 @@ export default async function WelcomePage({ searchParams }: WelcomePageProps) {
   let claimed = null;
   if (account.creatorId) {
     const [row] = await db.select({ username: creators.username }).from(creators).where(eq(creators.id, account.creatorId));
+    // Already finished: no second run through the steps (Edit profile is on the profile).
+    if (row && hasFinishedOnboarding(account)) redirect(finishedWelcomeHref(next, row.username));
     claimed = row ? await getProfileV2(row.username) : null;
   }
   const draft = account.draft

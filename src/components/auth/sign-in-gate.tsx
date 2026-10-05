@@ -13,6 +13,9 @@ const COPY = {
   demo: ["⚡", "Make your judgement count.", "Sign in to keep Demos fair.", "One account. One judgement per demo."],
   hype: ["⚡", "Make your Hype count.", "Sign in so every Hype is a real person.", "One account. One Hype per creator."],
   signin: ["🔥", "Sign in to Underhyped.", "Your picks, your Hype, your profile.", "One account, made with X."],
+  // DECISIONS.md § 2026-10-06: entering and submitting need a finished profile.
+  arena: ["🔥", "Enter the Arena.", "Sign in with X, finish your free profile, then step in.", "Every creator in the Arena is a real person."],
+  submitDemo: ["⚡", "Submit your demo.", "Sign in with X and finish your free profile first.", "Every demo comes from a real person."],
 } as const;
 
 export type GateVariant = keyof typeof COPY;
