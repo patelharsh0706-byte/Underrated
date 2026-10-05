@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { creatorFieldsSchema } from "@/lib/creator-schema";
 import { insertCreator, linkPaymentToCreator, recordPayment } from "@/lib/db/queries";
 import { insertPaidDemo } from "@/lib/demos/queries";
+import { enterArenaForAccount } from "@/lib/profile/write";
 import { demoDataFromMetadata } from "@/lib/demos/schemas";
 import { getDodoClient } from "@/lib/dodo-payments";
 
@@ -90,11 +91,24 @@ async function handleCompletedSubmission(payment: {
     metadata: payment.metadata ?? null,
   });
 
-  // 3. Tie them together. A no-op when no creator exists for this payment —
+  // 3. Enter the Arena from a profile: the checkout carried only the account
+  //    id. A free profile is switched on; with none yet, the creator is built
+  //    from the account's saved draft (DECISIONS.md § 2026-10-05 "Onboarding v2").
+  //    After the ledger write, wrapped, so it can never lose a payment.
+  const accountId = typeof payment.metadata?.account_id === "string" ? payment.metadata.account_id : null;
+  if (accountId && /^[0-9a-f-]{36}$/i.test(accountId)) {
+    try {
+      await enterArenaForAccount(accountId, { entryFeeCents: payment.total_amount, dodoPaymentId: payment.payment_id });
+    } catch (err) {
+      console.error("Failed to enter the Arena for account", payment.payment_id, accountId, err);
+    }
+  }
+
+  // 4. Tie them together. A no-op when no creator exists for this payment —
   //    that row then shows up in the orphan list (creator_id IS NULL).
   await linkPaymentToCreator(payment.payment_id);
 
-  // 4. A $3 demo entry: the checkout carried the whole form as metadata, and
+  // 5. A $3 demo entry: the checkout carried the whole form as metadata, and
   //    this is the first time the demo is saved — never before payment
   //    (DATABASE.md § demos). After the ledger write, and wrapped, so it can
   //    never lose a payment; if it fails, the operator adds the demo by hand

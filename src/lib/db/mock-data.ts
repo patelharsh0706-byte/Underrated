@@ -280,6 +280,7 @@ export function mockCreatorProfile(username: string): CreatorProfile | null {
     rank: seedIndex < 6 ? (rankRow?.rank ?? null) : null,
     battlesCount: base.battlesCount,
     winsCount: SEEDS[seedIndex].winsCount,
+    inArena: true,
   };
 }
 
@@ -362,5 +363,6 @@ export function mockNewCreator(): CreatorProfile {
     primarySocial: "twitter",
     followerCount: null,
     rank: null,
+    inArena: true,
   };
 }

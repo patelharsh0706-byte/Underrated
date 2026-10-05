@@ -1,12 +1,13 @@
 import Link from "next/link";
 
+import { AccountMenu } from "@/components/auth/account-menu";
 import { NavLinks } from "@/components/shell/nav-links";
 import styles from "@/components/shell/shell.module.css";
 import { ThemeToggle } from "@/components/shell/theme-toggle";
 
 // V3 shell — DESIGN.md § Header (V3). Same on every route (root layout).
-// Server Component; the only client islands are the nav links (active-route
-// pill) and the theme toggle. The reference mock's search box is not
+// Server Component; the client islands are the nav links (active-route pill),
+// the theme toggle and the account menu (Sign in with X). The reference mock's search box is not
 // rendered until search exists (UX rule 10).
 export function SiteHeader() {
   return (
@@ -27,6 +28,7 @@ export function SiteHeader() {
               <path d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </Link>
+          <AccountMenu />
         </div>
       </header>
     </div>

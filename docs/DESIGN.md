@@ -248,8 +248,9 @@ word the page is actually about.
 never allowed to shrink into the nav), the nav **Home · Arena · Demos ·
 Leaderboard · Nominate** with the current route as a lime pill (Demos stays
 lit on its sub-pages), the sun/moon theme toggle,
-and the lime "Enter the Arena ↗" pill (to `/submit`). About and Rules live in
-the footer. A search box appears in the reference mock but stays hidden until
+and the lime "Enter the Arena ↗" pill (to `/submit`), then the account spot
+at the far right: "Sign in" when signed out, the X avatar (menu: My profile ·
+Sign out) when signed in (2026-10-05). About and Rules live in the footer. A search box appears in the reference mock but stays hidden until
 search exists (rule 10).
 
 > **Changed in V3.** V2's desktop nav was Arena / Leaderboard / About / Rules
@@ -363,7 +364,10 @@ page-by-page reinvention.
 | Home | `/` | hero + #1 creator card + Top 10 This Week, weekly-drop email banner, Live on Underhyped (tabs) + Enter CTA, Live Feed + Featured battle, Nominate banner |
 | Arena | `/arena` | headline, battle pair, pulse row, CTA, stats bar, three-up, sponsor, Hottest 10, Live on Underhyped |
 | Leaderboard | `/leaderboard` | scope + category filters, top-3 podium, ranked table, load more |
-| Profile | `/c/[username]` | identity card, Aura / placement / wins stat row, links |
+| Profile | `/c/[username]` | v2 (2026-10-04): identity · status card (Aura, rank, win rate, ⚔ battles ▾, ⚡ Hype — battles/Hype centred) · one ⚡ Hype button · framed About box (About, Working style chips, Open to, Into as label/value rows) · framed Cooking box (Currently cooking card, thin rule, Previously cooked rows with status pills) — from the Underhyped Arena artifact v58 |
+| Welcome | `/welcome` | v2 (2026-10-05): Step 1 "Welcome, {name}" (X photo, @handle, ✓ Connected with X, email (required), "What are you cooking right now?" (optional — leave empty and the Cooking box is hidden), Build my profile →) · stepper ● — ○ — ○ — ○ Profile · You · Interests · History · Step 2 "Looking good?" (preview, ✎ inline edits, Looks good → / I'll edit this later) · Step 3 "What kind of builder are you?" · Step 4 "What are you open to?" (Into: popular + Show more) · Step 5 "What have you cooked before? 🍳" (+ Add a past project → URL → fetched name/description → status → Year (optional)) · "⚡ You're in." · Required to move on: Step 3 How + Where + at least one Meet (Experience optional); Step 4 at least one Open to (Into optional); Step 5 never blocks (Skip for now) |
+| Profile — not in Arena | `/c/[username]` | instead of stats, the owner sees "Think you're underhyped? Enter the Arena and find out." [Enter the Arena →]; visitors see no stats card |
+| Edit profile | `/c/[username]` (owner) | (2026-10-05) Edit profile, at the top or the bottom of the profile, replaces the whole profile with the edit form, opened from the top of the page; "← Back to profile" at the top; Save and Cancel side by side, centred at the bottom of the card; Save or Cancel returns to the profile, from the top |
 | Enter the Arena | `/submit` | two-link form, preview, category pick, edit |
 | Welcome | `/submit/success` | check badge, post-payment card, placement progress, "what happens next", Explore the Arena, share panel |
 | About | `/about` | manifesto, "three things money doesn't buy" |

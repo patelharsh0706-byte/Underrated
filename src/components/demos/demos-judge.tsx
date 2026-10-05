@@ -33,7 +33,7 @@ function useCountUp(target: number, run: boolean) {
 }
 
 export function DemosJudge() {
-  const { live: isLive, demos, queue, voted, judge, click, reset } = useDemos();
+  const { live: isLive, demos, queue, voted, judge, click, reset, resume, clearResume } = useDemos();
   // Snapshot the queue on load so voting never reshuffles what's next.
   const [order] = useState(queue);
   const [idx, setIdx] = useState(0);
@@ -118,12 +118,28 @@ export function DemosJudge() {
 
   function vote(underhyped: boolean) {
     if (!current || voted[current.id]) return;
-    judge(current.id, underhyped);
+    if (!judge(current.id, underhyped)) return;
     setSplit(0);
     setPhase("result");
     requestAnimationFrame(() => requestAnimationFrame(() => setSplit(1)));
     setTimeout(() => nextRef.current?.focus({ preventScroll: true }), 0);
   }
+
+  // Back from X sign-in: replay the judgement on the same demo, through the
+  // normal result screen (DECISIONS.md § 2026-10-04).
+  const voteRef = useRef(vote);
+  useEffect(() => {
+    voteRef.current = vote;
+  });
+  useEffect(() => {
+    if (!resume || !current || current.id !== resume.demoId) return;
+    const r = resume;
+    const t = setTimeout(() => {
+      clearResume();
+      voteRef.current(r.underhyped);
+    }, 0);
+    return () => clearTimeout(t);
+  }, [resume, current, clearResume]);
 
   function next() {
     setEnded(false);

@@ -1601,3 +1601,102 @@ database URL as GitHub secrets, and CI is deliberately secret-free (§ CI on
 GitHub Actions). Deleting on a `payment.failed` / `abandoned_checkout` webhook —
 misses tabs closed before checkout and errors before checkout opened.
 
+## 2026-10-04 — Sign in with X to pick
+
+Decision:
+Picks in the Arena and judgements in Demos need an account, made with Sign in
+with X (Supabase Auth, X OAuth 2.0). Browsing stays open; the first pick opens
+a "Make your pick count" modal and, after sign-in, the attempted pick is
+replayed so the person never picks twice. One account gets one scoring pick per
+unordered pair (database-enforced). Existing creators are auto-claimed: by X
+user ID, else — once, while unclaimed — by @handle, which then saves the ID.
+The look follows the approved prototype (Underhyped Arena artifact, v58).
+
+Why:
+Anonymous picks were one browser cookie per voter: refresh, incognito or a
+cleared cookie gave a fresh vote. An X account is a persistent identity, and
+the audience already lives on X. Matching on X's numeric id keeps a claimed
+profile safe when someone renames or a freed handle is reused.
+
+Consequences:
+A signed-in pick stores `voter_session = "u:<account id>"`, so every existing
+"people deciding" and "already judged" query counts accounts without being
+rewritten. Older anonymous battles keep their session values. Multiple X
+accounts can still vote separately — accepted. Google sign-in is retired.
+
+Rejected:
+Keeping anonymous picks (the abuse this fixes). Google sign-in (audience is on
+X). Matching existing creators by handle on every sign-in (handles change and
+get reused).
+
+## 2026-10-04 — Onboarding from X and profile v2
+
+Decision:
+After the first Sign in with X, the person sees **Welcome** (X photo, name,
+@handle; private email; "What are you building?") and then **"Looking good?"**,
+a full profile preview built from X — the X bio becomes the initial About and
+tagline (copied once, never synced), location and website are prefilled. From
+there: **Enter the Arena** ($3 Dodo checkout; the webhook creates the creator,
+linked to the account), **Edit details**, or **Skip for now**. An existing
+creator auto-claimed at sign-in sees **"This is you ✓"** instead — no payment.
+The profile page (`/c/[username]`) is rebuilt to the approved prototype
+(Underhyped Arena artifact, v58): identity, status card, one "⚡ Hype" button,
+an About box (About, Working style, Open to, Into) and a Cooking box (Currently
+cooking, Previously cooked). Follower count is gone. Owners edit their own
+profile; nobody else can.
+
+Why:
+"Who is this person, what are they building, why check them out?" — the
+competitive layer (Aura, battles) already exists; the profile is the human
+layer. Pulling from X removes the form: one sign-in builds the profile.
+
+Consequences:
+Profile editing moves into MVP (own profile only). New creators default to the
+"Builder" category (the onboarding asks no category question). Hype = battle
+wins + profile hypes; it is display-only and never ranks anyone. The X bio,
+location and website need X's API with the sign-in token; if X refuses, those
+prefills are simply empty. Battle history is reached by clicking "⚔ N battles"
+rather than shown on the page.
+
+Rejected:
+A sign-up form (the old Enter the Arena form) — X already knows who they are.
+Syncing the X bio on every sign-in — people write better Underhyped bios.
+Showing follower count — Underhyped exists to stop that being the measure.
+
+## 2026-10-05 — Onboarding v2: a free profile for fair voting, the Arena from the profile
+
+Decision:
+Everyone who wants to vote builds a **free public profile** right after Sign in
+with X, in five short steps: Welcome (email + what you're cooking) → Looking
+good? (the profile pulled from X, editable in place) → You (how you work,
+where you are, experience, who you'd like to meet) → Interests (open to, into)
+→ History (previously cooked, optional). **Picks, demo judgements and profile
+Hype count only once that profile exists.** A vote attempted before then is
+kept and recorded right after "⚡ You're in." The **Arena is separate and
+optional**: a finished profile is not in battles or on the leaderboard until its
+owner pays $3 from the "Enter the Arena" card on their own profile.
+
+Why:
+Fair voting. An X account stops one browser from voting twice; a public profile
+behind every counted vote makes each vote a visible person, not an anonymous
+account. Separating the profile from the Arena keeps voting free while entry
+stays a deliberate choice.
+
+Consequences:
+A profile-only creator is stored as `is_active = false, profile_only = true`, so
+pairing, the leaderboard and every count ignore them with no query changes; the
+profile page shows `is_active OR profile_only`. Paying activates the same row.
+Existing creators (auto-claimed) vote immediately. Supersedes, from 2026-10-04,
+"Enter the Arena from Looking good?" and replaying the pick before Welcome.
+
+Rejected:
+Counting votes right after X sign-in (an account with no profile is still
+faceless). Charging $3 to vote (voting must stay free).
+
+## 2026-10-05 — Current project optional at Welcome
+
+Step 1's "What are you cooking right now?" is optional; the email stays
+required. The free profile exists so every counted vote belongs to a real,
+visible person — requiring a project would have blocked people who only want
+to vote. An empty project hides the "Currently cooking" card on the profile.
+

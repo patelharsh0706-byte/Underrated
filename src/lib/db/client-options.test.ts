@@ -39,3 +39,12 @@ describe("database client options", () => {
     expect(DB_CLIENT_OPTIONS.connect_timeout).toBeGreaterThan(0);
   });
 });
+
+describe("clientOptionsFor — transaction mode needs room for a page's parallel queries", () => {
+  it("raises the pool on Supavisor transaction mode (6543) only", async () => {
+    const { clientOptionsFor, TRANSACTION_MODE_MAX } = await import("./client-options");
+    expect(clientOptionsFor("postgres://u:p@aws-0-x.pooler.supabase.com:6543/postgres").max).toBe(TRANSACTION_MODE_MAX);
+    expect(clientOptionsFor("postgres://u:p@aws-0-x.pooler.supabase.com:5432/postgres").max).toBe(DB_CLIENT_OPTIONS.max);
+    expect(clientOptionsFor("not a url").max).toBe(DB_CLIENT_OPTIONS.max);
+  });
+});

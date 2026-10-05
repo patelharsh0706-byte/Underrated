@@ -35,6 +35,22 @@ export const creators = pgTable(
     workUrl: text("work_url"),
     socials: jsonb("socials"),
     primarySocial: text("primary_social"),
+    // X's permanent user id, saved the first time the creator is claimed
+    // (DATABASE.md § accounts). Null for unclaimed creators.
+    xUserId: text("x_user_id"),
+    // Profile v2 — DATABASE.md § Profile v2 fields. All optional; empty
+    // sections are hidden. Lists are validated in src/lib/profile/options.ts.
+    about: text("about"),
+    location: text("location"),
+    locationHidden: boolean("location_hidden").notNull().default(false),
+    projectName: text("project_name"),
+    projectTagline: text("project_tagline"),
+    workHow: text("work_how"),
+    workStage: text("work_stage"),
+    workCareer: text("work_career"),
+    wantsToMeet: text("wants_to_meet").array().notNull().default(sql`'{}'::text[]`),
+    openTo: text("open_to").array().notNull().default(sql`'{}'::text[]`),
+    into: text("into").array().notNull().default(sql`'{}'::text[]`),
     followerCount: integer("follower_count"),
     entryFeeCents: integer("entry_fee_cents"),
     dodoPaymentId: text("dodo_payment_id"),
@@ -42,15 +58,86 @@ export const creators = pgTable(
     battlesCount: integer("battles_count").notNull().default(0),
     winsCount: integer("wins_count").notNull().default(0),
     isActive: boolean("is_active").notNull().default(true),
+    // A free profile from onboarding v2: shown on /c/, never paired or ranked
+    // until the $3 Arena entry flips is_active (DATABASE.md § Onboarding v2).
+    profileOnly: boolean("profile_only").notNull().default(false),
     createdAt: timestamptz("created_at").notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex("creators_username_key").on(table.username),
     uniqueIndex("creators_user_id_key").on(table.userId),
     uniqueIndex("creators_dodo_payment_key").on(table.dodoPaymentId),
+    uniqueIndex("creators_x_user_id_key").on(table.xUserId),
     index("creators_aura_idx").on(table.aura.desc()),
     index("creators_is_active_idx").on(table.isActive),
   ],
+);
+
+// One row per person who signed in with X — DATABASE.md § accounts.
+// email is private: never selected by a public read.
+export const accounts = pgTable(
+  "accounts",
+  {
+    id: uuid("id")
+      .primaryKey()
+      .references(() => authUsers.id),
+    xUserId: text("x_user_id").notNull(),
+    xUsername: text("x_username").notNull(),
+    xName: text("x_name"),
+    xAvatarUrl: text("x_avatar_url"),
+    email: text("email"),
+    creatorId: uuid("creator_id").references(() => creators.id),
+    // Onboarding (DATABASE.md § accounts — onboarding columns). The X values
+    // are a one-time prefill snapshot, never synced. draft is private.
+    xBio: text("x_bio"),
+    xLocation: text("x_location"),
+    xUrl: text("x_url"),
+    onboardedAt: timestamptz("onboarded_at"),
+    draft: jsonb("draft"),
+    createdAt: timestamptz("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("accounts_x_user_id_key").on(table.xUserId),
+    uniqueIndex("accounts_creator_id_key").on(table.creatorId),
+  ],
+);
+
+// "Previously cooked" — DATABASE.md § creator_past_projects.
+export const creatorPastProjects = pgTable(
+  "creator_past_projects",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    creatorId: uuid("creator_id")
+      .notNull()
+      .references(() => creators.id),
+    name: text("name").notNull(),
+    line: text("line"),
+    url: text("url"),
+    year: integer("year"),
+    // 'live' | 'sold' | 'sunset' | 'failed' | 'oss'
+    status: text("status").notNull(),
+    position: integer("position").notNull().default(0),
+    createdAt: timestamptz("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    index("creator_past_projects_creator_idx").on(table.creatorId, table.position),
+    check("creator_past_projects_status_check", sql`${table.status} in ('live', 'sold', 'sunset', 'failed', 'oss')`),
+  ],
+);
+
+// The profile "⚡ Hype" button — one per account per creator. Adds to Hype,
+// never to Aura or rank. DATABASE.md § profile_hypes.
+export const profileHypes = pgTable(
+  "profile_hypes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    creatorId: uuid("creator_id")
+      .notNull()
+      .references(() => creators.id),
+    userId: uuid("user_id").notNull(),
+    createdAt: timestamptz("created_at").notNull().defaultNow(),
+  },
+  (table) => [uniqueIndex("profile_hypes_creator_user_key").on(table.creatorId, table.userId)],
 );
 
 export const battles = pgTable(
@@ -67,6 +154,9 @@ export const battles = pgTable(
       .notNull()
       .references(() => creators.id),
     voterSession: text("voter_session").notNull(),
+    // The signed-in account that picked (Sign in with X, 2026-10-04). Null on
+    // battles from before accounts. RANKING.md § Scoring.
+    voterUserId: uuid("voter_user_id"),
     auraABefore: integer("aura_a_before").notNull(),
     auraBBefore: integer("aura_b_before").notNull(),
     auraAAfter: integer("aura_a_after").notNull(),
@@ -76,6 +166,14 @@ export const battles = pgTable(
   (table) => [
     index("battles_created_at_idx").on(table.createdAt),
     index("battles_winner_created_at_idx").on(table.winnerId, table.createdAt),
+    // One scoring pick per unordered pair per account — DATABASE.md § accounts.
+    uniqueIndex("battles_account_pair_key")
+      .on(
+        table.voterUserId,
+        sql`least(${table.creatorAId}, ${table.creatorBId})`,
+        sql`greatest(${table.creatorAId}, ${table.creatorBId})`,
+      )
+      .where(sql`${table.voterUserId} is not null`),
     check("battles_distinct_creators", sql`${table.creatorAId} != ${table.creatorBId}`),
     check(
       "battles_winner_is_participant",
@@ -214,12 +312,16 @@ export const demoJudgements = pgTable(
       .notNull()
       .references(() => demos.id),
     voterSession: text("voter_session").notNull(),
+    voterUserId: uuid("voter_user_id"),
     // 'underhyped' | 'not_yet'
     verdict: text("verdict").notNull(),
     createdAt: timestamptz("created_at").notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex("demo_judgements_demo_session_key").on(table.demoId, table.voterSession),
+    uniqueIndex("demo_judgements_demo_account_key")
+      .on(table.demoId, table.voterUserId)
+      .where(sql`${table.voterUserId} is not null`),
     index("demo_judgements_demo_created_idx").on(table.demoId, table.createdAt),
     check("demo_judgements_verdict_check", sql`${table.verdict} in ('underhyped', 'not_yet')`),
   ],

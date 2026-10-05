@@ -66,6 +66,18 @@ Rl' = Rl + K * (0 - El)
 
 ### Scoring
 
+**Changed 2026-10-04:** picks need an account (Sign in with X). The voter is
+now the **account**: a signed-in pick stores `voter_session = "u:<account id>"`
+and `voter_user_id = <account id>`, and the database enforces one row per
+account per unordered pair (unique index). Everything below that says
+"session" therefore means "account" for new picks; battles recorded before
+the change keep their browser-session value and still count as they did.
+
+**Changed 2026-10-05:** a pick scores only from an account with a **finished
+profile** (DECISIONS.md § "Onboarding v2"). Signed in without one, nothing is
+written and the person is sent to finish their profile; the pick is replayed
+after. Profile-only creators (not in the Arena) are never paired or ranked.
+
 A session gets **one scoring pick per pair**. The first time a voter session
 judges the matchup A vs B, the battle is recorded and Aura moves. Every later
 A vs B from that same session is a no-op: no Aura change, no `battles_count`
@@ -289,7 +301,8 @@ ranked = battles_count >= PLACEMENT_BATTLES_REQUIRED (10)
 
 - `battles_count` is the existing column on `creators`, incremented for both
   winner and loser inside the Aura transaction — no new counting concept.
-- `voter_count` is the number of **distinct `voter_session` values across every
+- `voter_count` is the number of **distinct `voter_session` values (one per
+  account since 2026-10-04; older battles by browser session) across every
   battle the creator appeared in, won or lost**. Sessions that *judged* them,
   not sessions that *picked* them: counting picks would leave an unpopular
   creator unranked forever and would double-count what Aura already measures.

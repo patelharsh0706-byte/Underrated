@@ -4,7 +4,7 @@ import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 import { serverEnv } from "@/lib/env";
-import { DB_CLIENT_OPTIONS } from "./client-options";
+import { clientOptionsFor } from "./client-options";
 import * as schema from "./schema";
 
 const globalForDb = globalThis as unknown as {
@@ -23,7 +23,7 @@ let instance: Db | null = null;
 function getDb(): Db {
   if (instance) return instance;
   // Every option, and why it is set, lives in ./client-options.ts.
-  const connection = globalForDb.connection ?? postgres(serverEnv().DATABASE_URL, DB_CLIENT_OPTIONS);
+  const connection = globalForDb.connection ?? postgres(serverEnv().DATABASE_URL, clientOptionsFor(serverEnv().DATABASE_URL));
   if (process.env.NODE_ENV !== "production") {
     globalForDb.connection = connection;
   }

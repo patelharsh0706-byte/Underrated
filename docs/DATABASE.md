@@ -502,3 +502,118 @@ the current Aura — the past rank is gone the moment it changes. That is what
 
 If any of these become too slow, cache them. Do not denormalize them into `creators`
 without recording the decision in [DECISIONS.md](DECISIONS.md).
+
+### accounts
+
+One row per person who signed in with X (added 2026-10-04, DECISIONS.md
+§ "Sign in with X to pick"). Created or updated in `/auth/callback`.
+
+```
+id            uuid pk        = auth.users.id
+x_user_id     text unique    X's permanent numeric user id
+x_username    text           @handle at last sign-in (display only, can change)
+x_name        text           display name from X
+x_avatar_url  text           profile image URL from X
+email         text           PRIVATE — never selected by public reads
+creator_id    uuid unique    fk creators.id — the profile this account owns
+created_at    timestamptz
+```
+
+- RLS on, deny by default; only the server (service role) reads or writes.
+- `creators.x_user_id text unique` (new, nullable) is filled the first time a
+  creator is claimed.
+- **Auto-claim at sign-in:** (1) a creator whose `x_user_id` equals the
+  account's → link. (2) Otherwise an **unclaimed** creator (`user_id` null and
+  no `x_user_id`) whose username equals the X @handle, case-insensitive →
+  link, set `creators.user_id` and `creators.x_user_id`. (3) Otherwise no
+  creator. A claimed creator is never re-assigned by a handle match.
+- `battles.voter_user_id uuid` (new, nullable for history) and a unique index
+  on `(voter_user_id, least(creator_a_id, creator_b_id),
+  greatest(creator_a_id, creator_b_id))` where `voter_user_id` is not null —
+  one scoring pick per pair per account, enforced by the database.
+- `demo_judgements.voter_user_id uuid` (new, nullable) with a unique index on
+  `(demo_id, voter_user_id)` — one judgement per demo per account.
+
+### Profile v2 fields (added 2026-10-04, DECISIONS.md § "Onboarding from X and profile v2")
+
+On `creators` (all nullable — empty sections are hidden on the profile):
+
+```
+about            text      ≤ 200, the About paragraph
+location         text      ≤ 40, shown unless location_hidden
+location_hidden  boolean   default false
+project_name     text      ≤ 40, "Currently cooking" title (work_url is its link)
+project_tagline  text      ≤ 80, its one-liner
+work_how         text      How you work   — one of a fixed list (see below)
+work_stage       text      Stage          — Idea | Building | Launched | Growing | Profitable
+work_career      text      Experience     — Student | Early career | Mid career | Senior | Veteran
+wants_to_meet    text      one of the "Who you want to meet" list
+open_to          text[]    ≤ 3 of: Hiring, Open to a job, Takes clients, Raising,
+                           Invests, Open to collabs, Looking for beta users
+into             text[]    ≤ 6 of the fixed "What you're into" list
+```
+
+The lists live in `src/lib/profile/options.ts` and are validated with Zod on
+every write; nothing outside them is stored.
+
+### creator_past_projects
+
+"Previously cooked" — one row per thing a creator built before.
+
+```
+id          uuid pk
+creator_id  uuid not null   fk creators.id
+name        text not null   ≤ 40
+line        text            ≤ 80
+url         text            normalized https
+year        integer         1990–2100
+status      text not null   'live' | 'sold' | 'sunset' | 'failed' | 'oss'
+position    integer         newest first (0 = top)
+created_at  timestamptz
+```
+
+### profile_hypes
+
+The "⚡ Hype {name}" button on a profile: one per account per creator. It adds
+to the creator's **Hype** (Hype = battles won + profile hypes) and never
+touches Aura, rank or placement.
+
+```
+id          uuid pk
+creator_id  uuid not null   fk creators.id
+user_id     uuid not null   the account (auth.users.id)
+created_at  timestamptz
+unique (creator_id, user_id)
+```
+
+### accounts — onboarding columns (added with profile v2)
+
+```
+x_bio          text          X description at sign-in — bootstraps About ONCE, never synced
+x_location     text          X location at sign-in — prefill only
+x_url          text          what they ship: X Website field, else the first link in the
+                             bio (lib/x-profile.ts) — prefill for "What are you building?"
+onboarded_at   timestamptz   set when Welcome is finished or skipped
+draft          jsonb         the "Looking good?" profile before paying (PRIVATE)
+```
+
+All new tables have RLS on, deny by default.
+
+### Onboarding v2 changes (2026-10-05, migration 0015)
+
+- `creators.profile_only boolean not null default false` — a free profile that
+  is not in the Arena. Stored with `is_active = false`, so pairing, leaderboard
+  and counts skip it unchanged. The profile page reads `is_active OR
+  profile_only`. Paying $3 sets `is_active = true, profile_only = false`.
+- `creators.wants_to_meet` becomes `text[] not null default '{}'`, at most 2.
+- "Profile done" (votes count) = `accounts.creator_id is not null`.
+- Option lists (`src/lib/profile/options.ts`):
+  - work_how: Solo · Small team · Team
+  - work_stage: Exploring · Building · Launched · Growing
+  - work_career (optional): Just starting · 1–3 years · 3–5 years · 5–10 years · 10+ years
+  - wants_to_meet (≤ 2): Builders · Founders · Designers · Marketers · Investors ·
+    Potential co-founders · Anyone interesting
+  - open_to (≤ 3): 🤝 Collaborating · 💼 Open to work · 🧑‍💻 Hiring · 💰 Raising ·
+    💸 Investing · 🛠 Taking clients · 🧪 Looking for beta users · 👋 Just connecting
+  - into (≤ 6): popular first (AI, SaaS, Dev tools, Design, Open source, Consumer,
+    Mobile apps, Community, Startups, Indie hacking), then the rest.

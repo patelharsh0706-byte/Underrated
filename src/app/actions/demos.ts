@@ -10,6 +10,8 @@ import { getDemoTally } from "@/lib/demos/queries";
 import { clickDemoSchema, createDemoSchema, encodeDemoData, isOurDemoBlob, judgeDemoSchema, type CreateDemoInput } from "@/lib/demos/schemas";
 import { getDodoClient } from "@/lib/dodo-payments";
 import { clientEnv, demoProductId } from "@/lib/env";
+import { getVoter } from "@/lib/account";
+import { accountVoterKey } from "@/lib/account-claim";
 import { getOrCreateVoterSession } from "@/lib/session";
 
 // Underhyped Demos writes — DATABASE.md § demos, DECISIONS.md § 2026-10-01.
@@ -94,20 +96,28 @@ export interface JudgeDemoResult {
   clicks?: number;
   /** False when this visitor had already judged it (the vote didn't count again). */
   counted?: boolean;
+  /** Nobody signed in: nothing written; the page asks for Sign in with X and replays it. */
+  needsSignIn?: boolean;
+  /** Signed in, profile not finished: nothing written; the page opens onboarding and replays it. */
+  needsProfile?: boolean;
 }
 
-/** One judgement per visitor per demo — the unique index makes a repeat a no-op. */
+/** One judgement per account per demo (Sign in with X) — the unique index makes a repeat a no-op. */
 export async function judgeDemo(input: { demoId: string; verdict: "underhyped" | "not_yet" }): Promise<JudgeDemoResult> {
   const parsed = judgeDemoSchema.safeParse(input);
   if (!parsed.success) return { error: "That vote didn’t look right." };
+  const voter = await getVoter();
+  if (voter.kind === "signed-out") return { needsSignIn: true };
+  if (voter.kind === "needs-profile") return { needsProfile: true };
   if (isMockMode()) return { counted: false };
+  const userId = voter.userId;
   try {
-    const voterSession = await getOrCreateVoterSession();
+    const voterSession = accountVoterKey(userId);
     const [demo] = await db.select({ status: demos.status }).from(demos).where(eq(demos.id, parsed.data.demoId));
     if (demo?.status !== "approved") return { error: "That demo isn’t live." };
     const inserted = await db
       .insert(demoJudgements)
-      .values({ demoId: parsed.data.demoId, voterSession, verdict: parsed.data.verdict })
+      .values({ demoId: parsed.data.demoId, voterSession, voterUserId: userId, verdict: parsed.data.verdict })
       .onConflictDoNothing({ target: [demoJudgements.demoId, demoJudgements.voterSession] })
       .returning({ id: demoJudgements.id });
     return { ...(await getDemoTally(parsed.data.demoId)), counted: inserted.length > 0 };

@@ -3,7 +3,6 @@
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
-import { GoogleIcon } from "@/components/auth/google-icon";
 import { createClient } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -16,11 +15,11 @@ export function SignInButton() {
     setLoading(true);
     setError(null);
 
-    const next = searchParams.get("next") ?? "/submit";
+    const next = searchParams.get("next") ?? "/arena";
     const supabase = createClient();
 
     const { error: signInError } = await supabase.auth.signInWithOAuth({
-      provider: "google",
+      provider: "x",
       options: {
         redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
       },
@@ -30,7 +29,7 @@ export function SignInButton() {
       setError(signInError.message);
       setLoading(false);
     }
-    // On success the browser navigates away to Google — nothing else to do here.
+    // On success the browser navigates away to X — nothing else to do here.
   };
 
   return (
@@ -45,8 +44,8 @@ export function SignInButton() {
           loading && "cursor-default opacity-60",
         )}
       >
-        <GoogleIcon />
-        {loading ? "Redirecting…" : "Continue with Google"}
+        <span aria-hidden="true" className="text-lg leading-none">𝕏</span>
+        {loading ? "Opening X…" : "Continue with X"}
       </button>
       {error ? <p className="text-sm text-loser">{error}</p> : null}
     </div>

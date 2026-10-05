@@ -8,7 +8,9 @@ import { battles, creators } from "@/lib/db/schema";
 import { getRandomPair, type PublicCreator } from "@/lib/db/queries";
 import { isMockMode, mockAnyPair, mockCreatorById, mockHomeStats } from "@/lib/db/mock-data";
 import { computeEloUpdate } from "@/lib/ranking/elo";
-import { getOrCreateVoterSession, readVoterSession } from "@/lib/session";
+import { getSignedInUserId, getVoter } from "@/lib/account";
+import { accountVoterKey } from "@/lib/account-claim";
+import { readVoterSession } from "@/lib/session";
 
 // The pair the client just showed, so it isn't served again back to back —
 // see RANKING.md § Pairing. Client-supplied: it can steer which pair comes
@@ -21,8 +23,10 @@ export async function nextBattle(
   // PREVIEW_MOCK=1 — see src/lib/db/mock-data.ts. No database round trip.
   // Mock ids aren't UUIDs, so they skip the schema.
   if (isMockMode()) return mockAnyPair(excludeIds.slice(0, 2));
-  // Read, don't create: the cookie is minted on the first actual pick.
-  return getRandomPair(await readVoterSession(), excludeIdsSchema.parse(excludeIds));
+  // Signed in: the account is the voter (RANKING.md § Scoring). Signed out:
+  // the browser session, read without creating one — picks need an account.
+  const userId = await getSignedInUserId();
+  return getRandomPair(userId ? accountVoterKey(userId) : await readVoterSession(), excludeIdsSchema.parse(excludeIds));
 }
 
 const pickWinnerInput = z
@@ -58,6 +62,20 @@ export interface PickResult {
    * voter keeps playing.
    */
   battlesToday: number;
+  /**
+   * True when nobody is signed in: nothing was written. The client opens the
+   * "Make your pick count" modal and replays this pick after Sign in with X.
+   */
+  needsSignIn?: boolean;
+  /**
+   * Signed in but the free profile isn't finished: nothing was written. The
+   * client keeps the pick pending and opens onboarding, then replays it.
+   */
+  needsProfile?: boolean;
+}
+
+function notCounted(winnerId: string, loserId: string): PickResult {
+  return { winnerId, loserId, winnerAura: 0, loserAura: 0, delta: 0, counted: false, battlesToday: 0 };
 }
 
 /**
@@ -77,6 +95,12 @@ export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promis
   // UUIDs and would fail it.
   if (isMockMode()) {
     const { winnerId, loserId } = mockPickInput.parse(input);
+    // The sign-in gate is part of the flow being previewed — checked against
+    // Supabase Auth only; nothing touches the database in preview mode.
+    const voter = await getVoter();
+    if (voter.kind !== "ok") {
+      return { ...notCounted(winnerId, loserId), ...(voter.kind === "signed-out" ? { needsSignIn: true } : { needsProfile: true }) };
+    }
     const winner = mockCreatorById(winnerId);
     const loser = mockCreatorById(loserId);
     if (!winner || !loser) {
@@ -95,7 +119,14 @@ export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promis
   }
 
   const { winnerId, loserId } = pickWinnerInput.parse(input);
-  const voterSession = await getOrCreateVoterSession();
+  // Picks need an account with a finished profile — DECISIONS.md § 2026-10-04
+  // "Sign in with X to pick" and § 2026-10-05 "Onboarding v2".
+  const voter = await getVoter();
+  if (voter.kind !== "ok") {
+    return { ...notCounted(winnerId, loserId), ...(voter.kind === "signed-out" ? { needsSignIn: true } : { needsProfile: true }) };
+  }
+  const userId = voter.userId;
+  const voterSession = accountVoterKey(userId);
 
   return db.transaction(async (tx) => {
     // Same UTC-day boundary getHomeStats() and getTop24h() use, so every
@@ -128,7 +159,8 @@ export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promis
       throw new Error("One of the creators in this battle is no longer active");
     }
 
-    // One scoring pick per pair per session. The pair is unordered, so picking
+    // One scoring pick per pair per account (voterSession is "u:<id>"; the
+    // battles_account_pair_key unique index backs this up). The pair is unordered, so picking
     // the other side of a matchup already judged doesn't buy a second vote.
     // See RANKING.md § Scoring.
     const [alreadyJudged] = await tx
@@ -162,6 +194,7 @@ export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promis
       creatorBId: loser.id,
       winnerId: winner.id,
       voterSession,
+      voterUserId: userId,
       auraABefore: winner.aura,
       auraBBefore: loser.aura,
       auraAAfter: winnerAfter,
