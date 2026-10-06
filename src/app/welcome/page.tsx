@@ -1,0 +1,82 @@
+import { eq } from "drizzle-orm";
+import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+
+import { WelcomeFlow } from "@/components/profile/welcome-flow";
+import { getSignedInUserId, loadAccount } from "@/lib/account";
+import { db } from "@/lib/db";
+import { isMockMode } from "@/lib/db/mock-data";
+import { creators } from "@/lib/db/schema";
+import { draftForAccount, initialDraft } from "@/lib/profile/draft";
+import { getPreviewMe } from "@/lib/profile/preview-me";
+import { getProfileV2 } from "@/lib/profile/queries";
+import { safeNext } from "@/lib/safe-next";
+import { finishedWelcomeHref, hasFinishedOnboarding } from "@/lib/profile/welcome-route";
+
+// Onboarding v2, the five steps after Sign in with X — DECISIONS.md §
+// 2026-10-05. Signed-in only. Never cached: it is one person's page.
+
+export const dynamic = "force-dynamic";
+export const metadata: Metadata = { title: "Welcome — Underhyped" };
+
+interface WelcomePageProps {
+  searchParams: Promise<{ next?: string }>;
+}
+
+
+export default async function WelcomePage({ searchParams }: WelcomePageProps) {
+  const { next: rawNext } = await searchParams;
+  const next = safeNext(rawNext);
+
+  // PREVIEW_MOCK=1: the prototype's sample person, so the flow can be reviewed.
+  if (isMockMode()) {
+    // The signed-in X person (session + X prefill cookie, no database); the
+    // sample person when nobody is signed in.
+    const mine = await getPreviewMe();
+    // Already finished: no second run through the steps.
+    if (mine?.profileDone) redirect(finishedWelcomeHref(next, mine.me.handle));
+    const me = mine?.me ?? { name: "Maya Chen", handle: "maya_builds", avatar: null };
+    return (
+      <main className="mx-auto w-full max-w-[680px] flex-1 px-4 py-8 sm:py-10">
+        <WelcomeFlow
+          me={me}
+          email={mine?.email ?? ""}
+          draft={mine ? mine.draft : initialDraft({ xBio: "building stuff | ex-whatever | dm open | opinions mine", xLocation: "🇮🇳 Bengaluru", xUrl: "https://shipnotes.app" })}
+          claimed={null}
+          next={next}
+          sample={!mine}
+        />
+      </main>
+    );
+  }
+
+  const userId = await getSignedInUserId();
+  if (!userId) redirect(next);
+  const account = await loadAccount(userId);
+  // No account row: sign in with X again (that creates it). Sending them on to
+  // `next` looped — the pick there asked for a profile and came straight back.
+  if (!account) redirect(`/sign-in?next=${encodeURIComponent(next)}`);
+
+  let claimed = null;
+  if (account.creatorId) {
+    const [row] = await db.select({ username: creators.username }).from(creators).where(eq(creators.id, account.creatorId));
+    // Already finished: no second run through the steps (Edit profile is on the profile).
+    if (row && hasFinishedOnboarding(account)) redirect(finishedWelcomeHref(next, row.username));
+    claimed = row ? await getProfileV2(row.username) : null;
+  }
+  const draft = draftForAccount(account);
+  const avatar = account.xAvatarUrl ? account.xAvatarUrl.replace("_normal.", "_400x400.") : null;
+
+  return (
+    <main className="mx-auto w-full max-w-[680px] flex-1 px-4 py-8 sm:py-10">
+      <WelcomeFlow
+        me={{ name: account.xName || account.xUsername, handle: account.xUsername, avatar }}
+        email={account.email ?? ""}
+        draft={draft}
+        claimed={claimed}
+        next={next}
+        sample={false}
+      />
+    </main>
+  );
+}

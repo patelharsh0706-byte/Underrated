@@ -1601,3 +1601,226 @@ database URL as GitHub secrets, and CI is deliberately secret-free (§ CI on
 GitHub Actions). Deleting on a `payment.failed` / `abandoned_checkout` webhook —
 misses tabs closed before checkout and errors before checkout opened.
 
+## 2026-10-04 — Sign in with X to pick
+
+Decision:
+Picks in the Arena and judgements in Demos need an account, made with Sign in
+with X (Supabase Auth, X OAuth 2.0). Browsing stays open; the first pick opens
+a "Make your pick count" modal and, after sign-in, the attempted pick is
+replayed so the person never picks twice. One account gets one scoring pick per
+unordered pair (database-enforced). Existing creators are auto-claimed: by X
+user ID, else — once, while unclaimed — by @handle, which then saves the ID.
+The look follows the approved prototype (Underhyped Arena artifact, v58).
+
+Why:
+Anonymous picks were one browser cookie per voter: refresh, incognito or a
+cleared cookie gave a fresh vote. An X account is a persistent identity, and
+the audience already lives on X. Matching on X's numeric id keeps a claimed
+profile safe when someone renames or a freed handle is reused.
+
+Consequences:
+A signed-in pick stores `voter_session = "u:<account id>"`, so every existing
+"people deciding" and "already judged" query counts accounts without being
+rewritten. Older anonymous battles keep their session values. Multiple X
+accounts can still vote separately — accepted. Google sign-in is retired.
+
+Rejected:
+Keeping anonymous picks (the abuse this fixes). Google sign-in (audience is on
+X). Matching existing creators by handle on every sign-in (handles change and
+get reused).
+
+## 2026-10-04 — Onboarding from X and profile v2
+
+Decision:
+After the first Sign in with X, the person sees **Welcome** (X photo, name,
+@handle; private email; "What are you building?") and then **"Looking good?"**,
+a full profile preview built from X — the X bio becomes the initial About and
+tagline (copied once, never synced), location and website are prefilled. From
+there: **Enter the Arena** ($3 Dodo checkout; the webhook creates the creator,
+linked to the account), **Edit details**, or **Skip for now**. An existing
+creator auto-claimed at sign-in sees **"This is you ✓"** instead — no payment.
+The profile page (`/c/[username]`) is rebuilt to the approved prototype
+(Underhyped Arena artifact, v58): identity, status card, one "⚡ Hype" button,
+an About box (About, Working style, Open to, Into) and a Cooking box (Currently
+cooking, Previously cooked). Follower count is gone. Owners edit their own
+profile; nobody else can.
+
+Why:
+"Who is this person, what are they building, why check them out?" — the
+competitive layer (Aura, battles) already exists; the profile is the human
+layer. Pulling from X removes the form: one sign-in builds the profile.
+
+Consequences:
+Profile editing moves into MVP (own profile only). New creators default to the
+"Builder" category (the onboarding asks no category question). Hype = battle
+wins + profile hypes; it is display-only and never ranks anyone. The X bio,
+location and website need X's API with the sign-in token; if X refuses, those
+prefills are simply empty. Battle history is reached by clicking "⚔ N battles"
+rather than shown on the page.
+
+Rejected:
+A sign-up form (the old Enter the Arena form) — X already knows who they are.
+Syncing the X bio on every sign-in — people write better Underhyped bios.
+Showing follower count — Underhyped exists to stop that being the measure.
+
+## 2026-10-05 — Onboarding v2: a free profile for fair voting, the Arena from the profile
+
+Decision:
+Everyone who wants to vote builds a **free public profile** right after Sign in
+with X, in five short steps: Welcome (email + what you're cooking) → Looking
+good? (the profile pulled from X, editable in place) → You (how you work,
+where you are, experience, who you'd like to meet) → Interests (open to, into)
+→ History (previously cooked, optional). **Picks, demo judgements and profile
+Hype count only once that profile exists.** A vote attempted before then is
+kept and recorded right after "⚡ You're in." The **Arena is separate and
+optional**: a finished profile is not in battles or on the leaderboard until its
+owner pays $3 from the "Enter the Arena" card on their own profile.
+
+Why:
+Fair voting. An X account stops one browser from voting twice; a public profile
+behind every counted vote makes each vote a visible person, not an anonymous
+account. Separating the profile from the Arena keeps voting free while entry
+stays a deliberate choice.
+
+Consequences:
+A profile-only creator is stored as `is_active = false, profile_only = true`, so
+pairing, the leaderboard and every count ignore them with no query changes; the
+profile page shows `is_active OR profile_only`. Paying activates the same row.
+Existing creators (auto-claimed) vote immediately. Supersedes, from 2026-10-04,
+"Enter the Arena from Looking good?" and replaying the pick before Welcome.
+
+Rejected:
+Counting votes right after X sign-in (an account with no profile is still
+faceless). Charging $3 to vote (voting must stay free).
+
+## 2026-10-05 — Current project optional at Welcome
+
+Step 1's "What are you cooking right now?" is optional; the email stays
+required. The free profile exists so every counted vote belongs to a real,
+visible person — requiring a project would have blocked people who only want
+to vote. An empty project hides the "Currently cooking" card on the profile.
+
+
+## 2026-10-06 — Arena entry and demo submit need X sign-in and a finished profile
+
+Decision:
+The header's and Home's "Enter the Arena" (`/submit`) and "Submit your demo"
+(`/demos/submit`) are gated, in this order, on the server:
+1. **Signed out** (or signed in with no `accounts` row) → the Sign in with X
+   pop-up, which comes back to the same page.
+2. **No finished profile** → the five onboarding steps
+   (`/welcome?next=<page>`); "⚡ You're in." then continues to that page, not
+   the profile.
+3. **Profile finished** → `/submit` shows the "Put yourself on the radar" page
+   (two links): **Your X profile** is the account they signed in with, shown
+   locked; **What are you building?** comes from their profile, is required,
+   and a changed link is saved to the profile before checkout; **Enter the
+   Arena →** goes straight to the $3 checkout for the account. Someone already
+   in the Arena goes to their profile. `/demos/submit` shows the demo form with
+   the account's email filled in.
+**Underhyped ⚡ / Not yet 🥱** on Demos sits behind the same gate: Demos reads
+the gate state once on load (`getJudgeGate`), so a signed-out click opens the X
+pop-up and a click with no profile goes to onboarding *before* any result is
+shown; the judgement is kept and replays on return. Sample demos
+(PREVIEW_MOCK=1) are gated too, so the flow can be reviewed locally.
+The "Enter the Arena" card on your own profile is unchanged: only the
+signed-in owner sees it, so both checks have already passed. A Dodo return
+(`/demos/submit?paid=1`) skips the gate and shows "In review".
+
+Why:
+Every paid entry belongs to a real, visible person — the same reason votes
+need a profile (§ 2026-10-05 "Onboarding v2"). One path into the Arena also
+retires the anonymous `/submit` form, whose payments needed a creator made by
+hand — its look stays, its anonymous preview/edit steps go (the profile
+already holds name, bio and category).
+
+Consequences:
+`startArenaCheckout` and `createDemo` refuse an account without a finished
+profile, so the gate can't be skipped by calling the action directly. The
+webhook's "create the creator from the draft" branch is no longer reached by
+new checkouts; it stays for checkouts already in flight. Demos are still
+matched to the maker by email (no schema change); linking a demo to its
+account is a later step. Supersedes "Submit yourself — no login required"
+(MVP.md) and paying before finishing onboarding.
+
+Rejected:
+A real pop-up window for X (phones block them; the modal → X → back pattern is
+what the rest of the site uses). Gating the profile card (it would ask a
+signed-in owner to sign in again).
+
+## 2026-10-06 — /welcome sends finished people on, checkouts return to the serving domain
+
+Decision:
+Someone who owns a profile and has done the steps once (`accounts.creator_id`
+and `onboarded_at` both set) never sees onboarding again: opening `/welcome`
+sends them to their profile, or on to the page that brought them (a waiting
+vote `…?resume=1`, `/submit`, `/demos/submit`). A claimed creator who hasn't
+finished the steps still sees them on each sign-in until they do (kept on
+purpose). Editing is "Edit profile" on the profile.
+
+The Arena and demo checkouts build their Dodo return links from
+`getAppOrigin()` (the domain that served the request), not
+`NEXT_PUBLIC_APP_URL`, which already took production down once (ISSUES.md).
+
+Why:
+A second run through the steps after finishing is confusing and adds nothing.
+A stale env var would have sent paying people to the wrong domain.
+
+## 2026-10-06 — The X user id is the only link; one voter id; X prefill in the draft
+
+Decision:
+- **Link:** an account owns the creator whose `creators.x_user_id` equals its
+  `accounts.x_user_id`. `accounts.creator_id` is removed; the app stops using
+  `creators.user_id` (dropped after deploy, because the live code selects it).
+  Claiming an unclaimed creator by @handle means setting its `x_user_id`.
+- **Votes:** picks and demo judgements store `voter_session = "x:<X user id>"`.
+  The duplicate `voter_user_id` columns are removed; the one-pick-per-pair rule
+  is a unique index on `voter_session` for `x:` rows.
+- **Prefill:** the X bio, location and link go straight into `accounts.draft`
+  at the first sign-in; `x_bio`, `x_location` and `x_url` are removed.
+Migration 0016 (DATABASE.md § "One link, one voter id, prefill in the draft").
+
+Why:
+The same fact was stored in several places — the account↔creator link three
+ways, the voter twice per vote, the X prefill twice. Copies drift; one source
+can't. X's numeric id never changes and is known on both sides, even before
+an account exists (a hand-entered creator can carry it).
+
+Consequences:
+Sign-in is X-only, so every account has an X id; adding another sign-in method
+would need a new link. There is no foreign key between the two `x_user_id`
+columns (deliberate: a creator can carry an X id before its person signs up);
+both are unique. Existing data: 976 anonymous battles and 7 demo judgements
+are untouched; 0 votes used `u:`; one account (HarshPatel502) keeps its link
+because its X id is already on both sides; its X prefill is copied into its
+draft before the columns go.
+
+Rejected:
+Keeping `accounts.creator_id` as the link (a second source next to the X id).
+Keying votes by the sign-in account id (a recreated account could judge again).
+
+## 2026-10-06 — A creator is claimed only by matching X user id
+
+Decision:
+Sign-in links an account to a creator only when the creator's `x_user_id`
+equals the account's X user id. Claiming by @handle (username equal to the X
+handle) is removed.
+
+Why:
+The pre-deploy check (R1) found a handle match is unreliable: `thecozydev`'s
+real X handle is `The_CozyDev` (the owner would miss their profile, and whoever
+holds `@thecozydev` would get it), and `loosethread` has no X link at all
+(anyone holding that handle would get it). X's numeric id identifies the
+person; a handle is only a name.
+
+Consequences:
+Hand-entered creators must carry their person's X user id **before** that
+person signs in. Otherwise the sign-in creates a second, empty free profile,
+and moving their Aura onto it later is a manual merge. When this was decided,
+13 creators (10 active) had no X user id yet. The add-a-creator checklist gains
+"X user id". Supersedes the handle step of § 2026-10-04 "Sign in with X to pick".
+
+Rejected:
+Matching by the X link stored on the profile (better than the username, but
+still a name that can be mistyped or reused).
+

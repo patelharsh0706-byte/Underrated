@@ -47,13 +47,14 @@ function readVideo(src: string): Promise<{ duration: number; width: number; heig
   });
 }
 
-export function DemosSubmit({ paid = false }: { paid?: boolean }) {
+/** `email`: the signed-in account's, filled in and still editable (DECISIONS.md § 2026-10-06). */
+export function DemosSubmit({ paid = false, email: accountEmail = "" }: { paid?: boolean; email?: string }) {
   const { live } = useDemos();
   const [step, setStep] = useState(paid ? 3 : 0);
   const [name, setName] = useState("");
   const [tag, setTag] = useState("");
   const [url, setUrl] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(accountEmail);
   const [category, setCategory] = useState("");
   const [err1, setErr1] = useState("");
   const [err2, setErr2] = useState("");
@@ -103,7 +104,7 @@ export function DemosSubmit({ paid = false }: { paid?: boolean }) {
     setName("");
     setTag("");
     setUrl("");
-    setEmail("");
+    setEmail(accountEmail);
     setCategory("");
     setErr1("");
     bad("");

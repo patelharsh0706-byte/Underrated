@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, getTableColumns, gt, inArray, lte, sql } from "drizzle-orm";
+import { and, desc, eq, getTableColumns, gt, inArray, lte, or, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { battles, creators, nominate, payments, sponsorships, visitorPings } from "@/lib/db/schema";
@@ -200,13 +200,16 @@ export interface CreatorProfile extends PublicCreator {
   rank: number | null;
   battlesCount: number;
   winsCount: number;
+  /** False for a free profile that hasn't paid to enter the Arena yet. */
+  inArena: boolean;
 }
 
 export async function getCreatorByUsername(username: string): Promise<CreatorProfile | null> {
   const [row] = await db
     .select(creatorSelection)
     .from(creators)
-    .where(and(eq(creators.username, username), eq(creators.isActive, true)));
+    // A free profile (onboarding v2) has a page but is never paired or ranked.
+    .where(and(eq(creators.username, username), or(eq(creators.isActive, true), eq(creators.profileOnly, true))));
 
   if (!row) return null;
 
@@ -226,6 +229,7 @@ export async function getCreatorByUsername(username: string): Promise<CreatorPro
     rank,
     battlesCount: row.battlesCount,
     winsCount: row.winsCount,
+    inArena: row.isActive,
   };
 }
 

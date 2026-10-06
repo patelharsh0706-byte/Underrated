@@ -502,3 +502,146 @@ the current Aura — the past rank is gone the moment it changes. That is what
 
 If any of these become too slow, cache them. Do not denormalize them into `creators`
 without recording the decision in [DECISIONS.md](DECISIONS.md).
+
+### accounts
+
+One row per person who signed in with X (added 2026-10-04, DECISIONS.md
+§ "Sign in with X to pick"). Created or updated in `/auth/callback`.
+
+```
+id            uuid pk        = auth.users.id
+x_user_id     text unique    X's permanent numeric user id
+x_username    text           @handle at last sign-in (display only, can change)
+x_name        text           display name from X
+x_avatar_url  text           profile image URL from X
+email         text           PRIVATE — never selected by public reads
+created_at    timestamptz
+```
+
+**Changed 2026-10-06 (migration 0016):** `creator_id` is gone. The account
+owns the creator whose `creators.x_user_id` equals its `x_user_id` — the X
+user id is the only link (both columns are unique, so one creator per X
+person). `creators.user_id` is no longer read or written by the app; the live
+`main` code still selects it, so it is dropped in a later migration, after
+this branch is deployed.
+
+- RLS on, deny by default; only the server (service role) reads or writes.
+- `creators.x_user_id text unique` (new, nullable) is filled the first time a
+  creator is claimed.
+- **Claiming at sign-in (changed 2026-10-06):** a creator belongs to the X
+  account whose numeric user id is stored in its `x_user_id` — nothing else.
+  There is no @handle matching: a username or an X link can be wrong or
+  reused, the numeric id can't. A creator added by hand stays unclaimed until
+  its person's X user id is filled in (operator step); without it, that
+  person's sign-in makes a new free profile instead.
+- **Votes (changed 2026-10-06, migration 0016):** a signed-in pick or demo
+  judgement stores `voter_session = "x:<X user id>"` — one voter id, no
+  separate `voter_user_id` column (removed from `battles` and
+  `demo_judgements`). One scoring pick per pair per X person is enforced by
+  `battles_x_pair_key`, unique on `(voter_session, least(creator_a_id,
+  creator_b_id), greatest(creator_a_id, creator_b_id))` where `voter_session
+  like 'x:%'`. Demo judgements keep `unique (demo_id, voter_session)`.
+
+### Profile v2 fields (added 2026-10-04, DECISIONS.md § "Onboarding from X and profile v2")
+
+On `creators` (all nullable — empty sections are hidden on the profile):
+
+```
+about            text      ≤ 200, the About paragraph
+location         text      ≤ 40, shown unless location_hidden
+location_hidden  boolean   default false
+project_name     text      ≤ 40, "Currently cooking" title (work_url is its link)
+project_tagline  text      ≤ 80, its one-liner
+work_how         text      How you work   — one of a fixed list (see below)
+work_stage       text      Stage          — Idea | Building | Launched | Growing | Profitable
+work_career      text      Experience     — Student | Early career | Mid career | Senior | Veteran
+wants_to_meet    text      one of the "Who you want to meet" list
+open_to          text[]    ≤ 3 of: Hiring, Open to a job, Takes clients, Raising,
+                           Invests, Open to collabs, Looking for beta users
+into             text[]    ≤ 6 of the fixed "What you're into" list
+```
+
+The lists live in `src/lib/profile/options.ts` and are validated with Zod on
+every write; nothing outside them is stored.
+
+### creator_past_projects
+
+"Previously cooked" — one row per thing a creator built before.
+
+```
+id          uuid pk
+creator_id  uuid not null   fk creators.id
+name        text not null   ≤ 40
+line        text            ≤ 80
+url         text            normalized https
+year        integer         1990–2100
+status      text not null   'live' | 'sold' | 'sunset' | 'failed' | 'oss'
+position    integer         newest first (0 = top)
+created_at  timestamptz
+```
+
+### profile_hypes
+
+The "⚡ Hype {name}" button on a profile: one per account per creator. It adds
+to the creator's **Hype** (Hype = battles won + profile hypes) and never
+touches Aura, rank or placement.
+
+```
+id          uuid pk
+creator_id  uuid not null   fk creators.id
+user_id     uuid not null   the account (auth.users.id)
+created_at  timestamptz
+unique (creator_id, user_id)
+```
+
+### accounts — onboarding columns (added with profile v2)
+
+```
+onboarded_at   timestamptz   set when the onboarding steps are finished
+draft          jsonb         the onboarding answers so far (PRIVATE). Created at the first
+                             sign-in from the one-time X prefill (bio, location, and the
+                             X Website field or first bio link — lib/x-profile.ts)
+```
+
+**Changed 2026-10-06 (migration 0016):** `x_bio`, `x_location` and `x_url` are
+gone. They were only ever used to build the first draft, so the prefill now
+goes straight into `draft` at the first sign-in. 0016 copies any existing
+values into `draft` before dropping the columns.
+
+All new tables have RLS on, deny by default.
+
+### Onboarding v2 changes (2026-10-05, migration 0015)
+
+- `creators.profile_only boolean not null default false` — a free profile that
+  is not in the Arena. Stored with `is_active = false`, so pairing, leaderboard
+  and counts skip it unchanged. The profile page reads `is_active OR
+  profile_only`. Paying $3 sets `is_active = true, profile_only = false`.
+- `creators.wants_to_meet` becomes `text[] not null default '{}'`, at most 2.
+- "Profile done" (votes count) = a creator exists with the account's
+  `x_user_id` (was `accounts.creator_id is not null` until 0016).
+- Option lists (`src/lib/profile/options.ts`):
+  - work_how: Solo · Small team · Team
+  - work_stage: Exploring · Building · Launched · Growing
+  - work_career (optional): Just starting · 1–3 years · 3–5 years · 5–10 years · 10+ years
+  - wants_to_meet (≤ 2): Builders · Founders · Designers · Marketers · Investors ·
+    Potential co-founders · Anyone interesting
+  - open_to (≤ 3): 🤝 Collaborating · 💼 Open to work · 🧑‍💻 Hiring · 💰 Raising ·
+    💸 Investing · 🛠 Taking clients · 🧪 Looking for beta users · 👋 Just connecting
+  - into (≤ 6): popular first (AI, SaaS, Dev tools, Design, Open source, Consumer,
+    Mobile apps, Community, Startups, Indie hacking), then the rest.
+
+### One link, one voter id, prefill in the draft (2026-10-06, migration 0016)
+
+DECISIONS.md § 2026-10-06 "The X user id is the only link". In order:
+
+1. Backfill `creators.x_user_id` from `accounts.creator_id` where missing.
+2. Copy `x_bio` / `x_location` / `x_url` into `accounts.draft` where no draft exists.
+3. Rewrite any `voter_session = 'u:<account id>'` to `'x:<X user id>'` in
+   `battles` and `demo_judgements` (none existed when 0016 was written).
+4. Create `battles_x_pair_key` before dropping `battles_account_pair_key`.
+5. Drop `accounts.creator_id`, `accounts.x_bio`, `accounts.x_location`,
+   `accounts.x_url`, `battles.voter_user_id`, `demo_judgements.voter_user_id`
+   and their indexes.
+
+Kept: `creators.user_id` (the live `main` code selects it; dropped after deploy).
+

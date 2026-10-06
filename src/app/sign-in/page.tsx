@@ -14,8 +14,8 @@ export default function SignInPage() {
         <div className="flex flex-col gap-2">
           <h1 className="text-2xl font-bold tracking-tight">Sign in to Underhyped</h1>
           <p className="text-sm text-muted-foreground">
-            You only need this to submit yourself or manage your profile. Voting
-            never requires an account.
+            One account, made with X. It keeps battles fair: one Hype per
+            battle. We never post for you.
           </p>
         </div>
 

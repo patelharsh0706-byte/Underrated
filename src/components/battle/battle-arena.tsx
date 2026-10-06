@@ -2,13 +2,16 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { nextBattle, pickWinner, type PickResult } from "@/app/actions/battle";
+import { SignInGate } from "@/components/auth/sign-in-gate";
 import { freshestAura } from "@/components/battle/aura";
 import { CreatorCard } from "@/components/battle/creator-card";
 import { usePicksToday, usePublishPicksToday } from "@/components/battle/picks-today";
 import type { PublicCreator } from "@/lib/db/queries";
+import { consumeResumeFlag, onboardingHref, resumeHere, savePending, takePending } from "@/lib/pending-action";
 import { cn } from "@/lib/utils";
 
 type Pair = [PublicCreator, PublicCreator];
@@ -21,9 +24,9 @@ const REPEAT_DISPLAY_MS = 1400;
 
 /**
  * A face in the pulse row. These are creators who were picked in today's
- * battles — never voters. Voting is anonymous by design (no account required
- * to play), so voter faces do not exist and never will; each avatar links to
- * the creator's profile so what it represents is self-evident.
+ * battles — never voters. Voter accounts stay private (Sign in with X is only
+ * for fairness), so voter faces are never shown; each avatar links to the
+ * creator's profile so what it represents is self-evident.
  */
 export interface PulseFace {
   username: string;
@@ -55,6 +58,12 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
   // Aura this session has moved, as reported by the vote transaction — server
   // truth, never a client-side calculation. See freshestAura in ./aura.
   const [knownAura, setKnownAura] = useState<Record<string, number>>({});
+
+  // Sign in with X: a signed-out pick opens the gate; the pick (and its pair)
+  // is kept so it can be replayed on return — DECISIONS.md § 2026-10-04.
+  const [gateOpen, setGateOpen] = useState(false);
+  const resumePick = useRef<{ winnerId: string; loserId: string } | null>(null);
+  const router = useRouter();
 
   // `shown` is the pair on screen when the fetch starts, passed explicitly so
   // the server can keep both of them out of the next battle — see RANKING.md
@@ -106,6 +115,18 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
 
       try {
         const pickResult = await pickWinner({ winnerId, loserId });
+        if (pickResult.needsSignIn) {
+          savePending({ type: "pick", pair: current, winnerId, loserId });
+          setPhase("idle");
+          setGateOpen(true);
+          return;
+        }
+        if (pickResult.needsProfile) {
+          // Signed in, free profile not finished: the pick waits, onboarding opens.
+          savePending({ type: "pick", pair: current, winnerId, loserId });
+          router.push(onboardingHref());
+          return;
+        }
         setResult(pickResult);
         setPhase("result");
         publishPicksToday?.(pickResult.battlesToday);
@@ -135,8 +156,30 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
         void advance();
       }
     },
-    [phase, current, advance, prefetchNext, publishPicksToday],
+    [phase, current, advance, prefetchNext, publishPicksToday, router],
   );
+
+  // Back from X sign-in or onboarding: show the same battle, then record the
+  // attempted pick. Read once after mount (sessionStorage is browser-only).
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (!consumeResumeFlag()) return;
+      const pending = takePending("pick");
+      if (pending?.type !== "pick") return;
+      resumePick.current = { winnerId: pending.winnerId, loserId: pending.loserId };
+      setCurrent(pending.pair);
+    }, 0);
+    return () => clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    const pending = resumePick.current;
+    if (!pending || phase !== "idle") return;
+    const ids = idsOf(current);
+    if (!ids.includes(pending.winnerId) || !ids.includes(pending.loserId)) return;
+    resumePick.current = null;
+    void handlePick(pending.winnerId, pending.loserId);
+  }, [current, phase, handlePick]);
 
   const [a, b] = current;
 
@@ -216,7 +259,7 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
       <div className="flex min-h-6 items-center justify-center text-center">
         {result && !result.counted ? (
           <span className="rounded-full border border-hairline-2 bg-card px-3 py-0.5 text-xs font-medium text-ink-soft shadow-card">
-            You&apos;ve already called this one — Aura unchanged.
+            {result.isSelf ? "That’s you — your own battles don’t count." : "Already counted — one Hype per battle per account."}
           </span>
         ) : null}
       </div>
@@ -253,6 +296,7 @@ export function BattleArena({ initialPair, battlesToday, faces }: BattleArenaPro
           {picksToday.toLocaleString()} {picksToday === 1 ? "hype" : "hypes"} today
         </span>
       </div>
+      {gateOpen ? <SignInGate variant="pick" next={resumeHere()} onClose={() => setGateOpen(false)} /> : null}
     </div>
   );
 }

@@ -8,7 +8,8 @@ import { battles, creators } from "@/lib/db/schema";
 import { getRandomPair, type PublicCreator } from "@/lib/db/queries";
 import { isMockMode, mockAnyPair, mockCreatorById, mockHomeStats } from "@/lib/db/mock-data";
 import { computeEloUpdate } from "@/lib/ranking/elo";
-import { getOrCreateVoterSession, readVoterSession } from "@/lib/session";
+import { getVoter } from "@/lib/account";
+import { readVoterSession } from "@/lib/session";
 
 // The pair the client just showed, so it isn't served again back to back —
 // see RANKING.md § Pairing. Client-supplied: it can steer which pair comes
@@ -21,8 +22,12 @@ export async function nextBattle(
   // PREVIEW_MOCK=1 — see src/lib/db/mock-data.ts. No database round trip.
   // Mock ids aren't UUIDs, so they skip the schema.
   if (isMockMode()) return mockAnyPair(excludeIds.slice(0, 2));
-  // Read, don't create: the cookie is minted on the first actual pick.
-  return getRandomPair(await readVoterSession(), excludeIdsSchema.parse(excludeIds));
+  // Signed in: the X person is the voter (RANKING.md § Scoring). Signed out:
+  // the browser session, read without creating one — picks need an account.
+  const voter = await getVoter();
+  // Never serve someone their own card (RANKING.md § Scoring, 2026-10-06).
+  const own = voter.kind === "ok" && voter.creatorId ? [voter.creatorId] : [];
+  return getRandomPair(voter.kind === "signed-out" ? await readVoterSession() : voter.voterKey, [...excludeIdsSchema.parse(excludeIds), ...own]);
 }
 
 const pickWinnerInput = z
@@ -58,6 +63,25 @@ export interface PickResult {
    * voter keeps playing.
    */
   battlesToday: number;
+  /**
+   * True when nobody is signed in: nothing was written. The client opens the
+   * "Make your pick count" modal and replays this pick after Sign in with X.
+   */
+  needsSignIn?: boolean;
+  /**
+   * Signed in but the free profile isn't finished: nothing was written. The
+   * client keeps the pick pending and opens onboarding, then replays it.
+   */
+  needsProfile?: boolean;
+  /**
+   * The voter's own creator is one of the two cards: not counted, nothing
+   * written (RANKING.md § Scoring, 2026-10-06). The UI says "That's you".
+   */
+  isSelf?: boolean;
+}
+
+function notCounted(winnerId: string, loserId: string): PickResult {
+  return { winnerId, loserId, winnerAura: 0, loserAura: 0, delta: 0, counted: false, battlesToday: 0 };
 }
 
 /**
@@ -77,6 +101,12 @@ export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promis
   // UUIDs and would fail it.
   if (isMockMode()) {
     const { winnerId, loserId } = mockPickInput.parse(input);
+    // The sign-in gate is part of the flow being previewed — checked against
+    // Supabase Auth only; nothing touches the database in preview mode.
+    const voter = await getVoter();
+    if (voter.kind !== "ok") {
+      return { ...notCounted(winnerId, loserId), ...(voter.kind === "signed-out" ? { needsSignIn: true } : { needsProfile: true }) };
+    }
     const winner = mockCreatorById(winnerId);
     const loser = mockCreatorById(loserId);
     if (!winner || !loser) {
@@ -95,7 +125,13 @@ export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promis
   }
 
   const { winnerId, loserId } = pickWinnerInput.parse(input);
-  const voterSession = await getOrCreateVoterSession();
+  // Picks need an account with a finished profile — DECISIONS.md § 2026-10-04
+  // "Sign in with X to pick" and § 2026-10-05 "Onboarding v2".
+  const voter = await getVoter();
+  if (voter.kind !== "ok") {
+    return { ...notCounted(winnerId, loserId), ...(voter.kind === "signed-out" ? { needsSignIn: true } : { needsProfile: true }) };
+  }
+  const voterSession = voter.voterKey;
 
   return db.transaction(async (tx) => {
     // Same UTC-day boundary getHomeStats() and getTop24h() use, so every
@@ -128,7 +164,22 @@ export async function pickWinner(input: z.infer<typeof pickWinnerInput>): Promis
       throw new Error("One of the creators in this battle is no longer active");
     }
 
-    // One scoring pick per pair per session. The pair is unordered, so picking
+    // You never judge a battle you're in — either side (RANKING.md § Scoring).
+    if (voter.creatorId === winner.id || voter.creatorId === loser.id) {
+      return {
+        winnerId: winner.id,
+        loserId: loser.id,
+        winnerAura: winner.aura,
+        loserAura: loser.aura,
+        delta: 0,
+        counted: false,
+        isSelf: true,
+        battlesToday: await picksToday(),
+      };
+    }
+
+    // One scoring pick per pair per X person (voterSession is "x:<X user id>";
+    // the battles_x_pair_key unique index backs this up). The pair is unordered, so picking
     // the other side of a matchup already judged doesn't buy a second vote.
     // See RANKING.md § Scoring.
     const [alreadyJudged] = await tx

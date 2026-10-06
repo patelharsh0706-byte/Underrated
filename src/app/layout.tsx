@@ -4,6 +4,7 @@ import { Analytics } from "@vercel/analytics/next";
 
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { InlineScript } from "@/components/shell/inline-script";
 import { THEME_SCRIPT } from "@/components/shell/theme-script";
 
 import "./globals.css";
@@ -62,7 +63,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} ${archivo.variable} ${caveat.variable} h-full antialiased`}
     >
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+        <InlineScript html={THEME_SCRIPT} />
       </head>
       <body className="min-h-full flex flex-col bg-background text-foreground">
         <SiteHeader />

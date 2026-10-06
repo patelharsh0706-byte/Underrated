@@ -190,7 +190,7 @@ export function DemosTop() {
         </div>
       </section>
       <p className={s.dmNote} style={{ textAlign: "center" }}>
-        {live ? "Counts the last 7 days. “Today” is new judges in the last 24 hours." : "Sample data for now. Your votes on the Judge tab move these numbers."}
+        {live ? "Counts the last 7 days. “Today” is new judges in the last 24 hours." : "Sample data for now. Your judgements on the Judge tab move these numbers."}
       </p>
     </>
   );

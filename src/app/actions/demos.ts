@@ -9,7 +9,9 @@ import { demoClicks, demoJudgements, demos } from "@/lib/db/schema";
 import { getDemoTally } from "@/lib/demos/queries";
 import { clickDemoSchema, createDemoSchema, encodeDemoData, isOurDemoBlob, judgeDemoSchema, type CreateDemoInput } from "@/lib/demos/schemas";
 import { getDodoClient } from "@/lib/dodo-payments";
-import { clientEnv, demoProductId } from "@/lib/env";
+import { getAppOrigin } from "@/lib/app-url";
+import { demoProductId } from "@/lib/env";
+import { getEntryState, getVoter } from "@/lib/account";
 import { getOrCreateVoterSession } from "@/lib/session";
 
 // Underhyped Demos writes — DATABASE.md § demos, DECISIONS.md § 2026-10-01.
@@ -23,7 +25,8 @@ export interface CreateDemoResult {
 
 /** A Dodo checkout session for the $3 demo entry, returning to the review step. */
 async function demoCheckout(email: string | null, metadata: Record<string, string> | null): Promise<string> {
-  const appUrl = clientEnv().NEXT_PUBLIC_APP_URL;
+  // The domain that served this request, never NEXT_PUBLIC_APP_URL (ISSUES.md, lib/app-url.ts).
+  const appUrl = await getAppOrigin();
   const session = await getDodoClient().checkoutSessions.create({
     product_cart: [{ product_id: demoProductId(), quantity: 1 }],
     customer: email ? { email } : null,
@@ -48,6 +51,8 @@ export async function createDemo(input: CreateDemoInput): Promise<CreateDemoResu
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Something about that submission didn’t look right." };
   const d = parsed.data;
   if (isMockMode()) return { error: "Preview mode — nothing is uploaded or saved." };
+  // The page's gate, again here: the action can be called directly (DECISIONS.md § 2026-10-06).
+  if ((await getVoter()).kind !== "ok") return { error: "Sign in with X and finish your profile first." };
   if (!isOurDemoBlob(d.videoUrl)) return { error: "That upload didn’t come from Underhyped — try uploading again." };
 
   let videoBytes: number;
@@ -94,15 +99,33 @@ export interface JudgeDemoResult {
   clicks?: number;
   /** False when this visitor had already judged it (the vote didn't count again). */
   counted?: boolean;
+  /** Nobody signed in: nothing written; the page asks for Sign in with X and replays it. */
+  needsSignIn?: boolean;
+  /** Signed in, profile not finished: nothing written; the page opens onboarding and replays it. */
+  needsProfile?: boolean;
 }
 
-/** One judgement per visitor per demo — the unique index makes a repeat a no-op. */
+/**
+ * The gate in front of Underhyped ⚡ / Not yet 🥱, read once when Demos loads
+ * (DECISIONS.md § 2026-10-06): signed out → the X pop-up, no profile →
+ * onboarding, ok → the vote. Works in PREVIEW_MOCK=1 too, so the gate can be
+ * reviewed on sample demos.
+ */
+export async function getJudgeGate(): Promise<"signed-out" | "needs-profile" | "ok"> {
+  const state = await getEntryState();
+  return state.kind === "signed-out" || state.kind === "needs-profile" ? state.kind : "ok";
+}
+
+/** One judgement per account per demo (Sign in with X) — the unique index makes a repeat a no-op. */
 export async function judgeDemo(input: { demoId: string; verdict: "underhyped" | "not_yet" }): Promise<JudgeDemoResult> {
   const parsed = judgeDemoSchema.safeParse(input);
-  if (!parsed.success) return { error: "That vote didn’t look right." };
+  if (!parsed.success) return { error: "That judgement didn’t look right." };
+  const voter = await getVoter();
+  if (voter.kind === "signed-out") return { needsSignIn: true };
+  if (voter.kind === "needs-profile") return { needsProfile: true };
   if (isMockMode()) return { counted: false };
   try {
-    const voterSession = await getOrCreateVoterSession();
+    const voterSession = voter.voterKey;
     const [demo] = await db.select({ status: demos.status }).from(demos).where(eq(demos.id, parsed.data.demoId));
     if (demo?.status !== "approved") return { error: "That demo isn’t live." };
     const inserted = await db
@@ -113,7 +136,7 @@ export async function judgeDemo(input: { demoId: string; verdict: "underhyped" |
     return { ...(await getDemoTally(parsed.data.demoId)), counted: inserted.length > 0 };
   } catch (error) {
     console.error("judgeDemo failed", error);
-    return { error: "Couldn’t save that vote — try again." };
+    return { error: "Couldn’t save that judgement — try again." };
   }
 }
 

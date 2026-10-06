@@ -64,7 +64,15 @@ Rules:
 Supabase Auth, against the same Supabase Postgres. Users live in the `auth.users`
 schema; our tables reference them by id.
 
-- Voting: no account.
+- **Picking (Arena) and judging (Demos) need an account — Sign in with X**
+  (changed 2026-10-04, DECISIONS.md § "Sign in with X to pick"). Browsing,
+  the leaderboard and profiles stay open; the first pick opens a small
+  "Make your pick count" modal, and after X sign-in the attempted pick is
+  replayed automatically. One account = one scoring pick per pair.
+- Accounts live in `accounts` (keyed by `auth.users.id`), created in
+  `/auth/callback`. An existing creator is **auto-claimed**: first by X user ID,
+  else — only while unclaimed — by @handle, after which the X user ID is saved
+  so the handle is never trusted again.
 - Submitting a creator: **no account either** — gated by a Dodo Payments entry fee
   instead. See Payments below and [DECISIONS.md](DECISIONS.md). Submitted
   creators are unclaimed (`user_id` null) — DATABASE.md already allowed this.
@@ -73,9 +81,12 @@ schema; our tables reference them by id.
   submission anymore; kept because a future "manage/edit your profile"
   feature will need some notion of identity, and rebuilding this from
   scratch would be wasted work. Do not delete it without discussing first.
-- Sign-in, if reintroduced, is Google OAuth only — no email/password, no
-  magic link. Requires a Google OAuth client configured in Supabase Auth →
-  Providers (authorized redirect URI: `<SUPABASE_URL>/auth/v1/callback`).
+- Sign-in is **X / Twitter (OAuth 2.0)** only, through Supabase Auth — no
+  email/password, no magic link, and Google is no longer offered (superseded
+  2026-10-04). Requires an X OAuth 2.0 app (callback
+  `<SUPABASE_URL>/auth/v1/callback`, scopes `users.read tweet.read`) entered in
+  Supabase Auth → Providers, and the site's `/auth/callback` on the redirect
+  allowlist.
 
 Supabase is a third-party service. Treat it as Postgres + a hosted auth provider —
 not as the application layer:

@@ -40,6 +40,25 @@ export const DB_CLIENT_OPTIONS = {
   connect_timeout: 10,
 } satisfies postgres.Options<Record<string, never>>;
 
+/**
+ * Transaction-mode Supavisor (port 6543) jams when a page's parallel queries
+ * outnumber the pool and get queued onto busy connections: /arena and / run
+ * six at once and hung for minutes on localhost (2026-10-05, measured: 5 in
+ * parallel hang at max 4, finish at max 10). Session mode (5432) keeps the
+ * small pool above. Production is unchanged unless its URL uses 6543.
+ */
+export const TRANSACTION_MODE_MAX = 10;
+
+export function clientOptionsFor(databaseUrl: string): typeof DB_CLIENT_OPTIONS {
+  let port = "";
+  try {
+    port = new URL(databaseUrl).port;
+  } catch {
+    // Unparseable URL: postgres() will report it; keep the defaults.
+  }
+  return port === "6543" ? { ...DB_CLIENT_OPTIONS, max: TRANSACTION_MODE_MAX } : DB_CLIENT_OPTIONS;
+}
+
 /** `max_pipeline` if it is ever set again. Undefined — the library default — is
  *  what we want; see the note above and the test beside this file. */
 export const DB_MAX_PIPELINE: number | undefined = (
