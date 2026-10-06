@@ -281,6 +281,20 @@ segmented pill (Judge · Top this week · Submit yours).
 for anything else — the "reached N Aura" feed event takes 🔥, and the "new
 challenger" state carries no fire.
 
+> **Changed 2026-10-06 (current rule for phones, ≤ 760px).** The menu is back,
+> because the header grew to three rows on phones (lockup; toggle + Enter +
+> Sign in; nav). One row: lockup · lime "Enter the Arena" · the X avatar when
+> signed in · a 40px round ☰ (becomes ×). ☰ drops a panel **in flow** under the
+> row — hairline rules above and below, it pushes the page down, no backdrop —
+> holding the five links (Display 800, 26px, sentence case; the current page
+> underlined in lime), then "Sign in with X" (or My profile · Sign out) and the
+> day/night switch. Closes on a link, Escape or ×; 180ms fade + 6px slide,
+> off under `prefers-reduced-motion`. Between 761px and 960px the V3 wrapped
+> nav below still applies; desktop is unchanged. The phone row stays one row
+> from 320px up: the tagline may wrap to two lines under the wordmark, the
+> Enter pill drops its arrow below 400px, and below 340px the lockup and pill
+> step down a size.
+
 > **Changed in V3.** The hamburger below is retired: under 960px the V3 nav
 > wraps onto its own full-width row under the lockup and scrolls sideways if it
 > must, so the four links are always visible. The old rule is kept for the
@@ -363,7 +377,7 @@ page-by-page reinvention.
 | Demos | `/demos`, `/demos/top`, `/demos/submit` | judge loop + result card + makers card; podium + ranked table; 4-step submit |
 | Home | `/` | hero + #1 creator card + Top 10 This Week, weekly-drop email banner, Live on Underhyped (tabs) + Enter CTA, Live Feed + Featured battle, Nominate banner |
 | Arena | `/arena` | headline, battle pair, pulse row, CTA, stats bar, three-up, sponsor, Hottest 10, Live on Underhyped |
-| Leaderboard | `/leaderboard` | scope + category filters, top-3 podium, ranked table, load more |
+| Leaderboard | `/leaderboard` | scope + category filters, top-3 podium, ranked table, load more · (2026-10-06) table columns # · Creator · **Cooking** · Category · Aura — Cooking is the creator's project (a colour logo tile, the project name, then "🔗 site", no label, same as the profile's link); Cooking, Category and Aura are equal-width columns so the spacing between them is even; no Trend column; under 768px: # · Creator · logo tile · Aura |
 | Profile | `/c/[username]` | v2 (2026-10-04): identity (link chips: "𝕏 Say hi on X", then "🔗 <site name>" (the current project's domain, e.g. 🔗 underhyped.wtf) → the project link, 2026-10-06) · status card (Aura, rank, win rate, ⚔ battles ▾, ⚡ Hype — battles/Hype centred) · one ⚡ Hype button · framed About box (About, Working style chips, Open to, Into as label/value rows) · framed Cooking box (Currently cooking card, thin rule, Previously cooked rows with status pills) — from the Underhyped Arena artifact v58 |
 | Welcome | `/welcome` | v2 (2026-10-05): Step 1 "Welcome, {name}" (X photo, @handle, ✓ Connected with X, email (required), "What are you cooking right now?" (optional — leave empty and the Cooking box is hidden), Build my profile →) · stepper ● — ○ — ○ — ○ Profile · You · Interests · History · Step 2 "Looking good?" (preview, ✎ inline edits, Looks good → / I'll edit this later) · Step 3 "What kind of builder are you?" · Step 4 "What are you open to?" (Into: popular + Show more) · Step 5 "What have you cooked before? 🍳" (+ Add a past project → URL → fetched name/description → status → Year (optional)) · "⚡ You're in." · Required to move on: Step 3 How + Where + at least one Meet (Experience optional); Step 4 at least one Open to (Into optional); Step 5 never blocks (Skip for now) |
 | Profile — not in Arena | `/c/[username]` | instead of stats, the owner sees "Think you're underhyped? Enter the Arena and find out." [Enter the Arena →]; visitors see no stats card |

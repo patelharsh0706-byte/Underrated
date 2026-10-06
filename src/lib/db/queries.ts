@@ -32,6 +32,8 @@ export interface PublicCreator {
   /** Distinct voter sessions that judged this creator — see RANKING.md § Placement. */
   voterCount: number;
   workUrl: string | null;
+  /** The project's own name (profile v2); the leaderboard's Cooking column falls back to the domain. */
+  projectName?: string | null;
   socials: Record<string, string> | null;
   primarySocial: string | null;
   followerCount: number | null;
@@ -78,6 +80,7 @@ function toPublicCreator(row: CreatorRow): PublicCreator {
     winsCount: row.winsCount,
     voterCount: row.voterCount,
     workUrl: row.workUrl,
+    projectName: row.projectName,
     socials: row.socials as Record<string, string> | null,
     primarySocial: row.primarySocial,
     followerCount: row.followerCount,
@@ -372,6 +375,7 @@ interface DailyHeatRow {
   aura: number;
   battles_count: number;
   work_url: string | null;
+  project_name: string | null;
   socials: Record<string, string> | null;
   primary_social: string | null;
   follower_count: number | null;
@@ -401,6 +405,7 @@ export async function getTop24h(limit = 10): Promise<DailyHeatEntry[]> {
       c.battles_count,
       c.wins_count,
       c.work_url,
+      c.project_name,
       c.socials,
       c.primary_social,
       c.follower_count,
@@ -424,7 +429,7 @@ export async function getTop24h(limit = 10): Promise<DailyHeatEntry[]> {
     where c.is_active = true
       and b.created_at >= date_trunc('day', now() at time zone 'utc')
     group by c.id, c.username, c.name, c.avatar_url, c.bio, c.category, c.aura,
-      c.battles_count, c.wins_count, c.work_url, c.socials, c.primary_social, c.follower_count
+      c.battles_count, c.wins_count, c.work_url, c.project_name, c.socials, c.primary_social, c.follower_count
     having count(*) >= ${DAILY_HEAT_BATTLES_REQUIRED}
       and count(distinct b.voter_session) >= ${DAILY_HEAT_VOTERS_REQUIRED}
     order by
@@ -447,6 +452,7 @@ export async function getTop24h(limit = 10): Promise<DailyHeatEntry[]> {
     winsCount: row.wins_count,
     voterCount: row.voter_count,
     workUrl: row.work_url,
+    projectName: row.project_name,
     socials: row.socials,
     primarySocial: row.primary_social,
     followerCount: row.follower_count,

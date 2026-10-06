@@ -436,3 +436,160 @@
   padding: 9px 10px;
 }
 .menuLink:hover { background: var(--hairline); }
+
+/* ---------- phone menu (≤ 760px) — DESIGN.md § Mobile nav, 2026-10-06 ----
+   One row: lockup · Enter the Arena · avatar · ☰. The nav, Sign in and the
+   day/night switch move into a panel that drops in flow under the row. */
+.burger,
+.panel {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .topbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 8px;
+    row-gap: 0;
+  }
+  /* Basis 0: the lockup takes the space the buttons leave, instead of
+     claiming its full width and pushing ☰ onto a second row. */
+  .brand {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  /* No nav in this row, so the tagline may wrap under the wordmark instead
+     of pushing ☰ onto a second row (it never slides under anything). */
+  .brand p {
+    white-space: normal;
+  }
+  /* The tools' children join the row directly, so the panel can take a row of its own. */
+  .tools {
+    display: contents;
+  }
+  .nav,
+  .tools > .theme,
+  .tools > .signin {
+    display: none;
+  }
+  .burger {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--card-line);
+    background: var(--card);
+    color: var(--foreground);
+    cursor: pointer;
+  }
+  .burger:focus-visible {
+    outline: 2px solid var(--foreground);
+    outline-offset: 2px;
+  }
+  .panel {
+    display: block;
+    order: 99;
+    width: 100%;
+    margin-top: 12px;
+    padding: 6px 0 14px;
+    border-top: 1px solid var(--hairline);
+    border-bottom: 1px solid var(--hairline);
+    animation: panel-in 180ms ease-out;
+  }
+  .panel nav {
+    display: flex;
+    flex-direction: column;
+    padding: 6px 0 10px;
+  }
+  .panel nav a {
+    font: 800 26px var(--font-archivo), sans-serif;
+    letter-spacing: -0.03em;
+    color: var(--foreground);
+    text-decoration: none;
+    padding: 7px 0;
+  }
+  .panel nav a[aria-current="page"] {
+    text-decoration: underline;
+    text-decoration-color: #d8ff3e;
+    text-decoration-thickness: 5px;
+    text-underline-offset: 6px;
+  }
+  .panelRow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--hairline);
+  }
+  .panelAccount {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .panelBtn {
+    display: inline-flex;
+    align-items: center;
+    font: 600 14px var(--font-geist-sans), sans-serif;
+    color: var(--foreground);
+    background: var(--card);
+    border: 1px solid var(--hairline-2);
+    border-radius: 999px;
+    padding: 10px 16px;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .panelText {
+    font: 500 14px var(--font-geist-sans), sans-serif;
+    color: var(--ink-soft);
+    background: none;
+    border: 0;
+    padding: 10px 6px;
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .panelTheme {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13.5px;
+    color: var(--ink-soft);
+  }
+}
+
+/* One row at every phone width: the Enter pill sheds its arrow below 400px,
+   and the smallest Androids get a slightly smaller lockup and pill. */
+@media (max-width: 400px) {
+  .enter .arrow {
+    display: none;
+  }
+  .enter {
+    padding: 9px 11px;
+  }
+}
+@media (max-width: 340px) {
+  .logo {
+    font-size: 17px;
+  }
+  .enter {
+    padding: 8px 10px;
+    font-size: 11.5px;
+  }
+}
+
+@keyframes panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .panel {
+    animation: none;
+  }
+}
+

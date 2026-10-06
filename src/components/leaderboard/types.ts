@@ -11,6 +11,9 @@ export interface BoardEntry {
   avatarUrl: string | null;
   bio: string | null;
   category: string | null;
+  /** The Cooking column: the creator's project link and its own name, if set. */
+  workUrl: string | null;
+  projectName: string | null;
   metric: number;
 }
 

@@ -1837,3 +1837,35 @@ The header's "Enter the Arena" silently opening your own profile looked like
 the page was gone. Showing the page without the button keeps it recognisable
 and still makes paying twice impossible (startArenaCheckout refuses it too).
 
+## 2026-10-06 — Phone header: a dropdown menu again
+
+Decision:
+At 760px and narrower the header is one row — lockup, "Enter the Arena", the
+avatar when signed in, ☰ — and ☰ drops an in-flow panel with the nav, Sign in
+(or My profile / Sign out) and the day/night switch (DESIGN.md § Mobile nav,
+"Changed 2026-10-06"). Wider screens are unchanged.
+
+Why:
+Sign in with X added a fourth control to the header; on phones it became three
+loose rows (the buttons floated right on their own row). "Enter the Arena"
+stays in the bar because it is the main action.
+
+Rejected:
+A side drawer with a backdrop (covers the battle). Moving "Enter the Arena"
+into the menu.
+
+## 2026-10-06 — Leaderboard shows what each creator is cooking
+
+Decision:
+The leaderboard table gets a "Cooking" column before Category: the creator's
+project as a colour logo tile, its name (`creators.project_name`, else the
+site's domain) and "🔗 site". Cooking, Category and Aura are equal-width
+columns. No Trend column (the table had none; the approved artifact v61
+dropped its own). Under 768px the column is the logo tile only and Category
+stays hidden. Designed first in the Underhyped Arena artifact (v59–v61).
+
+Why:
+A rank says who is underhyped; the project says what they make — the thing
+a visitor actually clicks through for. Equal tracks keep the three right-hand
+columns evenly spaced whatever their content.
+

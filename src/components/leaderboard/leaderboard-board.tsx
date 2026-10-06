@@ -85,9 +85,10 @@ export function LeaderboardBoard({ allTime, daily, mainCharacterId }: Leaderboar
       {top3 ? <Podium top3={top3} isDaily={isDaily} mainCharacterId={mainCharacterId} /> : null}
 
       <div className="mt-2">
-        <div className="hidden grid-cols-[30px_1fr_148px_104px] gap-4 border-b border-hairline-2 px-1 pb-2.5 font-display text-[11px] font-semibold tracking-[0.14em] text-ink-soft uppercase sm:grid">
+        <div className="hidden gap-4 border-b border-hairline-2 px-1 pb-2.5 font-display text-[11px] font-semibold tracking-[0.14em] text-ink-soft uppercase md:grid md:grid-cols-[30px_minmax(0,1fr)_repeat(3,132px)] lg:grid-cols-[30px_minmax(0,1fr)_repeat(3,172px)]">
           <span>#</span>
           <span>Creator</span>
+          <span>Cooking</span>
           <span>Category</span>
           <span>{isDaily ? "Heat 24h" : "Aura"}</span>
         </div>

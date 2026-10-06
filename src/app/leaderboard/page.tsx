@@ -40,6 +40,8 @@ export default async function LeaderboardPage() {
     avatarUrl: entry.avatarUrl,
     bio: entry.bio,
     category: entry.category,
+    workUrl: entry.workUrl,
+    projectName: entry.projectName ?? null,
     metric: entry.aura,
   }));
 
@@ -50,6 +52,8 @@ export default async function LeaderboardPage() {
     avatarUrl: entry.avatarUrl,
     bio: entry.bio,
     category: entry.category,
+    workUrl: entry.workUrl,
+    projectName: entry.projectName ?? null,
     metric: entry.dailyHeat,
   }));
 

@@ -5,43 +5,17 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 import { signOut } from "@/app/actions/auth";
-import { getMyProfileState } from "@/app/actions/profile";
 import { SignInGate } from "@/components/auth/sign-in-gate";
+import { useMe } from "@/components/auth/use-me";
 import styles from "@/components/shell/shell.module.css";
-import { createClient } from "@/lib/supabase/client";
 
 // Header: "Sign in" ↔ your X photo + menu — from the approved prototype.
-// Reads the auth session in the browser (auth only, never game data), so the
-// cached pages behind the header stay cached.
-interface Me {
-  name: string;
-  handle: string;
-  avatar: string | null;
-}
-
-function meFrom(user: { user_metadata?: Record<string, unknown> } | null): Me | null {
-  if (!user) return null;
-  const m = user.user_metadata ?? {};
-  const handle = String(m.user_name ?? m.preferred_username ?? "").replace(/^@/, "");
-  return { name: String(m.full_name ?? m.name ?? handle), handle, avatar: typeof m.avatar_url === "string" ? m.avatar_url : null };
-}
-
+// Who is signed in comes from useMe() (auth only, never game data).
 export function AccountMenu() {
-  const [me, setMe] = useState<Me | null | undefined>(undefined);
+  const { me, myUsername } = useMe();
   const [open, setOpen] = useState(false);
   const [gate, setGate] = useState(false);
-  const [myUsername, setMyUsername] = useState<string | null>(null);
   const wrap = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const supabase = createClient();
-    void supabase.auth.getUser().then(({ data }) => {
-      setMe(meFrom(data.user));
-      if (data.user) void getMyProfileState({}).then((st) => setMyUsername(st.myUsername));
-    });
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => setMe(meFrom(session?.user ?? null)));
-    return () => data.subscription.unsubscribe();
-  }, []);
 
   useEffect(() => {
     if (!open) return;
