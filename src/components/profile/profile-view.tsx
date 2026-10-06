@@ -36,6 +36,9 @@ const LINK: Record<string, [string, string]> = {
   tiktok: ["♪", "TikTok"],
   spotify: ["♫", "Spotify"],
   web: ["🌐", "Website"],
+  // The "Currently cooking" link, next to "Say hi on X" — labelled with the
+  // site's own name (its domain) at render time.
+  project: ["🔗", "Project"],
 };
 const PALETTE = ["#6B5BD6", "#C4399E", "#1D8E45", "#2F6BE0", "#B4603A", "#0F7B7B", "#E0A100", "#111111"];
 const colorFor = (name: string) => PALETTE[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETTE.length];
@@ -127,7 +130,12 @@ export function ProfileView({ profile: initial, preview = false, inline }: Profi
   const ranked = p.rank !== null;
   const rate = p.battlesCount ? Math.round((p.winsCount / p.battlesCount) * 100) : 0;
   const view = editing ? profileWithEdit(p, editing) : p;
-  const links = Object.entries(p.socials ?? {});
+  // Social links, then the current project as "My project" (a saved website
+  // that's the same address isn't shown twice).
+  const links: [string, string][] = Object.entries((p.socials ?? {}) as Record<string, string>).filter(
+    ([kind, href]) => !(kind === "web" && view.workUrl && domainOf(href) === domainOf(view.workUrl)),
+  );
+  if (view.workUrl) links.push(["project", view.workUrl]);
   const projectName = view.projectName || (view.workUrl ? domainOf(view.workUrl) : "");
 
   function share() {
@@ -254,7 +262,8 @@ export function ProfileView({ profile: initial, preview = false, inline }: Profi
             {links.length > 0 && (
               <div className={cx("pf-links")}>
                 {links.map(([kind, href]) => {
-                  const [glyph, label] = LINK[kind] ?? LINK.web;
+                  const [glyph, fixed] = LINK[kind] ?? LINK.web;
+                  const label = kind === "project" ? domainOf(href) || fixed : fixed;
                   const dm = kind === "twitter" && p.xUserId ? `https://x.com/messages/compose?recipient_id=${encodeURIComponent(p.xUserId)}` : href;
                   return (
                     <a key={kind} href={dm} target="_blank" rel="noopener noreferrer" title={kind === "twitter" ? `Message @${p.username} on X` : undefined}>

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 
 import { startArenaCheckout } from "@/app/actions/onboarding";
@@ -52,7 +53,10 @@ function Field({
           )}
         >
           {icon ? (
-            <span className="w-[22px] flex-none text-center text-[17px]" aria-hidden="true">
+            <span
+              className="w-[22px] flex-none text-center text-[17px]"
+              aria-hidden="true"
+            >
               {icon}
             </span>
           ) : null}
@@ -73,7 +77,9 @@ function Field({
           />
         </span>
       </label>
-      <span className="block min-h-[18px] pt-1.5 text-[13px] text-down">{error ?? ""}</span>
+      <span className="block min-h-[18px] pt-1.5 text-[13px] text-down">
+        {error ?? ""}
+      </span>
     </>
   );
 }
@@ -83,10 +89,21 @@ interface EnterArenaFlowProps {
   handle: string;
   /** Their profile's project link, "" when none yet. */
   projectUrl: string;
+  /**
+   * Already in the Arena: the same page, but no payment — "You're already in
+   * the Arena" and a link to their profile (DECISIONS.md § 2026-10-06).
+   */
+  inArenaAs?: string;
 }
 
-export function EnterArenaFlow({ handle, projectUrl }: EnterArenaFlowProps) {
-  const [work, setWork] = useState(projectUrl.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, ""));
+export function EnterArenaFlow({
+  handle,
+  projectUrl,
+  inArenaAs,
+}: EnterArenaFlowProps) {
+  const [work, setWork] = useState(
+    projectUrl.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, ""),
+  );
   const [error, setError] = useState<string | undefined>();
   const [busy, setBusy] = useState(false);
 
@@ -111,10 +128,18 @@ export function EnterArenaFlow({ handle, projectUrl }: EnterArenaFlowProps) {
           <h1 className="mx-auto mt-3 max-w-[13ch] font-display text-[clamp(32px,7vw,48px)] leading-[0.98] font-black tracking-[-0.04em]">
             Put yourself on the <MarkerSwipe>radar.</MarkerSwipe>
           </h1>
-          <p className="mt-3.5 text-base text-ink-soft sm:text-lg">Two links. That’s the whole form.</p>
+          <p className="mt-3.5 text-base text-ink-soft sm:text-lg">
+            Two links. That’s the whole form.
+          </p>
         </div>
 
-        <Field label="Your X profile" icon="𝕏" value={`x.com/${handle}`} ariaLabel="Your X profile (the account you signed in with)" readOnly />
+        <Field
+          label="Your X profile"
+          icon="𝕏"
+          value={`x.com/${handle}`}
+          ariaLabel="Your X profile (the account you signed in with)"
+          readOnly
+        />
 
         <Field
           label="What are you building?"
@@ -125,27 +150,72 @@ export function EnterArenaFlow({ handle, projectUrl }: EnterArenaFlowProps) {
           ariaLabel="Your project URL"
           inputMode="url"
           error={error}
+          readOnly={!!inArenaAs}
         />
 
-        <button
-          type="button"
-          onClick={() => void enter()}
-          disabled={busy}
-          className={cn(
-            "mt-2 block w-full rounded-[14px] bg-primary px-5 py-[18px] font-display text-[17px] font-extrabold tracking-[-0.02em] text-primary-foreground transition-[transform,box-shadow,opacity] duration-150",
-            busy
-              ? "cursor-default opacity-55"
-              : "cursor-pointer hover:-translate-y-0.5 hover:shadow-[0_14px_26px_-14px_rgb(17_17_17/0.75)] active:translate-y-0",
-          )}
-        >
-          {busy ? "Opening checkout…" : "Enter the Arena →"}
-        </button>
-        <p className="mt-3 text-center text-[13px] text-ink-soft">Takes ~10 sec · {FEE} one-time</p>
+        {inArenaAs ? (
+          <div
+            className="mt-2 rounded-[14px] border border-hairline-2 bg-card px-5 py-5 text-center"
+            role="status"
+          >
+            <p className="font-display text-[17px] font-extrabold tracking-[-0.02em]">
+              ✓ You’re already in the Arena
+            </p>
+            <p className="mt-1 text-[14px] text-ink-soft">
+              Your battles, Aura and rank live on your profile.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              <Link
+                href={`/c/${inArenaAs}`}
+                className="rounded-[14px] bg-primary px-5 py-3 font-display text-[15px] font-extrabold tracking-[-0.02em] text-primary-foreground transition-transform duration-150 hover:-translate-y-0.5"
+              >
+                View your profile →
+              </Link>
+              <Link
+                href="/arena"
+                className="rounded-[14px] border border-hairline-2 bg-card px-5 py-3 text-[14.5px] font-semibold text-foreground hover:border-foreground"
+              >
+                Back to battles
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => void enter()}
+              disabled={busy}
+              className={cn(
+                "mt-2 block w-full rounded-[14px] bg-primary px-5 py-[18px] font-display text-[17px] font-extrabold tracking-[-0.02em] text-primary-foreground transition-[transform,box-shadow,opacity] duration-150",
+                busy
+                  ? "cursor-default opacity-55"
+                  : "cursor-pointer hover:-translate-y-0.5 hover:shadow-[0_14px_26px_-14px_rgb(17_17_17/0.75)] active:translate-y-0",
+              )}
+            >
+              {busy ? "Opening checkout…" : "Enter the Arena →"}
+            </button>
+            <p className="mt-3 text-center text-[13px] text-ink-soft">
+              Takes ~10 sec · {FEE} one-time
+            </p>
+          </>
+        )}
 
         <span className="relative mt-10 block rotate-[-2deg] text-center font-hand text-[19px] font-bold tracking-[0.04em] text-ink-faint uppercase">
           good people deserve more hype.
-          <svg width="190" height="9" viewBox="0 0 190 9" fill="none" aria-hidden="true" className="mx-auto mt-0.5 block max-w-full text-lime-deep">
-            <path d="M3 6c44-5 120-6 184-2" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" />
+          <svg
+            width="190"
+            height="9"
+            viewBox="0 0 190 9"
+            fill="none"
+            aria-hidden="true"
+            className="mx-auto mt-0.5 block max-w-full text-lime-deep"
+          >
+            <path
+              d="M3 6c44-5 120-6 184-2"
+              stroke="currentColor"
+              strokeWidth="3.5"
+              strokeLinecap="round"
+            />
           </svg>
         </span>
       </section>

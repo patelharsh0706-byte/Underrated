@@ -18,14 +18,18 @@ export const dynamic = "force-dynamic";
 export default async function SubmitPage() {
   const state = await getEntryState();
   if (state.kind === "needs-profile") redirect(onboardingFor("/submit"));
-  if (state.kind === "in-arena") redirect(`/c/${state.username}`);
 
   return (
     <main className="flex w-full flex-1 flex-col px-4 pb-16">
       {state.kind === "signed-out" ? (
         <EntryGate variant="arena" next="/submit" back="/" />
       ) : (
-        <EnterArenaFlow handle={state.handle} projectUrl={state.projectUrl} />
+        // Already in the Arena: the same page, without the $3 button (no paying twice).
+        <EnterArenaFlow
+          handle={state.handle}
+          projectUrl={state.projectUrl}
+          inArenaAs={state.kind === "in-arena" ? state.username : undefined}
+        />
       )}
     </main>
   );

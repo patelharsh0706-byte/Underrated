@@ -25,7 +25,8 @@ export function draftProfile(me: WelcomeMe, d: ProfileEdit): ProfileV2 {
     winsCount: 0,
     voterCount: 0,
     workUrl: d.projectUrl || null,
-    socials: d.projectUrl ? { twitter: x, web: d.projectUrl } : { twitter: x },
+    // The project shows as "My project" from workUrl — not repeated as a website.
+    socials: { twitter: x },
     primarySocial: "twitter",
     followerCount: null,
     rank: null,

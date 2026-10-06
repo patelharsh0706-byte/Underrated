@@ -1824,3 +1824,16 @@ Rejected:
 Matching by the X link stored on the profile (better than the username, but
 still a name that can be mistyped or reused).
 
+## 2026-10-06 — "Enter the Arena" shows the radar page to people already in the Arena
+
+Decision:
+`/submit` no longer redirects someone already in the Arena to their profile.
+They see the same "Put yourself on the radar" page (X profile and project
+shown read-only) with "✓ You're already in the Arena" and links to their
+profile and back to battles, in place of the $3 button.
+
+Why:
+The header's "Enter the Arena" silently opening your own profile looked like
+the page was gone. Showing the page without the button keeps it recognisable
+and still makes paying twice impossible (startArenaCheckout refuses it too).
+
