@@ -1799,3 +1799,28 @@ Rejected:
 Keeping `accounts.creator_id` as the link (a second source next to the X id).
 Keying votes by the sign-in account id (a recreated account could judge again).
 
+## 2026-10-06 — A creator is claimed only by matching X user id
+
+Decision:
+Sign-in links an account to a creator only when the creator's `x_user_id`
+equals the account's X user id. Claiming by @handle (username equal to the X
+handle) is removed.
+
+Why:
+The pre-deploy check (R1) found a handle match is unreliable: `thecozydev`'s
+real X handle is `The_CozyDev` (the owner would miss their profile, and whoever
+holds `@thecozydev` would get it), and `loosethread` has no X link at all
+(anyone holding that handle would get it). X's numeric id identifies the
+person; a handle is only a name.
+
+Consequences:
+Hand-entered creators must carry their person's X user id **before** that
+person signs in. Otherwise the sign-in creates a second, empty free profile,
+and moving their Aura onto it later is a manual merge. When this was decided,
+13 creators (10 active) had no X user id yet. The add-a-creator checklist gains
+"X user id". Supersedes the handle step of § 2026-10-04 "Sign in with X to pick".
+
+Rejected:
+Matching by the X link stored on the profile (better than the username, but
+still a name that can be mistyped or reused).
+

@@ -30,7 +30,7 @@ interface WelcomeFlowProps {
   me: WelcomeMe;
   email: string;
   draft: ProfileEdit;
-  /** An existing creator this account auto-claimed: "This is you ✓". */
+  /** The existing creator carrying this account's X user id: "This is you ✓". */
   claimed: ProfileV2 | null;
   /** Where to go after, when a vote is waiting there (…?resume=1). */
   next: string;

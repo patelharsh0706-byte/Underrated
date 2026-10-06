@@ -39,33 +39,13 @@ export interface ClaimCandidate {
   xUserId: string | null;
 }
 
-export interface ClaimDecision {
-  creatorId: string;
-  /** True on the first claim: save the X user id so the handle is never trusted again. */
-  saveXUserId: boolean;
-}
-
 /**
- * Which existing creator this X account owns, if any.
- * 1. A creator already carrying this X user id — it is theirs.
- * 2. Otherwise an UNCLAIMED creator whose username is the @handle
- *    (case-insensitive) — claimed once, and the id is saved.
- * 3. Otherwise none. A claimed creator is never taken over by a handle match.
+ * Which existing creator this X account owns: only the one whose stored X
+ * user id equals the account's — never a match by @handle or username, which
+ * can be wrong or reused (DECISIONS.md § 2026-10-06). Null: no creator yet.
  */
-export function chooseClaim(
-  x: Pick<XIdentity, "xUserId" | "xUsername">,
-  byXUserId: ClaimCandidate | null,
-  byHandle: ClaimCandidate | null,
-): ClaimDecision | null {
-  if (byXUserId && byXUserId.xUserId === x.xUserId) return { creatorId: byXUserId.id, saveXUserId: false };
-  if (
-    byHandle &&
-    byHandle.xUserId === null &&
-    byHandle.username.toLowerCase() === x.xUsername.toLowerCase()
-  ) {
-    return { creatorId: byHandle.id, saveXUserId: true };
-  }
-  return null;
+export function chooseClaim(x: Pick<XIdentity, "xUserId">, byXUserId: ClaimCandidate | null): string | null {
+  return byXUserId && byXUserId.xUserId === x.xUserId ? byXUserId.id : null;
 }
 
 /**

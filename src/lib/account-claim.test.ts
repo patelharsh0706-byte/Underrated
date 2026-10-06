@@ -10,27 +10,21 @@ const creator = (over: Partial<ClaimCandidate> = {}): ClaimCandidate => ({
   ...over,
 });
 
-describe("chooseClaim — DATABASE.md § accounts", () => {
-  it("links the creator that already carries this X user id", () => {
-    expect(chooseClaim(harsh, creator({ xUserId: "1543827190" }), null)).toEqual({ creatorId: "c-1", saveXUserId: false });
+describe("chooseClaim — only a matching X user id (DECISIONS.md § 2026-10-06)", () => {
+  it("links the creator that carries this X user id", () => {
+    expect(chooseClaim(harsh, creator({ xUserId: "1543827190" }))).toBe("c-1");
   });
 
-  it("claims an unclaimed creator by @handle once, case-insensitive, and saves the id", () => {
-    expect(chooseClaim(harsh, null, creator())).toEqual({ creatorId: "c-1", saveXUserId: true });
+  it("never claims by @handle: a creator with the same username but no X id stays unclaimed", () => {
+    expect(chooseClaim(harsh, null)).toBeNull();
   });
 
-  it("never takes over a claimed creator through a handle match", () => {
-    expect(chooseClaim(harsh, null, creator({ xUserId: "999" }))).toBeNull();
+  it("never claims a creator that carries a different X user id", () => {
+    expect(chooseClaim(harsh, creator({ xUserId: "999" }))).toBeNull();
   });
 
-  it("returns none for a new person", () => {
-    expect(chooseClaim(harsh, null, null)).toBeNull();
-    expect(chooseClaim(harsh, null, creator({ username: "someoneelse" }))).toBeNull();
-  });
-
-  it("prefers the id match even if the handle now points elsewhere (renamed account)", () => {
-    const byId = creator({ id: "c-old", username: "harsh_old", xUserId: "1543827190" });
-    expect(chooseClaim(harsh, byId, creator({ id: "c-other" }))?.creatorId).toBe("c-old");
+  it("follows the id even after a rename (the handle no longer matches)", () => {
+    expect(chooseClaim({ xUserId: "1543827190" }, creator({ id: "c-old", username: "harsh_old", xUserId: "1543827190" }))).toBe("c-old");
   });
 });
 

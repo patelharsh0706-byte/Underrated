@@ -6,7 +6,7 @@ import { safeNext } from "@/lib/safe-next";
 import { createClient } from "@/lib/supabase/server";
 
 // Sign in with X lands here (DECISIONS.md § 2026-10-04). Exchange the code,
-// create/refresh the account and auto-claim an existing creator. Votes count
+// create/refresh the account and link the creator with the same X user id. Votes count
 // only once the free profile is finished (§ 2026-10-05 "Onboarding v2"), so a
 // new person goes straight to /welcome, carrying where they were — usually
 // /arena?resume=1, which replays their pick after "Finish profile".

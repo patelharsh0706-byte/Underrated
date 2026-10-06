@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, eq, getTableColumns, isNull, sql } from "drizzle-orm";
+import { eq, getTableColumns } from "drizzle-orm";
 import { cookies } from "next/headers";
 
 import { chooseClaim, xIdentityFromUser, xVoterKey, type ClaimCandidate } from "@/lib/account-claim";
@@ -62,7 +62,7 @@ export type Voter =
 /**
  * Who may cast a counted vote — DECISIONS.md § 2026-10-05 "Onboarding v2".
  * A pick, demo judgement or profile Hype counts only from an account that owns
- * a creator row (a free profile, an Arena creator or an auto-claimed one).
+ * a creator row (a free profile, an Arena creator or one carrying its X user id).
  */
 export async function getVoter(): Promise<Voter> {
   const userId = await getSignedInUserId();
@@ -164,7 +164,8 @@ function prefillDraft(p: { bio: string | null; location: string | null; url: str
 
 /**
  * Called from /auth/callback after X sign-in: creates or refreshes the account
- * row, then auto-claims an existing creator (lib/account-claim.ts § chooseClaim).
+ * row, then finds the creator carrying the same X user id, if any
+ * (lib/account-claim.ts § chooseClaim — no @handle matching).
  * One transaction, so a claim can never half-apply.
  */
 export async function syncAccountFromUser(
@@ -197,22 +198,12 @@ export async function syncAccountFromUser(
       .returning({ id: accounts.id, onboardedAt: accounts.onboardedAt });
     const onboarded = !!account.onboardedAt;
 
-    // The X user id is the link: a creator carrying it is already theirs.
-    const pick = { id: creators.id, username: creators.username, xUserId: creators.xUserId };
-    const [byXUserId] = await tx.select(pick).from(creators).where(eq(creators.xUserId, x.xUserId));
-    const [byHandle] = byXUserId
-      ? []
-      : await tx
-          .select(pick)
-          .from(creators)
-          .where(and(sql`lower(${creators.username}) = ${x.xUsername.toLowerCase()}`, isNull(creators.xUserId)));
-    const decision = chooseClaim(x, (byXUserId as ClaimCandidate) ?? null, (byHandle as ClaimCandidate) ?? null);
-    if (!decision) return { id: account.id, creatorId: null, onboarded };
-
-    // First claim by @handle: saving the X user id IS the claim.
-    if (decision.saveXUserId) {
-      await tx.update(creators).set({ xUserId: x.xUserId }).where(and(eq(creators.id, decision.creatorId), isNull(creators.xUserId)));
-    }
-    return { id: account.id, creatorId: decision.creatorId, onboarded };
+    // The X user id is the only claim: a creator carrying it is theirs.
+    // No @handle matching (DECISIONS.md § 2026-10-06).
+    const [byXUserId] = await tx
+      .select({ id: creators.id, username: creators.username, xUserId: creators.xUserId })
+      .from(creators)
+      .where(eq(creators.xUserId, x.xUserId));
+    return { id: account.id, creatorId: chooseClaim(x, (byXUserId as ClaimCandidate) ?? null), onboarded };
   });
 }

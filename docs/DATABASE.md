@@ -528,11 +528,12 @@ this branch is deployed.
 - RLS on, deny by default; only the server (service role) reads or writes.
 - `creators.x_user_id text unique` (new, nullable) is filled the first time a
   creator is claimed.
-- **Auto-claim at sign-in:** (1) a creator whose `x_user_id` equals the
-  account's → already theirs, nothing to write. (2) Otherwise an **unclaimed**
-  creator (no `x_user_id`) whose username equals the X @handle,
-  case-insensitive → set its `x_user_id` (that is the claim). (3) Otherwise no
-  creator. A claimed creator is never re-assigned by a handle match.
+- **Claiming at sign-in (changed 2026-10-06):** a creator belongs to the X
+  account whose numeric user id is stored in its `x_user_id` — nothing else.
+  There is no @handle matching: a username or an X link can be wrong or
+  reused, the numeric id can't. A creator added by hand stays unclaimed until
+  its person's X user id is filled in (operator step); without it, that
+  person's sign-in makes a new free profile instead.
 - **Votes (changed 2026-10-06, migration 0016):** a signed-in pick or demo
   judgement stores `voter_session = "x:<X user id>"` — one voter id, no
   separate `voter_user_id` column (removed from `battles` and
