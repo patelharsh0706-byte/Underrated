@@ -18,11 +18,20 @@ interface SupabaseUserLike {
 
 const str = (v: unknown) => (typeof v === "string" && v.trim() ? v.trim() : null);
 
-/** The X account behind a Supabase user, or null if it isn't an X sign-in. */
+/**
+ * The X account behind a Supabase user, or null if it isn't an X sign-in.
+ *
+ * Read ONLY from the X identity record, which Supabase writes from X's OAuth
+ * response. Never from `user_metadata`: any client can set that with the
+ * public key (sign-up / updateUser options.data), so trusting it let an email
+ * or Google sign-up claim any X user id — someone else's profile and votes
+ * (security review, 2026-10-08; DECISIONS.md).
+ */
 export function xIdentityFromUser(user: SupabaseUserLike): XIdentity | null {
   const identity = user.identities?.find((i) => i.provider === "x" || i.provider === "twitter");
-  const data = { ...(identity?.identity_data ?? {}), ...(user.user_metadata ?? {}) };
-  const xUserId = str(data.provider_id) ?? str(data.sub) ?? str(identity?.id);
+  if (!identity) return null;
+  const data = identity.identity_data ?? {};
+  const xUserId = str(identity.id) ?? str(data.provider_id) ?? str(data.sub);
   const xUsername = str(data.user_name) ?? str(data.preferred_username);
   if (!xUserId || !xUsername) return null;
   return {

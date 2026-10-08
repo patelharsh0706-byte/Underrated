@@ -1869,3 +1869,25 @@ A rank says who is underhyped; the project says what they make — the thing
 a visitor actually clicks through for. Equal tracks keep the three right-hand
 columns evenly spaced whatever their content.
 
+## 2026-10-08 — The X identity comes only from Supabase's X identity record
+
+Decision:
+`xIdentityFromUser` (src/lib/account-claim.ts) reads the X user id, handle,
+name and photo **only** from the user's `x`/`twitter` identity record, which
+Supabase writes from X's OAuth response. No such identity → not an X sign-in
+→ null (no account row, no votes). `user_metadata` is never read for it.
+
+Why:
+A security review found the old code merged `user_metadata` over the
+identity and didn't require an X identity at all. `user_metadata` is
+client-writable with the public key (sign-up / updateUser `options.data`),
+and the production Supabase project had Email and Google sign-up enabled —
+so an email sign-up could set any `provider_id` and become that X user:
+claim their creator, edit their profile, vote as them, lock out the real
+person (unique `accounts.x_user_id`), or mint unlimited fake voters. When
+fixed, every existing account had a real X identity (none spoofed).
+
+Also:
+Turn off the Email and Google providers in Supabase (sign-in is X-only by
+design — ARCHITECTURE.md); the code no longer depends on that setting.
+

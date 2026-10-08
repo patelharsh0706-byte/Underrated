@@ -31,8 +31,13 @@ describe("chooseClaim — only a matching X user id (DECISIONS.md § 2026-10-06)
 describe("xIdentityFromUser", () => {
   it("reads id, handle, name and photo from the X identity", () => {
     const user = {
-      user_metadata: { user_name: "harshpatel502", full_name: "Harsh", avatar_url: "https://pbs.twimg.com/a.jpg", provider_id: "1543827190" },
-      identities: [{ provider: "x", id: "1543827190", identity_data: {} }],
+      identities: [
+        {
+          provider: "x",
+          id: "1543827190",
+          identity_data: { user_name: "harshpatel502", full_name: "Harsh", avatar_url: "https://pbs.twimg.com/a.jpg", provider_id: "1543827190", sub: "1543827190" },
+        },
+      ],
     };
     expect(xIdentityFromUser(user)).toEqual({ xUserId: "1543827190", xUsername: "harshpatel502", xName: "Harsh", xAvatarUrl: "https://pbs.twimg.com/a.jpg" });
   });
@@ -44,6 +49,21 @@ describe("xIdentityFromUser", () => {
 
   it("returns null when it is not an X sign-in", () => {
     expect(xIdentityFromUser({ user_metadata: { email: "a@b.co" }, identities: [{ provider: "google" }] })).toBeNull();
+  });
+
+  it("ignores spoofed user_metadata on a non-X sign-up (security review 2026-10-08)", () => {
+    // An email sign-up can set any metadata with the public key.
+    const spoofed = { user_metadata: { provider_id: "1731935574", user_name: "HarshPatel502" }, identities: [{ provider: "email", id: "e-1" }] };
+    expect(xIdentityFromUser(spoofed)).toBeNull();
+    expect(xIdentityFromUser({ user_metadata: { provider_id: "1731935574", sub: "1731935574", user_name: "HarshPatel502" } })).toBeNull();
+  });
+
+  it("trusts the X identity over user_metadata when they disagree", () => {
+    const user = {
+      user_metadata: { provider_id: "999", user_name: "someone_else", full_name: "Spoof" },
+      identities: [{ provider: "x", id: "1543827190", identity_data: { provider_id: "1543827190", sub: "1543827190", user_name: "harshpatel502", full_name: "Harsh" } }],
+    };
+    expect(xIdentityFromUser(user)).toMatchObject({ xUserId: "1543827190", xUsername: "harshpatel502", xName: "Harsh" });
   });
 });
 
