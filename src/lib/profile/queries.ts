@@ -9,17 +9,22 @@ import { getCreatorByUsername, type CreatorProfile } from "@/lib/db/queries";
 import { battles, creatorPastProjects, creators, profileHypes } from "@/lib/db/schema";
 
 import { deriveActivity, type ActivityItem } from "./activity";
-import type { PastStatus } from "./options";
+import type { PastStatus, ProjectsView } from "./options";
 
 // Everything the v2 profile page shows (DECISIONS.md § 2026-10-04 "Onboarding
 // from X and profile v2"). Hype = battles won + profile hypes.
 
 export interface PastProject {
+  /** The row id (the ⋯ pop-up edits one project by it); "draft-N" / "mock-N" without a database. */
+  id: string;
   name: string;
   line: string;
   url: string;
   year: number | null;
   status: PastStatus;
+  /** The site's share picture and logo, copied into our Blob store; null → the tinted panel. */
+  imageUrl: string | null;
+  logoUrl: string | null;
 }
 
 export interface ProfileV2 extends CreatorProfile {
@@ -29,6 +34,10 @@ export interface ProfileV2 extends CreatorProfile {
   locationHidden: boolean;
   projectName: string;
   projectTagline: string;
+  projectImageUrl: string | null;
+  projectLogoUrl: string | null;
+  /** The owner's choice for both project sections. */
+  projectsView: ProjectsView;
   workHow: string | null;
   workStage: string | null;
   workCareer: string | null;
@@ -56,6 +65,9 @@ export async function getProfileV2(username: string): Promise<ProfileV2 | null> 
       locationHidden: creators.locationHidden,
       projectName: creators.projectName,
       projectTagline: creators.projectTagline,
+      projectImageUrl: creators.projectImageUrl,
+      projectLogoUrl: creators.projectLogoUrl,
+      projectsView: creators.projectsView,
       workHow: creators.workHow,
       workStage: creators.workStage,
       workCareer: creators.workCareer,
@@ -69,7 +81,7 @@ export async function getProfileV2(username: string): Promise<ProfileV2 | null> 
     .where(eq(creators.id, base.id));
 
   const pastQuery = db
-    .select({ name: creatorPastProjects.name, line: creatorPastProjects.line, url: creatorPastProjects.url, year: creatorPastProjects.year, status: creatorPastProjects.status })
+    .select({ id: creatorPastProjects.id, name: creatorPastProjects.name, line: creatorPastProjects.line, url: creatorPastProjects.url, year: creatorPastProjects.year, status: creatorPastProjects.status, imageUrl: creatorPastProjects.imageUrl, logoUrl: creatorPastProjects.logoUrl })
     .from(creatorPastProjects)
     .where(eq(creatorPastProjects.creatorId, base.id))
     .orderBy(creatorPastProjects.position, desc(creatorPastProjects.createdAt));
@@ -105,13 +117,16 @@ export async function getProfileV2(username: string): Promise<ProfileV2 | null> 
     locationHidden: extra.locationHidden,
     projectName: extra.projectName ?? "",
     projectTagline: extra.projectTagline ?? "",
+    projectImageUrl: extra.projectImageUrl,
+    projectLogoUrl: extra.projectLogoUrl,
+    projectsView: extra.projectsView === "rows" ? "rows" : "cards",
     workHow: extra.workHow,
     workStage: extra.workStage,
     workCareer: extra.workCareer,
     wantsToMeet: extra.wantsToMeet,
     openTo: extra.openTo ?? [],
     into: extra.into ?? [],
-    past: past.map((p) => ({ name: p.name, line: p.line ?? "", url: p.url ?? "", year: p.year, status: p.status as PastStatus })),
+    past: past.map((p) => ({ id: p.id, name: p.name, line: p.line ?? "", url: p.url ?? "", year: p.year, status: p.status as PastStatus, imageUrl: p.imageUrl, logoUrl: p.logoUrl })),
     hype: base.winsCount + (extra.profileHypes ?? 0),
     xUserId: extra.xUserId,
     activity: deriveActivity(base.id, recent),
@@ -136,6 +151,9 @@ const MOCK_EXTRA: Record<string, Partial<ProfileV2>> = {
     location: "🇸🇬 Singapore",
     projectName: "Underhyped.wtf",
     projectTagline: "The internet’s arena for underrated creators.",
+    // Drawn stand-ins for share pictures (public/preview/) — PromptDeck has
+    // none, to show the tinted panel.
+    projectImageUrl: "/preview/underhyped.svg",
     workHow: "Solo",
     workStage: "Building",
     workCareer: "3–5 years",
@@ -143,10 +161,10 @@ const MOCK_EXTRA: Record<string, Partial<ProfileV2>> = {
     openTo: ["🤝 Collaborating", "🧪 Looking for beta users"],
     into: ["AI", "Community", "Indie hacking", "Startups", "Productivity"],
     past: [
-      { name: "Flexclout", line: "Creator rankings by follower count. The idea Underhyped grew out of.", url: "https://flexclout.com", year: 2026, status: "sunset" },
-      { name: "PromptDeck", line: "AI tool for writing launch posts.", url: "https://promptdeck.app", year: 2025, status: "failed" },
-      { name: "IndieStats", line: "Analytics for indie builders.", url: "https://indiestats.dev", year: 2024, status: "sold" },
-      { name: "git-glance", line: "Open-source CLI that summarises a repo in one screen.", url: "https://github.com", year: 2023, status: "oss" },
+      { id: "mock-0", name: "Flexclout", line: "Creator rankings by follower count. The idea Underhyped grew out of.", url: "https://flexclout.com", year: 2026, status: "sunset", imageUrl: "/preview/flexclout.svg", logoUrl: null },
+      { id: "mock-1", name: "PromptDeck", line: "AI tool for writing launch posts.", url: "https://promptdeck.app", year: 2025, status: "failed", imageUrl: null, logoUrl: null },
+      { id: "mock-2", name: "IndieStats", line: "Analytics for indie builders.", url: "https://indiestats.dev", year: 2024, status: "sold", imageUrl: "/preview/indiestats.svg", logoUrl: null },
+      { id: "mock-3", name: "git-glance", line: "Open-source CLI that summarises a repo in one screen.", url: "https://github.com", year: 2023, status: "oss", imageUrl: "/preview/git-glance.svg", logoUrl: null },
     ],
   },
 };
@@ -162,6 +180,9 @@ function mockProfileV2(username: string): ProfileV2 | null {
     locationHidden: false,
     projectName: "",
     projectTagline: "",
+    projectImageUrl: null,
+    projectLogoUrl: null,
+    projectsView: "cards",
     workHow: null,
     workStage: null,
     workCareer: null,

@@ -630,6 +630,22 @@ All new tables have RLS on, deny by default.
   - into (≤ 6): popular first (AI, SaaS, Dev tools, Design, Open source, Consumer,
     Mobile apps, Community, Startups, Indie hacking), then the rest.
 
+### Project cards (2026-10-13, migration 0017)
+
+Adds columns only (nullable or defaulted), so the live code is unaffected:
+
+```
+creators.project_image_url      text       Currently cooking: share picture, our Blob URL only
+creators.project_logo_url       text       Currently cooking: logo, our Blob URL only
+creators.projects_view          text not null default 'cards'   check in ('cards','rows')
+creator_past_projects.image_url text       share picture or the owner's own upload (our Blob)
+creator_past_projects.logo_url  text       logo (our Blob)
+```
+
+Image/logo URLs are accepted only when they point into our own Blob store
+(`projects/` folder); anything else is stored as null. Links stay in
+`creators.socials` (no new column).
+
 ### One link, one voter id, prefill in the draft (2026-10-06, migration 0016)
 
 DECISIONS.md § 2026-10-06 "The X user id is the only link". In order:

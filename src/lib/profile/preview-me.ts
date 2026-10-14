@@ -15,11 +15,15 @@ import { profileEditSchema, type ProfileEdit } from "./options";
 
 /** PREVIEW_MOCK=1: the onboarding draft so far (set by saveDraft / finishProfile). */
 export const PREVIEW_DRAFT_COOKIE = "uh-preview-draft";
+/** PREVIEW_MOCK=1: the owner's link chips (saveMyLinks). */
+export const PREVIEW_LINKS_COOKIE = "uh-preview-links";
 
 export interface PreviewMe {
   me: WelcomeMe;
   email: string;
   draft: ProfileEdit;
+  /** Saved link chips (GitHub, LinkedIn…), X not included. */
+  links: Record<string, string>;
   /** "Finish profile" was pressed — votes count from here on. */
   profileDone: boolean;
 }
@@ -51,5 +55,16 @@ export async function getPreviewMe(): Promise<PreviewMe | null> {
     email: user.email ?? "",
     draft: saved ?? initialDraft({ xBio: prefill.bio, xLocation: prefill.location, xUrl: prefill.url }),
     profileDone: jar.get(PREVIEW_PROFILE_DONE_COOKIE)?.value === user.id,
+    links: previewLinks(jar.get(PREVIEW_LINKS_COOKIE)?.value),
   };
+}
+
+function previewLinks(raw: string | undefined): Record<string, string> {
+  try {
+    const v: unknown = JSON.parse(raw ?? "{}");
+    if (!v || typeof v !== "object") return {};
+    return Object.fromEntries(Object.entries(v).filter((e): e is [string, string] => typeof e[1] === "string" && e[0] !== "twitter"));
+  } catch {
+    return {};
+  }
 }

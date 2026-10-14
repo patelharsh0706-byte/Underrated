@@ -47,6 +47,10 @@ export const creators = pgTable(
     locationHidden: boolean("location_hidden").notNull().default(false),
     projectName: text("project_name"),
     projectTagline: text("project_tagline"),
+    // Project cards (DATABASE.md § Project cards, 2026-10-13): our Blob URLs only.
+    projectImageUrl: text("project_image_url"),
+    projectLogoUrl: text("project_logo_url"),
+    projectsView: text("projects_view").notNull().default("cards"),
     workHow: text("work_how"),
     workStage: text("work_stage"),
     workCareer: text("work_career"),
@@ -70,6 +74,7 @@ export const creators = pgTable(
     uniqueIndex("creators_user_id_key").on(table.userId),
     uniqueIndex("creators_dodo_payment_key").on(table.dodoPaymentId),
     uniqueIndex("creators_x_user_id_key").on(table.xUserId),
+    check("creators_projects_view_check", sql`${table.projectsView} in ('cards', 'rows')`),
     index("creators_aura_idx").on(table.aura.desc()),
     index("creators_is_active_idx").on(table.isActive),
   ],
@@ -114,6 +119,9 @@ export const creatorPastProjects = pgTable(
     year: integer("year"),
     // 'live' | 'sold' | 'sunset' | 'failed' | 'oss'
     status: text("status").notNull(),
+    // Share picture (or the owner's upload) and logo — our Blob URLs only.
+    imageUrl: text("image_url"),
+    logoUrl: text("logo_url"),
     position: integer("position").notNull().default(0),
     createdAt: timestamptz("created_at").notNull().defaultNow(),
   },

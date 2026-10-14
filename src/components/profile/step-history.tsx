@@ -59,7 +59,17 @@ export function StepHistory({ draft, onChange, onFinish, busy }: StepProps) {
     if (!form) return;
     if (!form.name.trim()) return setError("Give it a name.");
     if (!form.status) return setError("What happened to it? Pick one.");
-    const item: Past = { name: form.name.trim().slice(0, 40), line: form.line.trim().slice(0, 80), url: form.url, year: form.year ? Number(form.year) : null, status: form.status };
+    // An edit keeps the stored picture while the link is the same; a new link's picture is the new site's.
+    const prev = editIndex >= 0 && draft.past[editIndex].url === form.url ? draft.past[editIndex] : null;
+    const item: Past = {
+      name: form.name.trim().slice(0, 40),
+      line: form.line.trim().slice(0, 80),
+      url: form.url,
+      year: form.year ? Number(form.year) : null,
+      status: form.status,
+      imageUrl: prev?.imageUrl ?? null,
+      logoUrl: prev?.logoUrl ?? null,
+    };
     const past = editIndex >= 0 ? draft.past.map((p, i) => (i === editIndex ? item : p)) : [...draft.past, item].slice(0, LIMITS.past);
     if (form.url) setLogos((l) => ({ ...l, [form.url]: form.logo }));
     onChange({ ...draft, past });

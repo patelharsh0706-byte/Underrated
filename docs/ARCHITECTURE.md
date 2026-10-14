@@ -19,6 +19,7 @@ If a decision here needs to change, change it here first and log it in
 | Auth          | Supabase Auth           |
 | Payments      | Dodo Payments           |
 | Image storage | Vercel Blob (images + 15-second demo videos) |
+| Homepage screenshots | Microlink — only for a pasted project with no share picture (2026-10-14) |
 | Analytics     | Vercel Web Analytics    |
 | Email         | Resend                  |
 | Hosting       | Vercel                  |
@@ -208,6 +209,24 @@ their anonymous per-IP quota, sees exactly what the card showed before logos
 existed rather than a broken image. Used on the `/submit` preview card and the
 battle card's work link. Nothing is stored: the logo URL is derived from
 `work_url` at render time, so it self-corrects when a site changes its icon.
+
+**Project pictures and logos on profiles (changed 2026-10-13).** Profile project
+cards show up to ~11 logos and pictures per page, which would hit unavatar's
+per-visitor quota, so these are **stored**: when an owner adds a project, the
+server fetches the page once (the existing safe fetch — https only, public
+hosts only, short timeout, size cap), reads its share image and icon, and copies
+both into the public Blob store under `projects/` (file name = hash of the
+bytes). The page then serves only our copies. The battle card and `/submit`
+keep the render-time unavatar logo above. Code: `src/lib/safe-fetch.ts` (fetch),
+`src/lib/project-image-store.ts` (store), `src/lib/own-blob.ts` (only our
+store's `projects/` URLs are ever saved). An owner's own picture goes through
+`POST /api/project-picture` — owner and same-site checked, ≤ 2 MB, PNG/JPG/WebP
+by its bytes — into `projects/custom/`, kept when the site is re-read.
+A site with **no share picture** (or a page we can't read) gets a homepage
+screenshot from **Microlink** instead (2026-10-14, `src/lib/screenshot.ts`):
+1200×628, copied into Blob like any other picture — never hotlinked. Free plan:
+25 screenshots/day per server address; `MICROLINK_API_KEY` (optional) raises it.
+On failure or a used-up limit the card shows the letter panel.
 
 Why avatars are stored and logos aren't: an avatar renders on every battle
 card, facepile, Top 10 row and leaderboard row — up to 50 on one page — so

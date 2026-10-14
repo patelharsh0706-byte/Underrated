@@ -85,6 +85,10 @@ Unsorted ideas. No version, no commitment.
 - Rating decay for inactive creators
 - Voter reputation weighting
 - Embeddable rank badge
+- Profile projects: drag to reorder, click a name to rename (2026-10-13)
+- Profile: "N apps shipped" chip, counted from Previously cooked (2026-10-13)
+- Project images: a cleanup job for Blob files no project uses any more
+- Project link reading: a per-account limit on paste/fetch
 
 ## Rules
 

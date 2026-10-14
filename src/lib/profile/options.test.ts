@@ -51,4 +51,13 @@ describe("meetPhrase", () => {
     expect(meetPhrase(["Founders", "Designers"])).toBe("founders & designers");
     expect(meetPhrase([])).toBeNull();
   });
+
+  it("project cards: an old draft parses as Cards with no pictures; only cards/rows allowed", () => {
+    const r = profileEditSchema.parse({ past: [{ name: "Flexclout", status: "sunset" }] });
+    expect(r.projectsView).toBe("cards");
+    expect(r.projectImageUrl).toBeNull();
+    expect(r.past[0]).toMatchObject({ imageUrl: null, logoUrl: null });
+    expect(profileEditSchema.parse({ projectsView: "rows" }).projectsView).toBe("rows");
+    expect(profileEditSchema.safeParse({ projectsView: "grid" }).success).toBe(false);
+  });
 });

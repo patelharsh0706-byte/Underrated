@@ -1,10 +1,5 @@
 "use server";
 
-import { lookup } from "node:dns/promises";
-import type { IncomingMessage } from "node:http";
-import { request } from "node:https";
-import type { LookupFunction } from "node:net";
-
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -20,8 +15,9 @@ import { dodoEnv } from "@/lib/env";
 import { domainOf, draftForAccount, withProject } from "@/lib/profile/draft";
 import { profileEditSchema, type ProfileEdit } from "@/lib/profile/options";
 import { PREVIEW_DRAFT_COOKIE } from "@/lib/profile/preview-me";
-import { isPrivateHost, parseProjectMeta } from "@/lib/profile/project-meta";
+import { normalizeProjectLink, parseProjectMeta } from "@/lib/profile/project-meta";
 import { createCreatorForAccount, updateCreatorProfile } from "@/lib/profile/write";
+import { fetchPublicPage } from "@/lib/safe-fetch";
 import { getUnavatarUrl } from "@/lib/unavatar";
 
 // Onboarding v2 — Welcome → Looking good? → You → Interests → History →
@@ -118,69 +114,6 @@ export interface ProjectMetaResult {
   logo: string | null;
 }
 
-const MAX_BYTES = 300_000;
-
-/**
- * The DNS answer, checked at connect time: the address checked is the address
- * used. Checking with lookup() and then calling fetch() resolved the name a
- * second time, and a short-TTL domain could answer with 10.x or
- * 169.254.169.254 the second time (DNS rebinding).
- */
-const publicOnlyLookup: LookupFunction = (hostname, options, callback) => {
-  lookup(hostname, { all: true }).then(
-    (addrs) => {
-      if (!addrs.length || addrs.some((a) => isPrivateHost(a.address))) return callback(new Error(`refused private address for ${hostname}`), "", 4);
-      if (options.all) return callback(null, addrs);
-      callback(null, addrs[0].address, addrs[0].family);
-    },
-    (err: NodeJS.ErrnoException) => callback(err, "", 4),
-  );
-};
-
-function getOnce(url: URL, signal: AbortSignal): Promise<IncomingMessage> {
-  return new Promise((resolve, reject) => {
-    const req = request(
-      url,
-      { lookup: publicOnlyLookup, signal, headers: { "user-agent": "UnderhypedBot/1.0 (+https://underhyped.wtf)", accept: "text/html" } },
-      resolve,
-    );
-    req.on("error", reject);
-    req.end();
-  });
-}
-
-/** Fetch one https page from a public host only, following at most 3 redirects. */
-async function fetchPublicPage(start: string): Promise<{ html: string; url: string } | null> {
-  const signal = AbortSignal.timeout(4000);
-  let url = new URL(start);
-  for (let hop = 0; hop < 4; hop++) {
-    if (url.protocol !== "https:" || isPrivateHost(url.hostname)) return null;
-    const res = await getOnce(url, signal);
-    const status = res.statusCode ?? 0;
-    if (status >= 300 && status < 400) {
-      res.destroy();
-      const next = res.headers.location;
-      if (!next) return null;
-      url = new URL(next, url);
-      continue;
-    }
-    if (status < 200 || status >= 300 || !(res.headers["content-type"] ?? "").includes("html")) {
-      res.destroy();
-      return null;
-    }
-    const chunks: Buffer[] = [];
-    let size = 0;
-    for await (const chunk of res) {
-      chunks.push(chunk as Buffer);
-      size += (chunk as Buffer).length;
-      if (size >= MAX_BYTES) break;
-    }
-    res.destroy();
-    return { html: new TextDecoder().decode(Buffer.concat(chunks).subarray(0, MAX_BYTES)), url: url.toString() };
-  }
-  return null;
-}
-
 /**
  * "+ Add a past project" — logo, name and one-liner from the project's page.
  * Best effort: anything that fails just leaves the fields for the person to type.
@@ -191,14 +124,8 @@ export async function fetchProjectMeta(input: { url: string }): Promise<ProjectM
   if (!isMockMode() && !(await getSignedInUserId())) return { error: "Sign in with X first." };
   const raw = z.string().trim().min(3).max(300).safeParse(input.url);
   if (!raw.success) return { error: "Paste the project’s link, like yourproduct.com." };
-  let url: URL;
-  try {
-    url = new URL(/^https?:\/\//i.test(raw.data) ? raw.data.replace(/^http:/i, "https:") : `https://${raw.data}`);
-  } catch {
-    return { error: "That link looks off — check for a typo." };
-  }
-  if (!url.hostname.includes(".") || isPrivateHost(url.hostname)) return { error: "That link looks off — check for a typo." };
-  const href = url.toString();
+  const href = normalizeProjectLink(raw.data);
+  if (!href) return { error: "That link looks off — check for a typo." };
   const logo = getUnavatarUrl(href);
   try {
     const page = await fetchPublicPage(href);

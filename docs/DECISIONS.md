@@ -1891,3 +1891,66 @@ Also:
 Turn off the Email and Google providers in Supabase (sign-in is X-only by
 design — ARCHITECTURE.md); the code no longer depends on that setting.
 
+## 2026-10-13 — Profile projects as cards, edited on the profile; links edited in place
+
+Decision (designed in the Underhyped Arena artifact, v62–v71):
+- Projects ("🍳 Currently cooking", "👨‍🍳 Previously cooked") show as **cards** by
+  default: the site's own share picture on top, then logo · name · one-line
+  description (+ status pill and year for past projects). The owner can switch
+  to **Rows** (today's look); one setting per profile, every visitor sees it.
+- The owner manages projects **on the profile**, not in Edit profile: a ⋯ on each
+  card opens a pop-up (name, description, link, year, status, "Use my own
+  picture", Check again, Open, Remove with confirm), and a dashed paste box —
+  always the **first** card in Previously cooked — takes one link or a list (≤ 10).
+- Profile links are edited in place: X is locked to the sign-in, GitHub is
+  `github.com/` + username, every other link (LinkedIn, Website, Instagram,
+  YouTube, TikTok, Product Hunt) is pasted whole; one shared Save for all.
+- The preview picture is the site's share image (og:image / twitter:image), not
+  a screenshot service. Pictures and logos are copied into our Blob storage.
+
+Decided by Claude (⚠, Harsh can change):
+- Saving a link checks its format and that it belongs to that chip's site — no
+  network visit (LinkedIn refuses automated visits, so a real check would fail
+  for most people). A page that doesn't exist isn't caught.
+- Past projects are edited by row id; the delete-and-re-insert on every save
+  stays only for the whole-profile save.
+- ~~The "Viewing as Visitor | Owner" switch is prototype-only and isn't built.~~
+  Changed by Harsh (2026-10-13): it **is** built, owner only — "Viewing as
+  Visitor | Owner (you)" at the top of your own profile. Visitor hides every
+  owner-only control so you see the page as everyone else does; Hype there
+  only shows a note (you can't hype yourself). Not saved — each visit opens as Owner.
+- A picture or logo URL is stored only if it points into our own Blob store;
+  anything else is saved as null.
+- Changing a project's link clears its stored picture and logo (they belong to
+  the old site).
+
+Homepage screenshot fallback (Harsh, 2026-10-14): the share picture stays
+first; a site without one gets a real homepage screenshot from **Microlink**
+(option D of four — A keep share picture only, B always screenshot, C our own
+headless Chrome, D share picture else screenshot). New provider, chosen by
+Harsh; free 25/day per server address, an API key for production.
+Rejected: C (heavy function, a real browser visiting any URL is hard to keep
+off private addresses). Decided by Claude (⚠): 1200×628 JPEG at 1× so files stay
+small; sites that block bots (LinkedIn) stay on the letter panel.
+
+"Use my own picture" upload (Harsh, 2026-10-13): its own route,
+`POST /api/project-picture`, with a 2 MB cap, the owner check and a same-site
+check — not by raising the 1 MB limit on every Server Action.
+
+Paste box (Harsh, 2026-10-13):
+- Built before the ⋯ pop-up, then the link chips; ⋯ comes after both.
+- A site that can't be read (blocks bots, down, slow) is **still added**: the
+  domain as its name, no picture — the card shows the tinted letter panel.
+- A pasted past project starts as **🟢 Live** with **this year**, at the top
+  of the list. One link in the Currently cooking box replaces the current project.
+- Link chips list: X locked; GitHub and LinkedIn shown; "+ Add another" for
+  Website, Instagram, YouTube, TikTok, Product Hunt. Stored in `creators.socials`.
+
+Why:
+Projects are what a visitor clicks through for, and editing them where they're
+shown is faster than a long form. Copying images into our storage means pages
+never load images from strangers' sites and nothing breaks when a site changes.
+
+Rejected:
+A screenshot service (new provider, cost). Hotlinking share images. Drag to
+reorder and click-to-rename (later). An "apps shipped" count chip (later).

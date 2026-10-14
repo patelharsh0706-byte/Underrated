@@ -35,6 +35,12 @@ const url = z
   .max(300)
   .transform((v) => (v && !/^https?:\/\//i.test(v) ? `https://${v}` : v))
   .pipe(z.union([z.literal(""), z.url()]));
+// A stored picture or logo. Only URLs on our own Blob store are written to the
+// database (isOwnBlobUrl in saveProfileFields); here it's just shape.
+const media = z.string().trim().max(500).nullable().default(null);
+
+export const PROJECTS_VIEW = ["cards", "rows"] as const;
+export type ProjectsView = (typeof PROJECTS_VIEW)[number];
 
 export const pastProjectSchema = z.object({
   name: z.string().trim().min(1, "Give it a name.").max(40),
@@ -43,6 +49,8 @@ export const pastProjectSchema = z.object({
   // Optional (step 5: "Year (optional)").
   year: z.number().int().min(1990).max(2100).nullable().default(null),
   status: z.enum(Object.keys(PAST_STATUS) as [PastStatus, ...PastStatus[]]),
+  imageUrl: media,
+  logoUrl: media,
 });
 
 /** Everything a creator can edit on their own profile (and in the onboarding draft). */
@@ -54,6 +62,10 @@ export const profileEditSchema = z.object({
   projectName: z.string().trim().max(40).default(""),
   projectTagline: z.string().trim().max(80).default(""),
   projectUrl: url.default(""),
+  projectImageUrl: media,
+  projectLogoUrl: media,
+  // One choice for both project sections; every visitor sees it.
+  projectsView: z.enum(PROJECTS_VIEW).default("cards"),
   workHow: optional(HOW),
   workStage: optional(STAGE),
   workCareer: optional(CAREER),

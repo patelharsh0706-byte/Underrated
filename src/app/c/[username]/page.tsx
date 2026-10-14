@@ -14,7 +14,7 @@ async function loadProfile(username: string): Promise<ProfileV2 | null> {
   if (found || !isMockMode()) return found;
   const mine = await getPreviewMe();
   if (!mine || mine.me.handle.toLowerCase() !== username.toLowerCase()) return null;
-  return draftProfile(mine.me, mine.draft);
+  return draftProfile(mine.me, mine.draft, mine.links);
 }
 
 // Profile v2 — DECISIONS.md § 2026-10-04 "Onboarding from X and profile v2".

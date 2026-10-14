@@ -11,7 +11,7 @@ export interface WelcomeMe {
 }
 
 /** The draft drawn as a profile, for the "Looking good?" preview. */
-export function draftProfile(me: WelcomeMe, d: ProfileEdit): ProfileV2 {
+export function draftProfile(me: WelcomeMe, d: ProfileEdit, links: Record<string, string> = {}): ProfileV2 {
   const x = `https://x.com/${me.handle}`;
   return {
     id: "draft",
@@ -26,7 +26,7 @@ export function draftProfile(me: WelcomeMe, d: ProfileEdit): ProfileV2 {
     voterCount: 0,
     workUrl: d.projectUrl || null,
     // The project shows as "My project" from workUrl — not repeated as a website.
-    socials: { twitter: x },
+    socials: { ...links, twitter: x },
     primarySocial: "twitter",
     followerCount: null,
     rank: null,
@@ -38,13 +38,16 @@ export function draftProfile(me: WelcomeMe, d: ProfileEdit): ProfileV2 {
     locationHidden: d.locationHidden,
     projectName: d.projectName,
     projectTagline: d.projectTagline,
+    projectImageUrl: d.projectImageUrl,
+    projectLogoUrl: d.projectLogoUrl,
+    projectsView: d.projectsView,
     workHow: d.workHow ?? null,
     workStage: d.workStage ?? null,
     workCareer: d.workCareer ?? null,
     wantsToMeet: d.wantsToMeet,
     openTo: d.openTo,
     into: d.into,
-    past: d.past,
+    past: d.past.map((x, i) => ({ ...x, id: `draft-${i}` })),
     hype: 0,
     xUserId: null,
     activity: [],

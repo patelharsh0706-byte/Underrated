@@ -10,11 +10,17 @@ import { SignInGate } from "@/components/auth/sign-in-gate";
 import { consumeResumeFlag, onboardingHref, resumeHere, savePending, takePending } from "@/lib/pending-action";
 import { domainOf } from "@/lib/profile/draft";
 import { meetPhrase, PAST_STATUS, type ProfileEdit } from "@/lib/profile/options";
+import type { ProjectTarget } from "@/lib/profile/project-target";
 import type { ProfileV2 } from "@/lib/profile/queries";
+import { colorFor } from "@/lib/project-mark";
 import { dicebearUrl } from "@/lib/unavatar";
 
 import type { InlineField } from "./inline-edit";
+import { LinkChips } from "./link-chips";
 import { ProfileEditor, editFromProfile, profileWithEdit } from "./profile-editor";
+import { MenuButton, ProjectCard } from "./project-card";
+import { ProjectMenu, type MenuProject } from "./project-menu";
+import { ProjectPaste } from "./project-paste";
 import s from "./profile.module.css";
 
 // Profile v2 — a 1:1 port of the approved prototype's profile (Underhyped
@@ -36,12 +42,11 @@ const LINK: Record<string, [string, string]> = {
   tiktok: ["♪", "TikTok"],
   spotify: ["♫", "Spotify"],
   web: ["🌐", "Website"],
+  producthunt: ["P", "Product Hunt"],
   // The "Currently cooking" link, next to "Say hi on X" — labelled with the
   // site's own name (its domain) at render time.
   project: ["🔗", "Project"],
 };
-const PALETTE = ["#6B5BD6", "#C4399E", "#1D8E45", "#2F6BE0", "#B4603A", "#0F7B7B", "#E0A100", "#111111"];
-const colorFor = (name: string) => PALETTE[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % PALETTE.length];
 
 interface ProfileViewProps {
   profile: ProfileV2;
@@ -54,7 +59,11 @@ interface ProfileViewProps {
 export function ProfileView({ profile: initial, preview = false, inline }: ProfileViewProps) {
   const router = useRouter();
   const [p, setP] = useState(initial);
-  const [own, setOwn] = useState(false);
+  // Really the owner (from the sign-in), and how they're looking at it:
+  // "Visitor" shows the page exactly as everyone else sees it.
+  const [owner, setOwner] = useState(false);
+  const [asVisitor, setAsVisitor] = useState(false);
+  const own = owner && !asVisitor;
   const [hyped, setHyped] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -62,6 +71,8 @@ export function ProfileView({ profile: initial, preview = false, inline }: Profi
   const [gate, setGate] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
+  // The owner's ⋯ pop-up: which project is open.
+  const [menu, setMenu] = useState<ProjectTarget | null>(null);
 
   // A new profile from the parent (preview typing, router.refresh) replaces
   // the local copy — React's "adjust state when a prop changes" pattern.
@@ -78,6 +89,10 @@ export function ProfileView({ profile: initial, preview = false, inline }: Profi
   }, [toast]);
 
   async function doHype() {
+    if (owner) {
+      setToast("This is how visitors see your page — they can Hype you here.");
+      return;
+    }
     const r = await hypeCreator({ creatorId: p.id });
     if (r.needsSignIn) {
       savePending({ type: "hype", creatorId: p.id });
@@ -105,7 +120,7 @@ export function ProfileView({ profile: initial, preview = false, inline }: Profi
     void getMyProfileState({ creatorId: initial.id }).then((st) => {
       if (!alive) return;
       const mine = st.myUsername?.toLowerCase() === initial.username.toLowerCase();
-      setOwn(mine);
+      setOwner(mine);
       setHyped(st.hyped);
       // Back from the $3 checkout (Dodo return_url).
       const url = new URL(window.location.href);
@@ -137,6 +152,46 @@ export function ProfileView({ profile: initial, preview = false, inline }: Profi
   );
   if (view.workUrl) links.push(["project", view.workUrl]);
   const projectName = view.projectName || (view.workUrl ? domainOf(view.workUrl) : "");
+  const cards = view.projectsView !== "rows";
+  // The owner's paste boxes — never on "Looking good?" or while Edit profile is open.
+  const pasting = own && !preview && !editing;
+  const openCurrent = pasting ? () => setMenu({ kind: "current" }) : undefined;
+  const openPast = (id: string) => (pasting ? () => setMenu({ kind: "past", id }) : undefined);
+
+  // The pop-up's edits show on the card as you type; the link changes on save.
+  function patchProject(t: ProjectTarget, x: Partial<MenuProject>) {
+    setP((prev) =>
+      t.kind === "current"
+        ? {
+            ...prev,
+            ...(x.name !== undefined && { projectName: x.name }),
+            ...(x.line !== undefined && { projectTagline: x.line }),
+            ...(x.imageUrl !== undefined && { projectImageUrl: x.imageUrl }),
+          }
+        : {
+            ...prev,
+            past: prev.past.map((q) =>
+              q.id !== t.id
+                ? q
+                : {
+                    ...q,
+                    ...(x.name !== undefined && { name: x.name }),
+                    ...(x.line !== undefined && { line: x.line }),
+                    ...(x.year !== undefined && { year: x.year }),
+                    ...(x.status !== undefined && { status: x.status }),
+                    ...(x.imageUrl !== undefined && { imageUrl: x.imageUrl }),
+                  },
+            ),
+          },
+    );
+  }
+  const menuPast = menu?.kind === "past" ? p.past.find((q) => q.id === menu.id) : undefined;
+  const menuProject: MenuProject | null =
+    menu?.kind === "current" && p.workUrl
+      ? { name: p.projectName, line: p.projectTagline, url: p.workUrl, imageUrl: p.projectImageUrl }
+      : menuPast
+        ? { name: menuPast.name, line: menuPast.line, url: menuPast.url, year: menuPast.year, status: menuPast.status, imageUrl: menuPast.imageUrl }
+        : null;
 
   function share() {
     const url = `${window.location.origin}/c/${p.username}`;
@@ -227,6 +282,19 @@ export function ProfileView({ profile: initial, preview = false, inline }: Profi
   return (
     <div className={cx("root")}>
       <div className={cx("pf")}>
+        {owner && !preview && !editing && (
+          <div className={cx("pf-viewas")}>
+            Viewing as
+            <span className={cx("px-seg")} role="radiogroup" aria-label="Viewing as">
+              <button type="button" role="radio" aria-checked={asVisitor} onClick={() => setAsVisitor(true)}>
+                Visitor
+              </button>
+              <button type="button" role="radio" aria-checked={!asVisitor} onClick={() => setAsVisitor(false)}>
+                Owner (you)
+              </button>
+            </span>
+          </div>
+        )}
         {!preview && (
           <div className={cx("pf-top")}>
             <Link className={cx("px-text")} href="/leaderboard">
@@ -259,7 +327,15 @@ export function ProfileView({ profile: initial, preview = false, inline }: Profi
                   {pencil("location", "location")}
                 </p>
               ) : null)}
-            {links.length > 0 && (
+            {pasting && (
+              <LinkChips
+                handle={p.username}
+                socials={(p.socials ?? {}) as Record<string, string>}
+                projectHref={view.workUrl}
+                onSaved={(socials) => setP((x) => ({ ...x, socials }))}
+              />
+            )}
+            {!pasting && links.length > 0 && (
               <div className={cx("pf-links")}>
                 {links.map(([kind, href]) => {
                   const [glyph, fixed] = LINK[kind] ?? LINK.web;
@@ -427,52 +503,96 @@ export function ProfileView({ profile: initial, preview = false, inline }: Profi
                 <p className={cx("pf-sub")}>Add what you’re building right now.</p>
               </section>
             )}
+            {!formFor("project") && !inline && pasting && !view.workUrl && (
+              <section className={cx("pf-sec")}>
+                <h2>🍳 Currently cooking</h2>
+                <ProjectPaste kind="current" />
+              </section>
+            )}
             {!formFor("project") && view.workUrl && (
               <section className={cx("pf-sec")}>
                 <h2>
                   🍳 Currently cooking
                   {pencil("project", "current project")}
                 </h2>
-                <a className={cx("pf-proj big")} href={view.workUrl} target="_blank" rel="noopener noreferrer">
-                  <span className={cx("pf-logo")} style={{ background: colorFor(projectName || "x") }} aria-hidden="true">
-                    {(projectName || "?").charAt(0).toUpperCase()}
-                  </span>
-                  <span>
-                    <b>{projectName}</b>
-                    {view.projectTagline && <span>{view.projectTagline}</span>}
-                    <small>{domainOf(view.workUrl)}</small>
-                  </span>
-                  <span className={cx("arr")} aria-hidden="true">
-                    ↗
-                  </span>
-                </a>
+                {cards ? (
+                  <ProjectCard
+                    big
+                    href={view.workUrl}
+                    name={projectName}
+                    line={view.projectTagline}
+                    imageUrl={view.projectImageUrl}
+                    logoUrl={view.projectLogoUrl}
+                    onMenu={openCurrent}
+                  />
+                ) : (
+                  <div className={cx("pf-row-w")}>
+                    <a className={cx("pf-proj big")} href={view.workUrl} target="_blank" rel="noopener noreferrer">
+                      <span className={cx("pf-logo")} style={{ background: colorFor(projectName || "x") }} aria-hidden="true">
+                        {(projectName || "?").charAt(0).toUpperCase()}
+                      </span>
+                      <span>
+                        <b>{projectName}</b>
+                        {view.projectTagline && <span>{view.projectTagline}</span>}
+                        <small>{domainOf(view.workUrl)}</small>
+                      </span>
+                      <span className={cx("arr")} aria-hidden="true">
+                        ↗
+                      </span>
+                    </a>
+                    {openCurrent && <MenuButton name={projectName} onClick={openCurrent} />}
+                  </div>
+                )}
               </section>
             )}
-            {view.workUrl && (view.past.length > 0 || (own && !preview)) ? <hr className={cx("pf-rule")} /> : null}
+            {(view.workUrl || pasting) && (view.past.length > 0 || (own && !preview)) ? <hr className={cx("pf-rule")} /> : null}
             {(view.past.length > 0 || (own && !preview)) && (
               <section className={cx("pf-sec pf-past")}>
                 <h2>👨‍🍳 Previously cooked</h2>
                 <p className={cx("pf-sub")}>
-                  {view.past.length ? "Things I’ve built, shipped, killed and learned from." : "Nothing here yet. Add what you’ve built before from Edit profile."}
+                  {view.past.length ? "Things I’ve built, shipped, killed and learned from." : "Nothing here yet. Paste links to what you’ve built before."}
                 </p>
-                {view.past.length > 0 && (
+                {(view.past.length > 0 || pasting) && cards && (
+                  <div className={cx("pf-cards")}>
+                    {pasting && <ProjectPaste kind="past" />}
+                    {view.past.map((x, i) => (
+                      <ProjectCard
+                        key={x.id}
+                        hidden={i >= 3 && !showAll}
+                        onMenu={openPast(x.id)}
+                        href={x.url}
+                        name={x.name}
+                        line={x.line}
+                        imageUrl={x.imageUrl}
+                        logoUrl={x.logoUrl}
+                        status={x.status}
+                        year={x.year}
+                      />
+                    ))}
+                  </div>
+                )}
+                {pasting && !cards && <ProjectPaste kind="past" rows />}
+                {view.past.length > 0 && !cards && (
                   <div className={cx("pf-rows")}>
                     {view.past.map((x, i) => (
-                      <a key={`${x.name}-${i}`} className={cx("pf-row")} hidden={i >= 3 && !showAll} href={x.url || undefined} target="_blank" rel="noopener noreferrer">
-                        <span className={cx("pf-logo sm")} style={{ background: colorFor(x.name) }} aria-hidden="true">
-                          {x.name.charAt(0).toUpperCase()}
-                        </span>
-                        <span className={cx("txt")}>
-                          <b>{x.name}</b>
-                          {x.line && <span>{x.line}</span>}
-                          <small>
-                            {x.year ?? ""} <em className={cx(`pill st-${x.status}`)}>{PAST_STATUS[x.status]}</em>
-                          </small>
-                        </span>
-                        <span className={cx("arr")} aria-hidden="true">
-                          ↗
-                        </span>
-                      </a>
+                      <div key={x.id} className={cx("pf-row-w")} hidden={i >= 3 && !showAll}>
+                        <a className={cx("pf-row")} href={x.url || undefined} target="_blank" rel="noopener noreferrer">
+                          <span className={cx("pf-logo sm")} style={{ background: colorFor(x.name) }} aria-hidden="true">
+                            {x.name.charAt(0).toUpperCase()}
+                          </span>
+                          <span className={cx("txt")}>
+                            <b>{x.name}</b>
+                            {x.line && <span>{x.line}</span>}
+                            <small>
+                              {x.year ?? ""} <em className={cx(`pill st-${x.status}`)}>{PAST_STATUS[x.status]}</em>
+                            </small>
+                          </span>
+                          <span className={cx("arr")} aria-hidden="true">
+                            ↗
+                          </span>
+                        </a>
+                        {pasting && <MenuButton name={x.name} onClick={() => setMenu({ kind: "past", id: x.id })} />}
+                      </div>
                     ))}
                   </div>
                 )}
@@ -495,6 +615,9 @@ export function ProfileView({ profile: initial, preview = false, inline }: Profi
         )}
       </div>
 
+      {menu && menuProject && (
+        <ProjectMenu key={menu.kind === "past" ? menu.id : "current"} target={menu} project={menuProject} onPatch={(x) => patchProject(menu, x)} onClose={() => setMenu(null)} />
+      )}
       {gate && <SignInGate variant="hype" next={resumeHere()} onClose={() => setGate(false)} />}
       {toast && (
         <div className={cx("px-toast-inline")} role="status">

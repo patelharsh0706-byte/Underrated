@@ -2,8 +2,7 @@
 
 import { useState } from "react";
 
-import { domainOf } from "@/lib/profile/draft";
-import { CAREER, HOW, INTO, LIMITS, MEET, OPEN_TO, PAST_STATUS, STAGE, type PastStatus, type ProfileEdit } from "@/lib/profile/options";
+import { CAREER, HOW, INTO, LIMITS, MEET, OPEN_TO, STAGE, type ProfileEdit } from "@/lib/profile/options";
 import type { ProfileV2 } from "@/lib/profile/queries";
 
 import s from "./profile.module.css";
@@ -27,13 +26,16 @@ export function editFromProfile(p: ProfileV2): ProfileEdit {
     projectName: p.projectName,
     projectTagline: p.projectTagline,
     projectUrl: p.workUrl ?? "",
+    projectImageUrl: p.projectImageUrl,
+    projectLogoUrl: p.projectLogoUrl,
+    projectsView: p.projectsView,
     workHow: (p.workHow as ProfileEdit["workHow"]) ?? null,
     workStage: (p.workStage as ProfileEdit["workStage"]) ?? null,
     workCareer: (p.workCareer as ProfileEdit["workCareer"]) ?? null,
     wantsToMeet: p.wantsToMeet as ProfileEdit["wantsToMeet"],
     openTo: p.openTo as ProfileEdit["openTo"],
     into: p.into as ProfileEdit["into"],
-    past: p.past.map((x) => ({ name: x.name, line: x.line, url: x.url, year: x.year, status: x.status })),
+    past: p.past.map((x) => ({ name: x.name, line: x.line, url: x.url, year: x.year, status: x.status, imageUrl: x.imageUrl, logoUrl: x.logoUrl })),
   };
 }
 
@@ -47,13 +49,16 @@ export function profileWithEdit(p: ProfileV2, e: ProfileEdit): ProfileV2 {
     projectName: e.projectName,
     projectTagline: e.projectTagline,
     workUrl: e.projectUrl || p.workUrl,
+    projectImageUrl: e.projectImageUrl,
+    projectLogoUrl: e.projectLogoUrl,
+    projectsView: e.projectsView,
     workHow: e.workHow ?? null,
     workStage: e.workStage ?? null,
     workCareer: e.workCareer ?? null,
     wantsToMeet: e.wantsToMeet,
     openTo: e.openTo,
     into: e.into,
-    past: e.past.map((x) => ({ ...x, year: x.year })),
+    past: e.past.map((x, i) => ({ ...x, id: p.past[i]?.id ?? `edit-${i}` })),
   };
 }
 
@@ -68,7 +73,6 @@ interface ProfileEditorProps {
 
 export function ProfileEditor({ value: v, onChange, onDone, doneLabel = "Done", onCancel }: ProfileEditorProps) {
   const [limitNote, setLimitNote] = useState<string | null>(null);
-  const [pc, setPc] = useState({ name: "", line: "", url: "", year: "", status: "live" as PastStatus });
   const set = (patch: Partial<ProfileEdit>) => onChange({ ...v, ...patch });
 
   function toggle(key: "wantsToMeet" | "openTo" | "into", val: string) {
@@ -78,14 +82,6 @@ export function ProfileEditor({ value: v, onChange, onDone, doneLabel = "Done", 
     if (list.length >= max) return setLimitNote(`Up to ${max} here. Remove one first.`);
     setLimitNote(null);
     set({ [key]: [...list, val] } as Partial<ProfileEdit>);
-  }
-
-  function addPast() {
-    if (!pc.name.trim()) return;
-    const url = pc.url.trim() && !/^https?:\/\//i.test(pc.url.trim()) ? `https://${pc.url.trim()}` : pc.url.trim();
-    const year = Number(pc.year) >= 1990 && Number(pc.year) <= 2100 ? Number(pc.year) : null;
-    set({ past: [{ name: pc.name.trim(), line: pc.line.trim(), url, year, status: pc.status }, ...v.past].slice(0, LIMITS.past) });
-    setPc({ name: "", line: "", url: "", year: "", status: "live" });
   }
 
   const select = <T extends readonly string[]>(id: string, label: string, list: T, val: string | null | undefined, onPick: (x: T[number] | null) => void, empty = "Pick one") => (
@@ -166,62 +162,19 @@ export function ProfileEditor({ value: v, onChange, onDone, doneLabel = "Done", 
           <input id="ed-loc-hide" type="checkbox" checked={v.locationHidden} onChange={(e) => set({ locationHidden: e.target.checked })} /> Hide my location
         </label>
       </div>
-      <div className={cx("px-field")}>
-        <label htmlFor="ed-pname">Project name</label>
-        <input id="ed-pname" maxLength={40} value={v.projectName} onChange={(e) => set({ projectName: e.target.value })} />
-      </div>
-      <div className={cx("px-field")}>
-        <label htmlFor="ed-purl">Project link</label>
-        <input
-          id="ed-purl"
-          type="url"
-          value={v.projectUrl}
-          onChange={(e) => set({ projectUrl: e.target.value, projectName: v.projectName || domainOf(e.target.value) })}
-        />
-      </div>
       <div className={cx("px-field wide")}>
-        <label htmlFor="ed-pline">
-          What it does <small>(one line)</small>
-        </label>
-        <input id="ed-pline" maxLength={80} placeholder="The internet’s arena for underrated creators." value={v.projectTagline} onChange={(e) => set({ projectTagline: e.target.value })} />
-      </div>
-      <div className={cx("px-field wide px-past-ed")}>
-        <span className={cx("px-lab")}>
-          Previously cooked <small>(things you built before)</small>
+        <span className={cx("px-lab")} id="ed-view">
+          Projects show as
         </span>
-        <div id="pc-list">
-          {v.past.length ? (
-            v.past.map((x, i) => (
-              <div key={`${x.name}-${i}`} className={cx("px-past-item")}>
-                <span>
-                  <b>{x.name}</b>{x.year ? ` · ${x.year}` : ""} · {PAST_STATUS[x.status]}
-                </span>
-                <button type="button" className={cx("px-text")} aria-label={`Remove ${x.name}`} onClick={() => set({ past: v.past.filter((_, j) => j !== i) })}>
-                  Remove
-                </button>
-              </div>
-            ))
-          ) : (
-            <p className={cx("px-past-none")}>Nothing yet. Add your first one below.</p>
-          )}
-        </div>
-        <div className={cx("px-past-add")}>
-          <input id="pc-name" maxLength={40} placeholder="Project name" aria-label="Project name" value={pc.name} onChange={(e) => setPc({ ...pc, name: e.target.value })} />
-          <input id="pc-line" maxLength={80} placeholder="What it did, in one line" aria-label="What it did" value={pc.line} onChange={(e) => setPc({ ...pc, line: e.target.value })} />
-          <input id="pc-url" type="url" placeholder="Link" aria-label="Link" value={pc.url} onChange={(e) => setPc({ ...pc, url: e.target.value })} />
-          <input id="pc-year" inputMode="numeric" maxLength={4} placeholder="Year" aria-label="Year" value={pc.year} onChange={(e) => setPc({ ...pc, year: e.target.value })} />
-          <select id="pc-status" aria-label="What happened" value={pc.status} onChange={(e) => setPc({ ...pc, status: e.target.value as PastStatus })}>
-            {Object.entries(PAST_STATUS).map(([k, label]) => (
-              <option key={k} value={k}>
-                {label}
-              </option>
-            ))}
-          </select>
-          <button className={cx("px-ghost")} type="button" id="pc-add" onClick={addPast}>
-            + Add
-          </button>
+        <div className={cx("px-seg")} role="radiogroup" aria-labelledby="ed-view">
+          {(["rows", "cards"] as const).map((k) => (
+            <button key={k} type="button" role="radio" aria-checked={v.projectsView === k} onClick={() => set({ projectsView: k })}>
+              {k === "rows" ? "Rows" : "Cards"}
+            </button>
+          ))}
         </div>
       </div>
+      <p className={cx("px-past-none wide")}>Add and edit projects right on your profile — paste a link in the dashed box, or tap ⋯ on a project.</p>
       <div className={cx("px-editor-actions")}>
         <button className={cx("px-lime")} type="submit">
           {doneLabel}

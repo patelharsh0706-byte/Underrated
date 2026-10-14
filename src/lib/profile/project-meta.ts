@@ -44,9 +44,76 @@ export function parseProjectMeta(html: string, url: string): ProjectMeta {
   try {
     host = new URL(url).hostname.replace(/^www\./, "");
   } catch {}
-  const name = metaContent(html, "og:site_name") || short(metaContent(html, "og:title")) || short(title) || host;
+  // github.com/owner/repo → "repo"; github.com/owner → "owner" — never just "GitHub".
+  let github = "";
+  if (host === "github.com") {
+    try {
+      const [owner, repo] = new URL(url).pathname.split("/").filter(Boolean);
+      github = repo ?? owner ?? "";
+    } catch {}
+  }
+  const name = github || metaContent(html, "og:site_name") || short(metaContent(html, "og:title")) || short(title) || host;
   const description = metaContent(html, "og:description") || metaContent(html, "description") || metaContent(html, "twitter:description");
   return { name: clip(name, 40), description: clip(description, 80) };
+}
+
+/** "yourproduct.com" / "http://…" → an https URL on a public host, or null. */
+export function normalizeProjectLink(raw: string): string | null {
+  const t = raw.trim();
+  if (t.length < 3 || t.length > 300 || /\s/.test(t)) return null;
+  let url: URL;
+  try {
+    url = new URL(/^https?:\/\//i.test(t) ? t.replace(/^http:/i, "https:") : `https://${t}`);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" || !url.hostname.includes(".") || isPrivateHost(url.hostname) || url.username || url.password) return null;
+  return url.toString();
+}
+
+/** One string → the links in it: one per line, or separated by spaces/commas. */
+export function splitLinks(text: string): string[] {
+  return text.split(/[\s,]+/).map((x) => x.trim()).filter(Boolean);
+}
+
+function attr(tag: string, name: string): string {
+  return tag.match(new RegExp(`\\b${name}\\s*=\\s*"([^"]*)"`, "i"))?.[1] ?? tag.match(new RegExp(`\\b${name}\\s*=\\s*'([^']*)'`, "i"))?.[1] ?? "";
+}
+
+/** A URL from the page made absolute and https; null for anything else or a private host. */
+function absolute(href: string, base: string): string | null {
+  if (!href) return null;
+  try {
+    const u = new URL(decode(href), base);
+    if (u.protocol === "http:") u.protocol = "https:";
+    if (u.protocol !== "https:" || isPrivateHost(u.hostname)) return null;
+    return u.toString();
+  } catch {
+    return null;
+  }
+}
+
+export interface ProjectMedia {
+  /** The share picture: og:image:secure_url → og:image → twitter:image. */
+  image: string | null;
+  /** apple-touch-icon, else the largest non-SVG <link rel=icon>. */
+  icon: string | null;
+}
+
+export function parseProjectMedia(html: string, url: string): ProjectMedia {
+  const pick = (...keys: string[]) => keys.map((k) => absolute(metaContent(html, k), url)).find(Boolean) ?? null;
+  const image = pick("og:image:secure_url", "og:image", "og:image:url", "twitter:image", "twitter:image:src");
+
+  const links = (html.match(/<link\b[^>]*>/gi) ?? []).map((tag) => ({
+    rel: attr(tag, "rel").toLowerCase().split(/\s+/),
+    href: attr(tag, "href"),
+    size: Math.max(0, ...(attr(tag, "sizes").match(/\d+/g) ?? ["0"]).map(Number)),
+    svg: /svg/i.test(attr(tag, "type")) || /\.svg(\?|$)/i.test(attr(tag, "href")),
+  }));
+  const touch = links.find((l) => l.rel.includes("apple-touch-icon") || l.rel.includes("apple-touch-icon-precomposed"));
+  const icons = links.filter((l) => l.rel.includes("icon") && !l.svg).sort((a, b) => b.size - a.size);
+  const icon = absolute(touch?.href ?? "", url) ?? absolute(icons[0]?.href ?? "", url);
+  return { image, icon };
 }
 
 /** Refuse anything that isn't a public host — localhost, private and link-local ranges. */

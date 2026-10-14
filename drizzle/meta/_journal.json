@@ -120,6 +120,13 @@
       "when": 1791235623557,
       "tag": "0016_one_link_one_voter",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791876953406,
+      "tag": "0017_project_cards",
+      "breakpoints": true
     }
   ]
 }

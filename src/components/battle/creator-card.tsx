@@ -84,6 +84,7 @@ const SOCIAL_LABELS: Record<string, string> = {
   spotify: "Spotify",
   tiktok: "TikTok",
   github: "GitHub",
+  producthunt: "Product Hunt",
 };
 
 /** Icon for the two platforms the design mockup draws one for; every other

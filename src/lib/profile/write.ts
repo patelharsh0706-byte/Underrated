@@ -7,6 +7,7 @@ import { storeCreatorAvatar } from "@/lib/avatar-store";
 import { db } from "@/lib/db";
 import { accounts, creatorPastProjects, creators } from "@/lib/db/schema";
 import { uniqueViolation } from "@/lib/db/unique-violation";
+import { ownBlobOrNull } from "@/lib/own-blob";
 
 import { draftForAccount } from "./draft";
 import { type ProfileEdit } from "./options";
@@ -28,6 +29,10 @@ export async function saveProfileFields(tx: Tx, creatorId: string, edit: Profile
       projectTagline: edit.projectTagline || null,
       // Always written, so clearing the project really clears it.
       workUrl: edit.projectUrl || null,
+      // Pictures only from our own Blob store — never a URL the browser made up.
+      projectImageUrl: ownBlobOrNull(edit.projectImageUrl),
+      projectLogoUrl: ownBlobOrNull(edit.projectLogoUrl),
+      projectsView: edit.projectsView,
       workHow: edit.workHow ?? null,
       workStage: edit.workStage ?? null,
       workCareer: edit.workCareer ?? null,
@@ -39,7 +44,7 @@ export async function saveProfileFields(tx: Tx, creatorId: string, edit: Profile
   await tx.delete(creatorPastProjects).where(eq(creatorPastProjects.creatorId, creatorId));
   if (edit.past.length) {
     await tx.insert(creatorPastProjects).values(
-      edit.past.map((p, i) => ({ creatorId, name: p.name, line: p.line || null, url: p.url || null, year: p.year, status: p.status, position: i })),
+      edit.past.map((p, i) => ({ creatorId, name: p.name, line: p.line || null, url: p.url || null, year: p.year, status: p.status, imageUrl: ownBlobOrNull(p.imageUrl), logoUrl: ownBlobOrNull(p.logoUrl), position: i })),
     );
   }
 }
